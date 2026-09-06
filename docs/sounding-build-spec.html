@@ -1,0 +1,449 @@
+<title>Project Sounding</title>
+<meta name="description" content="Low-code Azure agent that reads a client's on-prem inventory from Data Lake and drafts landing-zone and migration estimates for an RFP.">
+<style>
+  :root{
+    --ink:#12263A;--paper:#EEF2F4;--surface:#FFFFFF;--surface-2:#F7FAFB;
+    --accent:#0E7C8B;--accent-deep:#0A5866;--line:#D3DDE2;--muted:#5A6B76;
+    --good:#2E7D5B;--warn:#9A6A16;--crit:#B23B3B;
+    --code-bg:#0E1D28;--code-ink:#D6E2E8;--code-dim:#7E94A0;--code-accent:#5FC6D6;
+  }
+  @media (prefers-color-scheme:dark){
+    :root:not([data-theme="light"]){
+      --ink:#E6EDF1;--paper:#0B151D;--surface:#111F2A;--surface-2:#152430;
+      --accent:#3AAEBF;--accent-deep:#7FD4E1;--line:#25343F;--muted:#94A5B0;
+      --good:#5FB98C;--warn:#D0A44E;--crit:#E07A7A;
+      --code-bg:#0A141C;--code-ink:#D6E2E8;--code-dim:#7E94A0;--code-accent:#5FC6D6;
+    }
+  }
+  :root[data-theme="dark"]{
+    --ink:#E6EDF1;--paper:#0B151D;--surface:#111F2A;--surface-2:#152430;
+    --accent:#3AAEBF;--accent-deep:#7FD4E1;--line:#25343F;--muted:#94A5B0;
+    --good:#5FB98C;--warn:#D0A44E;--crit:#E07A7A;
+    --code-bg:#0A141C;--code-ink:#D6E2E8;--code-dim:#7E94A0;--code-accent:#5FC6D6;
+  }
+
+  *{box-sizing:border-box}
+  body{
+    margin:0;background:var(--paper);color:var(--ink);
+    font-family:"IBM Plex Sans",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+    line-height:1.65;-webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:880px;margin:0 auto;padding:64px 28px 120px}
+
+  .eyebrow{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:.72rem;letter-spacing:.18em;text-transform:uppercase;color:var(--accent-deep);margin:0 0 18px}
+  h1{font-family:"Spectral",Georgia,serif;font-weight:600;font-size:clamp(2.4rem,6vw,3.4rem);line-height:1.05;letter-spacing:-.01em;margin:0 0 14px;text-wrap:balance}
+  .lede{font-family:"Spectral",Georgia,serif;font-size:1.2rem;color:var(--muted);max-width:64ch;margin:0 0 28px}
+  .meta{display:flex;flex-wrap:wrap;gap:8px 10px;font-family:"IBM Plex Mono",monospace;font-size:.74rem;border-top:1px solid var(--line);border-bottom:1px solid var(--line);padding:16px 0;margin-bottom:56px}
+  .meta span{color:var(--muted)}
+  .meta b{color:var(--ink);font-weight:500}
+  .meta .sep{color:var(--line)}
+
+  section{margin:0 0 54px}
+  h2{font-family:"Spectral",Georgia,serif;font-weight:600;font-size:1.6rem;margin:0 0 6px;letter-spacing:-.005em}
+  .sub{color:var(--muted);font-size:.95rem;margin:0 0 22px}
+  h3{font-family:"IBM Plex Sans",sans-serif;font-weight:600;font-size:1.02rem;margin:26px 0 8px}
+  p{margin:0 0 14px;max-width:68ch}
+  ul{margin:0 0 14px;padding-left:20px;max-width:68ch}
+  li{margin:0 0 6px}
+  a{color:var(--accent-deep);text-underline-offset:2px}
+  strong{font-weight:600}
+  .rule{height:1px;background:var(--line);border:0;margin:56px 0}
+
+  .flow{display:grid;gap:10px;margin:24px 0 8px}
+  .flow-row{display:grid;grid-template-columns:1fr;gap:10px}
+  @media(min-width:640px){
+    .flow-row.two{grid-template-columns:1fr 1fr}
+    .flow-row.three{grid-template-columns:1fr 1fr 1fr}
+  }
+  .node{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:14px 16px}
+  .node .k{font-family:"IBM Plex Mono",monospace;font-size:.66rem;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:4px}
+  .node .v{font-weight:600;font-size:.95rem}
+  .node .d{font-size:.82rem;color:var(--muted);margin-top:3px}
+  .node.hero{border-color:var(--accent);border-width:1.5px}
+  .arrow{text-align:center;color:var(--accent);font-family:"IBM Plex Mono",monospace;font-size:.9rem;padding:2px 0}
+
+  .scroll{overflow-x:auto;border:1px solid var(--line);border-radius:8px;margin:6px 0 10px}
+  table{border-collapse:collapse;width:100%;font-size:.88rem;min-width:600px}
+  th,td{text-align:left;padding:11px 14px;border-bottom:1px solid var(--line);vertical-align:top}
+  th{font-family:"IBM Plex Mono",monospace;font-size:.68rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);background:var(--surface-2)}
+  tr:last-child td{border-bottom:0}
+  td .mono,.cost{font-family:"IBM Plex Mono",monospace;font-variant-numeric:tabular-nums}
+  .cost{white-space:nowrap}
+  tfoot td{font-weight:600;background:var(--surface-2);border-top:2px solid var(--line)}
+
+  .phase{display:grid;grid-template-columns:auto 1fr;gap:0 18px;padding:18px 0;border-bottom:1px solid var(--line)}
+  .phase:last-child{border-bottom:0}
+  .phase .step{font-family:"IBM Plex Mono",monospace;font-weight:500;color:var(--accent);font-size:.9rem;padding-top:2px}
+  .phase h3{margin:0 0 4px}
+  .phase p{margin:0 0 6px;font-size:.92rem}
+  .phase .out{font-size:.8rem;color:var(--muted);font-family:"IBM Plex Mono",monospace}
+
+  pre{background:var(--code-bg);color:var(--code-ink);border-radius:10px;padding:20px;overflow-x:auto;font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:.8rem;line-height:1.6;margin:14px 0}
+  pre .c{color:var(--code-dim)}
+  pre .s{color:var(--code-accent)}
+  code{font-family:"IBM Plex Mono",monospace;font-size:.86em;background:var(--surface-2);border:1px solid var(--line);border-radius:4px;padding:.05em .35em}
+  pre code{background:none;border:0;padding:0}
+
+  .callout{background:var(--surface);border:1px solid var(--line);border-left:3px solid var(--accent);border-radius:6px;padding:14px 16px;font-size:.9rem;margin:14px 0}
+  .callout b{color:var(--accent-deep)}
+  .callout.warn{border-left-color:var(--warn)}
+  .callout.warn b{color:var(--warn)}
+  .callout.crit{border-left-color:var(--crit)}
+  .callout.crit b{color:var(--crit)}
+
+  .tag{display:inline-block;font-family:"IBM Plex Mono",monospace;font-size:.7rem;padding:.15em .5em;border-radius:4px;border:1px solid var(--line);color:var(--muted)}
+  .tag.good{color:var(--good);border-color:var(--good)}
+  .tag.warn{color:var(--warn);border-color:var(--warn)}
+
+  .tools{display:grid;gap:10px;margin-top:8px}
+  .tool{display:grid;grid-template-columns:auto 1fr;gap:14px;padding:12px 0;border-bottom:1px solid var(--line)}
+  .tool:last-child{border-bottom:0}
+  .tool .ico{font-family:"IBM Plex Mono",monospace;font-size:.7rem;color:var(--accent);padding-top:2px;white-space:nowrap}
+  .tool p{margin:0;font-size:.9rem}
+  .tool .t{font-weight:600}
+
+  .names{display:grid;gap:10px;margin-top:8px}
+  .name-row{display:grid;grid-template-columns:auto 1fr;gap:14px;padding:12px 0;border-bottom:1px solid var(--line)}
+  .name-row:last-child{border-bottom:0}
+  .name-row .n{font-family:"Spectral",serif;font-weight:600;font-size:1.05rem}
+  .name-row .n small{display:block;font-family:"IBM Plex Mono",monospace;font-size:.66rem;color:var(--muted);font-weight:400;letter-spacing:.1em;text-transform:uppercase}
+  .name-row p{margin:0;font-size:.88rem;color:var(--muted)}
+
+  footer{margin-top:80px;padding-top:20px;border-top:1px solid var(--line);font-family:"IBM Plex Mono",monospace;font-size:.72rem;color:var(--muted)}
+  :focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:2px}
+  @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Spectral:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+
+<div class="wrap">
+
+  <p class="eyebrow">Build Specification · Migration-Estimate Edition · v3</p>
+  <h1>Project Sounding</h1>
+  <p class="lede">A low-code Azure agent that reads a client's on-premises server and application inventory from Data Lake and drafts the landing-zone and migration numbers you need for an RFP proposal &mdash; no discovery tools installed on the client estate.</p>
+  <div class="meta">
+    <span>Prepared <b>2026-09-06</b></span><span class="sep">/</span>
+    <span>Owner <b>upendra25312@gmail.com</b></span><span class="sep">/</span>
+    <span>Budget <b>&lt; $30 / month</b></span><span class="sep">/</span>
+    <span>Usage <b>5&ndash;20 runs / month, bursty</b></span><span class="sep">/</span>
+    <span>Input <b>client inventory, ≤ 5 GB</b></span>
+  </div>
+
+  <section>
+    <h2>What this is for</h2>
+    <p>You are responding to an RFP to build an Azure <strong>landing zone</strong> and migrate a client's servers and applications. The client will <strong>not</strong> run Azure Migrate or install any agent or appliance on their estate. Instead they export what they have &mdash; RVTools dumps, CMDB extracts, an application portfolio spreadsheet, a questionnaire, some architecture docs &mdash; and drop it in your Data Lake.</p>
+    <p>Sounding turns that pile into answers you can put in the proposal: how many VMs and of what size in Azure, what the landing zone must contain, how the apps group into migration waves, which disposition (the 6 R's) fits each app, and a rough order-of-magnitude cost for both the Azure run-rate and the migration effort.</p>
+    <div class="callout crit"><b>Read this to every stakeholder.</b> Sounding produces a <strong>draft estimate for a human architect to review and own</strong>. Client-supplied inventory is typically incomplete, stale, and inconsistent; performance data is usually missing. Every number the agent gives carries stated assumptions and a confidence level. It is a fast first pass, not a bid.</div>
+  </section>
+
+  <section>
+    <h2>What the client provides &mdash; and how it is modelled</h2>
+    <p class="sub">Two shapes of input, two stores. Structured inventory goes to SQL; narrative goes to the search index.</p>
+    <div class="scroll">
+      <table>
+        <thead><tr><th>Client artefact</th><th>Shape</th><th>Lands as</th><th>Used for</th></tr></thead>
+        <tbody>
+          <tr><td>RVTools / vCenter export, CMDB extract</td><td>XLSX / CSV</td><td class="mono">SQL: servers</td><td>VM sizing, OS/EOL analysis, storage totals</td></tr>
+          <tr><td>Application portfolio / CMDB apps</td><td>XLSX / CSV</td><td class="mono">SQL: applications</td><td>Wave planning, 6 R's disposition, complexity</td></tr>
+          <tr><td>Dependency / connection map</td><td>CSV / XLSX</td><td class="mono">SQL: dependencies</td><td>Wave boundaries, move-group integrity</td></tr>
+          <tr><td>Storage / backup / DB inventory</td><td>CSV / XLSX</td><td class="mono">SQL: storage</td><td>Managed disk tier, backup, DB PaaS targets</td></tr>
+          <tr><td>Architecture docs, questionnaire answers, SOW drafts, current-state diagrams</td><td>PDF / DOCX / PPTX</td><td class="mono">AI Search index</td><td>Context: constraints, compliance, network, non-functional requirements</td></tr>
+          <tr><td>The RFP itself + your question list</td><td>PDF / XLSX</td><td class="mono">questions/ folder</td><td>Batch answering (see Excel flow)</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>Because the heavy data is now <strong>structured and small</strong> (a few thousand server rows fit in kilobytes of SQL), the Free AI Search 50 MB limit stops being a real constraint &mdash; only the narrative docs go in the index, and those are well under it.</p>
+  </section>
+
+  <section>
+    <h2>The SQL model</h2>
+    <p class="sub">Free Azure SQL database. Load the client files into these tables; keep a <code>schema.sql</code> the text-to-SQL tool can read. Nullable everywhere &mdash; client data has gaps.</p>
+    <pre><code><span class="c">-- servers: one row per discovered VM / physical host</span>
+server_id · hostname · env (prod/nonprod/dr) · os_name · os_version · os_eol_date
+vcpu · ram_gb · provisioned_disk_gb · used_disk_gb
+cpu_avg_pct · cpu_peak_pct · ram_avg_pct        <span class="c">-- often NULL; drives right-sizing confidence</span>
+cluster · datacenter · powerstate · app_id (FK) · notes
+
+<span class="c">-- applications: one row per business application</span>
+app_id · app_name · business_owner · criticality (1-4) · users
+tech_stack · db_engine · internet_facing (bit) · compliance_scope
+disposition <span class="c">-- filled by the agent: Rehost/Replatform/Refactor/Repurchase/Retire/Retain</span>
+complexity <span class="c">-- filled by the agent: S/M/L/XL</span> · wave <span class="c">-- filled by the agent</span>
+
+<span class="c">-- dependencies: directed edges between apps or servers</span>
+src_id · dst_id · port · protocol · direction · confidence
+
+<span class="c">-- storage: volumes / shares / databases needing a target</span>
+storage_id · server_id (FK) · type (block/file/object/db) · size_gb · iops · target_service</code></pre>
+  </section>
+
+  <section>
+    <h2>Architecture</h2>
+    <p class="sub">One agent, five tools, two front ends. Every box is a free or near-free tier.</p>
+    <div class="flow">
+      <div class="flow-row three">
+        <div class="node"><span class="k">Client</span><span class="v">inventory exports</span><span class="d">RVTools · CMDB · app portfolio · docs</span></div>
+        <div class="node hero"><span class="k">Store</span><span class="v">ADLS Gen2</span><span class="d">raw/inventory · raw/docs · questions · answers</span></div>
+        <div class="node"><span class="k">Normalize</span><span class="v">Durable Function</span><span class="d">blob trigger &rarr; parse CSV/XLSX &rarr; load SQL tables</span></div>
+      </div>
+      <div class="arrow">&darr;</div>
+      <div class="flow-row three">
+        <div class="node"><span class="k">Structured</span><span class="v">Azure SQL &mdash; Free</span><span class="d">servers · applications · dependencies · storage</span></div>
+        <div class="node"><span class="k">Narrative</span><span class="v">AI Search &mdash; Free</span><span class="d">docs index · hybrid · 512-dim vectors</span></div>
+        <div class="node"><span class="k">Models</span><span class="v">Azure OpenAI</span><span class="d">gpt-4o-mini · text-embedding-3-small</span></div>
+      </div>
+      <div class="arrow">&darr;</div>
+      <div class="flow-row">
+        <div class="node hero"><span class="k">Agent &mdash; Azure AI Foundry</span><span class="v">Migration Estimator</span><span class="d">query_inventory (SQL) · search_documents · azure_retail_prices · vm_rightsize · microsoft_docs (Learn MCP)</span></div>
+      </div>
+      <div class="arrow">&darr;</div>
+      <div class="flow-row two">
+        <div class="node"><span class="k">Front end A</span><span class="v">Chat UI &mdash; Azure Container Apps</span><span class="d">min replicas 0 · Entra ID auth</span></div>
+        <div class="node"><span class="k">Front end B</span><span class="v">RFP question sheet &mdash; Durable Functions</span><span class="d">questions.xlsx &rarr; fan-out &rarr; answers.xlsx + email</span></div>
+      </div>
+    </div>
+  </section>
+
+  <hr class="rule">
+
+  <section>
+    <h2>Agent tools</h2>
+    <div class="tools">
+      <div class="tool"><div class="ico">01</div><div>
+        <p class="t"><code>query_inventory</code> &mdash; Azure SQL</p>
+        <p>OpenAPI tool over a small Function: <code>POST /query {question}</code> &rarr; <code>gpt-4o-mini</code> writes a read-only <code>SELECT</code> constrained to the schema above &rarr; runs it against the Free SQL database &rarr; returns rows <em>and</em> the SQL used. Answers &ldquo;how many prod Windows Server 2012 VMs&rdquo;, &ldquo;total provisioned vCPU&rdquo;, &ldquo;apps with no owner&rdquo;.</p>
+      </div></div>
+      <div class="tool"><div class="ico">02</div><div>
+        <p class="t"><code>vm_rightsize</code> &mdash; Function with documented heuristic</p>
+        <p>Input: rows of <code>{vcpu, ram_gb, cpu_peak_pct, used_disk_gb}</code>. Output: a recommended Azure SKU per server (Dsv5 / Esv5 / Fsv2 family), plus disk tier. Heuristic, stated in the response: if utilisation data is present, target 75% headroom on peak; if absent, assume the allocation is oversized and map to the next SKU <em>down</em>, flagged <code>low-confidence</code>. Never silently guesses.</p>
+      </div></div>
+      <div class="tool"><div class="ico">03</div><div>
+        <p class="t"><code>azure_retail_prices</code> &mdash; Azure Retail Prices API</p>
+        <p>OpenAPI tool over the public, no-auth endpoint <code>https://prices.azure.com/api/retail/prices</code>. The agent pulls live pay-as-you-go and 1yr/3yr reserved prices for the SKUs from tool 02, in the client's target region. Real numbers in the estimate, not memorised ones.</p>
+      </div></div>
+      <div class="tool"><div class="ico">04</div><div>
+        <p class="t"><code>search_documents</code> &mdash; Azure AI Search (Free)</p>
+        <p>Hybrid search over the narrative docs index, top-k 12. Surfaces client constraints: compliance scope, network topology, maintenance windows, DR requirements, things that change the landing-zone design.</p>
+      </div></div>
+      <div class="tool"><div class="ico">05</div><div>
+        <p class="t"><code>microsoft_docs</code> &mdash; Microsoft Learn MCP</p>
+        <p>Hosted MCP server <code>https://learn.microsoft.com/api/mcp</code> (streamable HTTP, public, read-only) added as an MCP tool, <code>require_approval: never</code>. Grounds landing-zone and migration guidance in current Microsoft docs &mdash; Cloud Adoption Framework, Azure landing zone reference architecture, VM SKU families, Azure SQL / AKS target sizing.</p>
+      </div></div>
+    </div>
+    <div class="callout"><b>System prompt (core):</b> &ldquo;You help a migration architect estimate an Azure landing zone and server/app migration from client-supplied inventory. Use <code>query_inventory</code> for any count or sizing question and show the SQL. Use <code>vm_rightsize</code> then <code>azure_retail_prices</code> for cost. Use <code>microsoft_docs</code> for landing-zone and target-service guidance. Use <code>search_documents</code> for client constraints. Every estimate must end with: <em>Assumptions</em>, <em>Data gaps</em>, <em>Confidence (High/Medium/Low)</em>. Never state a cost without naming the region, term, and price date. If inventory is missing a field needed for an answer, say so and give a ranged estimate.&rdquo;</div>
+  </section>
+
+  <hr class="rule">
+
+  <section>
+    <h2>Estimation methodology the agent follows</h2>
+    <div class="scroll">
+      <table>
+        <thead><tr><th>Deliverable line</th><th>How the agent derives it</th></tr></thead>
+        <tbody>
+          <tr><td><b>Current-state summary</b></td><td>Aggregates from <code>servers</code>/<code>applications</code>: counts, vCPU/RAM/storage totals, OS mix, EOL exposure, criticality spread</td></tr>
+          <tr><td><b>Azure compute BoM</b></td><td><code>vm_rightsize</code> per server &rarr; SKU counts; adds ~10&ndash;20% for non-prod/DR per client RPO/RTO in docs</td></tr>
+          <tr><td><b>Landing-zone scope</b></td><td>CAF Azure landing zone accelerator baseline (mgmt groups, hub-spoke, firewall, Bastion, Log Analytics, policy) tuned by compliance scope + connectivity needs from <code>search_documents</code> and <code>microsoft_docs</code></td></tr>
+          <tr><td><b>6 R's disposition</b></td><td>Per app: EOL OS or clear PaaS fit &rarr; Replatform/Repurchase; low criticality + idle &rarr; Retire candidate; else Rehost. Writes <code>disposition</code> back to SQL</td></tr>
+          <tr><td><b>Wave plan</b></td><td>Groups apps by dependency clusters (keep tightly-coupled apps in one wave), then orders by criticality asc and complexity asc; writes <code>wave</code></td></tr>
+          <tr><td><b>Run-rate cost</b></td><td><code>azure_retail_prices</code>: compute (PAYG + 1/3yr RI), managed disk, bandwidth egress estimate, landing-zone fixed services; monthly + annual, region + date stamped</td></tr>
+          <tr><td><b>Migration effort</b></td><td>T-shirt hours per app by complexity (S/M/L/XL bands you set), &times; count, + landing-zone build + testing + cutover + PM overhead %; expressed as a range</td></tr>
+          <tr><td><b>Risks &amp; assumptions register</b></td><td>Collected from every tool call where data was missing or low-confidence</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="callout warn"><b>You own the bands.</b> The S/M/L/XL effort-hour bands, the RI term assumption, the non-prod uplift %, and the PM overhead % are <em>your firm's</em> numbers &mdash; put them in a <code>estimation_config.json</code> the agent reads as a tool or system-prompt block, so the model applies your rates, not invented ones.</p></div>
+  </section>
+
+  <hr class="rule">
+
+  <section>
+    <h2>Services &amp; monthly cost</h2>
+    <p class="sub">US East list price, September 2026. Set a Cost Management budget alert at $25 before deploying.</p>
+    <div class="scroll">
+      <table>
+        <thead><tr><th>Service</th><th>Tier</th><th>Notes</th><th>Est. / mo</th></tr></thead>
+        <tbody>
+          <tr><td><b>ADLS Gen2</b></td><td class="mono">StorageV2, HNS, LRS</td><td>≤ 5 GB client files + sheets</td><td class="cost">~$0.50</td></tr>
+          <tr><td><b>Azure AI Search</b></td><td class="mono">Free</td><td>Narrative docs only &mdash; comfortably under 50 MB now</td><td class="cost">$0</td></tr>
+          <tr><td><b>Azure SQL Database</b></td><td class="mono">Free offer (serverless, auto-pause)</td><td>100k vCore-s + 32 GB/mo free. Inventory is tiny.</td><td class="cost">$0</td></tr>
+          <tr><td><b>Azure OpenAI &mdash; embeddings</b></td><td class="mono">text-embedding-3-small (512-dim)</td><td>Only the docs; a few $ one-time</td><td class="cost">~$0&ndash;1</td></tr>
+          <tr><td><b>Azure OpenAI &mdash; chat</b></td><td class="mono">gpt-4o-mini</td><td>Agent reasoning + text-to-SQL. Estimate runs are bursty, not constant.</td><td class="cost">~$3&ndash;15</td></tr>
+          <tr><td><b>Azure AI Foundry</b></td><td class="mono">Hub + project</td><td>Free control plane</td><td class="cost">$0</td></tr>
+          <tr><td><b>Azure Container Apps</b></td><td class="mono">Consumption, min replicas 0</td><td>Free grant covers a low-traffic internal UI</td><td class="cost">~$0</td></tr>
+          <tr><td><b>Azure Durable Functions</b></td><td class="mono">Consumption (Y1)</td><td>Normalize job + RFP batch; 1M free executions/mo</td><td class="cost">~$0</td></tr>
+          <tr><td><b>Azure Retail Prices API</b></td><td class="mono">Public</td><td>No key, no cost, rate-limited</td><td class="cost">$0</td></tr>
+          <tr><td><b>Microsoft Learn MCP</b></td><td class="mono">Hosted, public</td><td>No key, no cost, no SLA</td><td class="cost">$0</td></tr>
+          <tr><td><b>Key Vault + App Insights</b></td><td class="mono">Standard / free grant</td><td>Secrets + tracing</td><td class="cost">~$0.10</td></tr>
+        </tbody>
+        <tfoot><tr><td colspan="3">Typical monthly total</td><td class="cost">$3&ndash;10</td></tr></tfoot>
+      </table>
+    </div>
+    <div class="callout"><b>Bursty usage works in your favour.</b> At 5&ndash;20 estimate runs a month, every compute tier here sits idle most of the time and bills near zero: Container Apps and Functions scale to zero, Azure SQL Free auto-pauses after 1 hour, and <code>gpt-4o-mini</code> only bills while a run is active &mdash; a full estimate pass (20&ndash;40 agent turns) costs cents. Expect real months to land at the <strong>low end, $3&ndash;10</strong>, most of which is the Azure OpenAI tokens for the runs you actually do.</div>
+    <div class="callout"><b>Between engagements, park it.</b> Nothing here needs to run continuously. When no estimate is in flight you can: leave it as-is (idle cost is already ~$0), or fully stop spend by deleting the resource group and redeploying from an <strong>infra-as-code template (Bicep)</strong> plus a SQL <code>schema.sql</code> next time &mdash; a 10-minute redeploy. Keep the ADLS account and Key Vault if you want to retain past clients' data; delete them too if contracts require it.</div>
+  </section>
+
+  <hr class="rule">
+
+  <section>
+    <h2>Build phases</h2>
+    <div class="phase"><div class="step">01</div><div>
+      <h3>Storage, budget alert, SQL</h3>
+      <p>ADLS Gen2 (<code>--hns-enabled true</code>), folders <code>raw/inventory/</code>, <code>raw/docs/</code>, <code>questions/</code>, <code>answers/</code>. Cost Management budget $25 with alerts. Create the Azure SQL <strong>Free offer</strong> database; run the DDL for the four tables; store <code>schema.sql</code> in the repo.</p>
+      <p class="out">out: storage + empty inventory schema + budget alert</p>
+    </div></div>
+    <div class="phase"><div class="step">02</div><div>
+      <h3>Models</h3>
+      <p>Foundry: deploy <code>gpt-4o-mini</code> and <code>text-embedding-3-small</code>, ~30K TPM cap each.</p>
+      <p class="out">out: two capped model endpoints</p>
+    </div></div>
+    <div class="phase"><div class="step">03</div><div>
+      <h3>Normalize function</h3>
+      <p>Durable Function, blob trigger on <code>raw/inventory/</code>: detect file type (RVTools vs CMDB vs app portfolio by header signature), map columns to the schema, upsert into SQL. Log unmapped columns to <code>answers/_ingest_log.txt</code> so you can see what was dropped.</p>
+      <p class="out">out: client files &rarr; populated SQL tables, with a gap log</p>
+    </div></div>
+    <div class="phase"><div class="step">04</div><div>
+      <h3>Docs index</h3>
+      <p>Portal &ldquo;Import and vectorize data&rdquo; on <code>raw/docs/</code>. Built-in cracking, 2000/500 chunks, embeddings at <strong>dimensions = 512</strong>, 6-hourly schedule.</p>
+      <p class="out">out: hybrid index of client narrative docs</p>
+    </div></div>
+    <div class="phase"><div class="step">05</div><div>
+      <h3>Tool functions</h3>
+      <p>Deploy three HTTP Functions with OpenAPI specs: <code>query_inventory</code>, <code>vm_rightsize</code>, <code>azure_retail_prices</code> (a thin proxy that adds <code>$filter</code> and caches). Read-only SQL login for <code>query_inventory</code>. Put <code>estimation_config.json</code> in an app setting or blob the functions read.</p>
+      <p class="out">out: three callable tool endpoints</p>
+    </div></div>
+    <div class="phase"><div class="step">06</div><div>
+      <h3>Agent</h3>
+      <p>Foundry agent, <code>gpt-4o-mini</code>, system prompt from above. Attach all five tools (three OpenAPI, one AI Search, one MCP &rarr; <code>learn.microsoft.com/api/mcp</code>). Test with 20 real estimate questions; verify tool routing and that every answer carries assumptions + confidence.</p>
+      <p class="out">out: working Migration Estimator agent</p>
+    </div></div>
+    <div class="phase"><div class="step">07</div><div>
+      <h3>Chat UI &mdash; Container Apps</h3>
+      <p>Containerize a minimal chat app, deploy to Container Apps, min replicas 0. Enable built-in Entra ID auth. App calls the agent via Managed Identity.</p>
+      <p class="out">out: internal chat URL behind org login</p>
+    </div></div>
+    <div class="phase"><div class="step">08</div><div>
+      <h3>RFP question sheet &mdash; Durable Functions</h3>
+      <p>Fan-out / fan-in orchestration (code below). Output columns: <code>Question · Answer · Basis · Assumptions · Confidence · Sources</code>. 300-row guard. Email the workbook via Microsoft Graph from the final activity.</p>
+      <p class="out">out: upload RFP questions.xlsx &rarr; answered workbook by email</p>
+    </div></div>
+    <div class="phase"><div class="step">09</div><div>
+      <h3>Evaluate &amp; calibrate</h3>
+      <p>Build a golden set from a past migration you know the real answer to. Score groundedness, tool-call accuracy, and numeric closeness. Tune the heuristic in <code>vm_rightsize</code> and the bands in <code>estimation_config.json</code> until the draft lands within your acceptable margin.</p>
+      <p class="out">out: calibrated agent + documented margin of error</p>
+    </div></div>
+  </section>
+
+  <hr class="rule">
+
+  <section>
+    <h2>RFP question sheet &mdash; Durable Functions</h2>
+    <p class="sub">Python v2 model. Fan-out / fan-in: parse the sheet, answer each question as a throttled parallel activity, write a structured workbook. <code>host.json</code>: <code>maxConcurrentActivityFunctions: 3</code>.</p>
+    <pre><code><span class="c"># function_app.py — azure-functions, azure-functions-durable, azure-identity,</span>
+<span class="c">#   azure-ai-projects, azure-storage-blob, pandas, openpyxl</span>
+<span class="c">import</span> io, os, logging
+<span class="c">import</span> pandas <span class="c">as</span> pd
+<span class="c">import</span> azure.functions <span class="c">as</span> func
+<span class="c">import</span> azure.durable_functions <span class="c">as</span> df
+<span class="c">from</span> azure.identity <span class="c">import</span> DefaultAzureCredential
+<span class="c">from</span> azure.ai.projects <span class="c">import</span> AIProjectClient
+<span class="c">from</span> azure.storage.blob <span class="c">import</span> BlobServiceClient
+
+app  = func.FunctionApp()
+cred = DefaultAzureCredential()
+proj = AIProjectClient(endpoint=os.environ[<span class="s">"FOUNDRY_PROJECT_ENDPOINT"</span>], credential=cred)
+blob = BlobServiceClient(os.environ[<span class="s">"STORAGE_URL"</span>], credential=cred)
+AGENT_ID = os.environ[<span class="s">"AGENT_ID"</span>]
+MAX_ROWS = <span class="s">300</span>
+
+@app.blob_trigger(arg_name=<span class="s">"src"</span>, path=<span class="s">"questions/{name}.xlsx"</span>, connection=<span class="s">"STORAGE_CONN"</span>)
+@app.durable_client_input(client_name=<span class="s">"client"</span>)
+<span class="c">async def</span> start(src: func.InputStream, client):
+    name = os.path.basename(src.name)
+    blob.get_blob_client(<span class="s">"_work"</span>, name).upload_blob(src.read(), overwrite=<span class="c">True</span>)
+    <span class="c">await</span> client.start_new(<span class="s">"orchestrator"</span>, client_input=name)
+
+@app.orchestration_trigger(context_name=<span class="s">"ctx"</span>)
+<span class="c">def</span> orchestrator(ctx: df.DurableOrchestrationContext):
+    name = ctx.get_input()
+    qs   = <span class="c">yield</span> ctx.call_activity(<span class="s">"parse_sheet"</span>, name)
+    <span class="c">if</span> qs == <span class="s">"TOO_MANY_ROWS"</span>: <span class="c">return</span>
+    rows = <span class="c">yield</span> ctx.task_all([ctx.call_activity(<span class="s">"ask"</span>, q) <span class="c">for</span> q <span class="c">in</span> qs])
+    <span class="c">yield</span> ctx.call_activity(<span class="s">"write_results"</span>, {<span class="s">"name"</span>: name, <span class="s">"rows"</span>: rows})
+
+@app.activity_trigger(input_name=<span class="s">"name"</span>)
+<span class="c">def</span> parse_sheet(name):
+    data = blob.get_blob_client(<span class="s">"_work"</span>, name).download_blob().readall()
+    d = pd.read_excel(io.BytesIO(data))
+    <span class="c">if</span> len(d) &gt; MAX_ROWS: <span class="c">return</span> <span class="s">"TOO_MANY_ROWS"</span>
+    <span class="c">return</span> d[<span class="s">"Question"</span>].fillna(<span class="s">""</span>).tolist()
+
+@app.activity_trigger(input_name=<span class="s">"q"</span>)
+<span class="c">def</span> ask(q):
+    <span class="c">try</span>:
+        t = proj.agents.threads.create()
+        proj.agents.messages.create(t.id, role=<span class="s">"user"</span>,
+            content=q + <span class="s">"\n\nReturn: Answer, Basis, Assumptions, Confidence, Sources."</span>)
+        r = proj.agents.runs.create_and_process(t.id, agent_id=AGENT_ID)
+        <span class="c">if</span> r.status != <span class="s">"completed"</span>:
+            <span class="c">return</span> {<span class="s">"q"</span>: q, <span class="s">"answer"</span>: <span class="s">""</span>, <span class="s">"status"</span>: <span class="s">f"run_{r.status}"</span>}
+        m = proj.agents.messages.get_last_message_by_role(t.id, <span class="s">"assistant"</span>)
+        text  = <span class="s">"\n"</span>.join(x.text.value <span class="c">for</span> x <span class="c">in</span> m.text_messages)
+        cites = <span class="s">"; "</span>.join(sorted({a.file_name <span class="c">for</span> a <span class="c">in</span> m.file_citation_annotations}))
+        <span class="c">return</span> {<span class="s">"q"</span>: q, <span class="s">"answer"</span>: text, <span class="s">"cites"</span>: cites, <span class="s">"status"</span>: <span class="s">"ok"</span>}
+    <span class="c">except</span> Exception <span class="c">as</span> e:
+        logging.exception(<span class="s">"ask failed"</span>)
+        <span class="c">return</span> {<span class="s">"q"</span>: q, <span class="s">"answer"</span>: <span class="s">""</span>, <span class="s">"cites"</span>: <span class="s">""</span>, <span class="s">"status"</span>: <span class="s">f"error: {e}"</span>}
+
+@app.activity_trigger(input_name=<span class="s">"p"</span>)
+<span class="c">def</span> write_results(p):
+    out = pd.DataFrame([{<span class="s">"Question"</span>: r[<span class="s">"q"</span>], <span class="s">"Answer"</span>: r.get(<span class="s">"answer"</span>, <span class="s">""</span>),
+                         <span class="s">"Sources"</span>: r.get(<span class="s">"cites"</span>, <span class="s">""</span>), <span class="s">"Status"</span>: r[<span class="s">"status"</span>]} <span class="c">for</span> r <span class="c">in</span> p[<span class="s">"rows"</span>]])
+    buf = io.BytesIO(); out.to_excel(buf, index=<span class="c">False</span>); buf.seek(<span class="s">0</span>)
+    nm = p[<span class="s">"name"</span>].replace(<span class="s">".xlsx"</span>, <span class="s">"_answered.xlsx"</span>)
+    blob.get_blob_client(<span class="s">"answers"</span>, nm).upload_blob(buf, overwrite=<span class="c">True</span>)
+    logging.info(<span class="s">"wrote answers/%s"</span>, nm)
+</code></pre>
+  </section>
+
+  <hr class="rule">
+
+  <section>
+    <h2>Risks &amp; watch-items</h2>
+    <div class="scroll">
+      <table>
+        <thead><tr><th>Risk</th><th>Signal</th><th>Mitigation</th></tr></thead>
+        <tbody>
+          <tr><td><b>Inventory is incomplete / stale</b> &mdash; the core risk with no discovery tool</td><td>Missing utilisation, missing dependencies, ghost servers</td><td>Agent forces Assumptions + Data-gaps + Confidence on every answer; ranged estimates; ingest gap log; architect review mandatory</td></tr>
+          <tr><td>No performance data &rarr; right-sizing is a guess</td><td><code>cpu_peak_pct</code> mostly NULL</td><td><code>vm_rightsize</code> flags low-confidence, sizes conservatively down, and recommends a paid pilot / CloudMonitor phase in the proposal</td></tr>
+          <tr><td>Text-to-SQL writes wrong or unsafe query</td><td>Odd counts; errors</td><td>Read-only login, SELECT allowlist, return generated SQL in the answer for audit</td></tr>
+          <tr><td>Retail Prices API rate limit / schema drift</td><td>429s, missing SKUs</td><td>Cache responses in blob 24h; fall back to a stored price sheet with a staleness note</td></tr>
+          <tr><td>Learn MCP unavailable</td><td>Slow/failing <code>microsoft_docs</code></td><td>Public service, no SLA &mdash; agent proceeds and notes guidance is from model knowledge, flag for review</td></tr>
+          <tr><td>Client data classification</td><td>Inventory may be commercially sensitive</td><td>Private storage, Entra-only UI, no public endpoints, delete on engagement close; confirm data-handling terms before ingest</td></tr>
+          <tr><td>Estimate treated as a firm bid</td><td>Someone lifts numbers straight into the proposal</td><td>Every export watermarked &ldquo;DRAFT &mdash; architect review required&rdquo;; confidence column non-optional</td></tr>
+          <tr><td>Free SQL auto-pause</td><td>First query after 1h idle slow</td><td>Generous tool timeout; optional 40-min keep-warm timer Function</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <hr class="rule">
+
+  <section>
+    <h2>The name</h2>
+    <p class="sub">Recommendation first.</p>
+    <div class="names">
+      <div class="name-row"><div class="n">Sounding<small>recommended</small></div>
+        <p>To take a sounding is to drop a weighted line and measure the depth you cannot see &mdash; exactly what you are doing with a client estate you cannot instrument. Short, no Azure collision; resources as <code>sounding-agent</code>, <code>sounding-sql</code>, <code>sounding-fn</code>, <code>sounding-aca</code>.</p>
+      </div>
+      <div class="name-row"><div class="n">Fathom<small>alternative</small></div>
+        <p>A unit of depth, and the verb for finally understanding something complex. Fits an assessment tool well; very short.</p>
+      </div>
+      <div class="name-row"><div class="n">Landfall<small>alternative</small></div>
+        <p>The moment a voyage reaches shore &mdash; leans into the &ldquo;landing zone&rdquo; framing. More outcome than method.</p>
+      </div>
+    </div>
+  </section>
+
+  <footer>Project Sounding · Migration-Estimate Edition v3 · 2026-09-06 · prepared with Claude Code · DRAFT estimates require architect review</footer>
+
+</div>
