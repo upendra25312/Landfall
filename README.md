@@ -47,8 +47,12 @@ Typical cost: **$3–10/month**, almost entirely Azure OpenAI tokens for the run
 
 | Path | What |
 |---|---|
-| [`docs/sounding-build-spec.html`](docs/sounding-build-spec.html) | Full build specification — architecture, SQL model, agent tools, estimation methodology, phased build plan, cost table, risk register |
+| [`docs/build-spec.html`](docs/build-spec.html) | **Solution build specification** — architecture, SQL model, agent tools, estimation methodology, phased build plan, cost table, risk register |
+| [`docs/effort-and-resource-loading.html`](docs/effort-and-resource-loading.html) | **Pre-sales estimation pack** — parametric effort model, reference-estate roll-up, 6-month resource-loading plan, commercial roll-up, Microsoft funding levers, assumptions & risks |
+| [`docs/discovery-questionnaire.html`](docs/discovery-questionnaire.html) | **Client discovery questionnaire** — data pack request + ~100 questions across 15 domains, working assumptions register (AS-01…14), risk register (RK-01…12) |
 | [`src/function_app.py`](src/function_app.py) | Durable Functions batch runner for the RFP question sheet (Python v2 model, fan-out / fan-in) |
+
+Open the `docs/*.html` files in a browser — they are self-contained, theme-aware pages.
 
 ## Deploying `src/function_app.py`
 

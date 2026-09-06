@@ -1,0 +1,395 @@
+<title>Landfall Discovery Questionnaire</title>
+<meta name="description" content="Client discovery questionnaire, working assumptions, and risk register for an Azure landing zone and migration RFP response.">
+<style>
+  :root{
+    --ink:#12263A;--paper:#EEF2F4;--surface:#FFFFFF;--surface-2:#F7FAFB;
+    --accent:#0E7C8B;--accent-deep:#0A5866;--line:#D3DDE2;--muted:#5A6B76;
+    --good:#2E7D5B;--warn:#9A6A16;--crit:#B23B3B;
+    --hi:#FBF3E4;--hi-line:#E4C98C;
+  }
+  @media (prefers-color-scheme:dark){
+    :root:not([data-theme="light"]){
+      --ink:#E6EDF1;--paper:#0B151D;--surface:#111F2A;--surface-2:#152430;
+      --accent:#3AAEBF;--accent-deep:#7FD4E1;--line:#25343F;--muted:#94A5B0;
+      --good:#5FB98C;--warn:#D0A44E;--crit:#E07A7A;
+      --hi:#2A2213;--hi-line:#6B5626;
+    }
+  }
+  :root[data-theme="dark"]{
+    --ink:#E6EDF1;--paper:#0B151D;--surface:#111F2A;--surface-2:#152430;
+    --accent:#3AAEBF;--accent-deep:#7FD4E1;--line:#25343F;--muted:#94A5B0;
+    --good:#5FB98C;--warn:#D0A44E;--crit:#E07A7A;
+    --hi:#2A2213;--hi-line:#6B5626;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--paper);color:var(--ink);font-family:"IBM Plex Sans",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;line-height:1.6;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:980px;margin:0 auto;padding:60px 26px 120px}
+  .eyebrow{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:.72rem;letter-spacing:.18em;text-transform:uppercase;color:var(--accent-deep);margin:0 0 16px}
+  h1{font-family:"Spectral",Georgia,serif;font-weight:600;font-size:clamp(2.1rem,5vw,3rem);line-height:1.06;margin:0 0 12px;text-wrap:balance}
+  .lede{font-family:"Spectral",Georgia,serif;font-size:1.12rem;color:var(--muted);max-width:66ch;margin:0 0 26px}
+  .meta{display:flex;flex-wrap:wrap;gap:8px 10px;font-family:"IBM Plex Mono",monospace;font-size:.72rem;border-top:1px solid var(--line);border-bottom:1px solid var(--line);padding:14px 0;margin-bottom:44px}
+  .meta span{color:var(--muted)} .meta b{color:var(--ink);font-weight:500} .meta .sep{color:var(--line)}
+  nav.toc{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:14px 18px;margin-bottom:44px;font-size:.85rem;columns:2;column-gap:28px}
+  nav.toc a{display:block;color:var(--accent-deep);text-decoration:none;padding:3px 0;break-inside:avoid}
+  nav.toc a:hover{text-decoration:underline}
+  @media(max-width:560px){nav.toc{columns:1}}
+  section{margin:0 0 46px;scroll-margin-top:20px}
+  h2{font-family:"Spectral",Georgia,serif;font-weight:600;font-size:1.42rem;margin:0 0 4px}
+  h2 .g{font-family:"IBM Plex Mono",monospace;font-size:.8rem;color:var(--accent);margin-right:10px}
+  .sub{color:var(--muted);font-size:.9rem;margin:0 0 16px}
+  p{margin:0 0 12px;max-width:72ch} ul{margin:0 0 12px;padding-left:20px;max-width:72ch} li{margin:0 0 5px}
+  strong{font-weight:600}
+  .rule{height:1px;background:var(--line);border:0;margin:46px 0}
+  .scroll{overflow-x:auto;border:1px solid var(--line);border-radius:8px;margin:10px 0}
+  table{border-collapse:collapse;width:100%;font-size:.85rem;min-width:640px}
+  th,td{text-align:left;padding:9px 13px;border-bottom:1px solid var(--line);vertical-align:top}
+  th{font-family:"IBM Plex Mono",monospace;font-size:.65rem;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);background:var(--surface-2)}
+  tr:last-child td{border-bottom:0}
+  td.id{font-family:"IBM Plex Mono",monospace;color:var(--muted);white-space:nowrap}
+  .prio{font-family:"IBM Plex Mono",monospace;font-size:.7rem;padding:.1em .45em;border-radius:4px;border:1px solid var(--line);white-space:nowrap}
+  .prio.must{color:var(--crit);border-color:var(--crit)}
+  .prio.should{color:var(--warn);border-color:var(--warn)}
+  .prio.nice{color:var(--muted)}
+  .callout{background:var(--surface);border:1px solid var(--line);border-left:3px solid var(--accent);border-radius:6px;padding:13px 15px;font-size:.88rem;margin:14px 0}
+  .callout b{color:var(--accent-deep)}
+  .callout.hi{background:var(--hi);border-color:var(--hi-line);border-left-color:var(--hi-line)}
+  .sev{font-family:"IBM Plex Mono",monospace;font-size:.7rem;padding:.1em .45em;border-radius:4px;border:1px solid var(--line);white-space:nowrap}
+  .sev.h{color:var(--crit);border-color:var(--crit)}
+  .sev.m{color:var(--warn);border-color:var(--warn)}
+  .sev.l{color:var(--good);border-color:var(--good)}
+  footer{margin-top:70px;padding-top:18px;border-top:1px solid var(--line);font-family:"IBM Plex Mono",monospace;font-size:.7rem;color:var(--muted)}
+  :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  code{font-family:"IBM Plex Mono",monospace;font-size:.85em;background:var(--surface-2);border:1px solid var(--line);border-radius:4px;padding:.05em .35em}
+</style>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Spectral:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+
+<div class="wrap">
+  <p class="eyebrow">Landfall · Pre-Sales Discovery</p>
+  <h1>Client Discovery Questionnaire</h1>
+  <p class="lede">The questions we need answered — and the data we need loaded into the Data Lake — to turn a paper inventory into a defensible Azure landing-zone and migration solution. No tooling runs on the client estate; this questionnaire is how we close the gap.</p>
+  <div class="meta">
+    <span>Version <b>1.0</b></span><span class="sep">/</span>
+    <span>Date <b>2026-09-06</b></span><span class="sep">/</span>
+    <span>Return by <b>[RFP clarification deadline]</b></span><span class="sep">/</span>
+    <span>Owner <b>Pre-sales architecture</b></span>
+  </div>
+
+  <nav class="toc">
+    <a href="#how">0 · How to complete this</a>
+    <a href="#data">1 · Data pack we need</a>
+    <a href="#biz">2 · Business &amp; programme context</a>
+    <a href="#comm">3 · Commercial &amp; Microsoft programmes</a>
+    <a href="#infra">4 · Compute &amp; virtualisation</a>
+    <a href="#stor">5 · Storage &amp; backup</a>
+    <a href="#data2">6 · Databases &amp; middleware</a>
+    <a href="#apps">7 · Application portfolio</a>
+    <a href="#dep">8 · Dependencies &amp; integration</a>
+    <a href="#net">9 · Network &amp; connectivity</a>
+    <a href="#id">10 · Identity &amp; directory</a>
+    <a href="#sec">11 · Security &amp; compliance</a>
+    <a href="#ops">12 · Operations &amp; ITSM</a>
+    <a href="#dr">13 · Resilience &amp; DR</a>
+    <a href="#nfr">14 · Non-functional &amp; constraints</a>
+    <a href="#mig">15 · Migration preferences</a>
+    <a href="#assume">16 · Working assumptions register</a>
+    <a href="#risk">17 · Risk register</a>
+  </nav>
+
+  <section id="how">
+    <h2><span class="g">0</span>How to complete this</h2>
+    <ul>
+      <li>Answer inline. &ldquo;Unknown&rdquo; is a valid answer — it tells us where to place a discovery activity or an assumption.</li>
+      <li>Priority tags: <span class="prio must">MUST</span> blocks the estimate · <span class="prio should">SHOULD</span> materially changes it · <span class="prio nice">NICE</span> refines it.</li>
+      <li>Attach the data pack in §1 to the agreed Data Lake container. Spreadsheet exports are fine; we do not need tooling installed.</li>
+      <li>One named client owner per section, please, so we can follow up quickly.</li>
+    </ul>
+  </section>
+
+  <section id="data">
+    <h2><span class="g">1</span>Data pack we need in the Data Lake</h2>
+    <div class="scroll"><table>
+      <thead><tr><th>Artefact</th><th>Format</th><th>Priority</th><th>Drives</th></tr></thead>
+      <tbody>
+        <tr><td>Server / VM inventory — RVTools export, vCenter export, or CMDB extract</td><td>XLSX / CSV</td><td><span class="prio must">MUST</span></td><td>VM count, right-sizing, OS/EOL, storage totals</td></tr>
+        <tr><td>Performance data — CPU / RAM / IOPS, peak &amp; average, ≥ 30 days if available</td><td>CSV</td><td><span class="prio should">SHOULD</span></td><td>Right-sizing confidence, RI vs PAYG mix</td></tr>
+        <tr><td>Application portfolio — name, owner, criticality, tech stack, users</td><td>XLSX / CSV</td><td><span class="prio must">MUST</span></td><td>Disposition (6 R's), wave plan, test effort</td></tr>
+        <tr><td>Dependency / interface map or netflow summary</td><td>CSV / XLSX / diagram</td><td><span class="prio should">SHOULD</span></td><td>Move-group integrity, wave boundaries</td></tr>
+        <tr><td>Database inventory — engine, version, size, HA config</td><td>XLSX / CSV</td><td><span class="prio must">MUST</span></td><td>PaaS target fit, DMS approach, licensing</td></tr>
+        <tr><td>Storage &amp; backup inventory — volumes, shares, backup policies, retention</td><td>XLSX / CSV</td><td><span class="prio should">SHOULD</span></td><td>Managed disk tier, Azure Backup / ASR sizing</td></tr>
+        <tr><td>Network diagrams — current DC topology, WAN, DMZ, IP plan</td><td>PDF / Visio</td><td><span class="prio must">MUST</span></td><td>Hub-spoke design, connectivity, firewall rules</td></tr>
+        <tr><td>Existing architecture / design docs, standards, runbooks</td><td>PDF / DOCX</td><td><span class="prio nice">NICE</span></td><td>Context, constraints, non-functional requirements</td></tr>
+        <tr><td>Licensing position — Windows/SQL, SA/Hybrid Benefit eligibility, EA/MACC</td><td>XLSX / PDF</td><td><span class="prio should">SHOULD</span></td><td>Run-rate cost, AHB modelling, commercial levers</td></tr>
+      </tbody>
+    </table></div>
+    <div class="callout hi"><b>The single biggest lever on accuracy:</b> ≥ 30 days of performance data. Without it, right-sizing is a conservative guess and we must carry a larger contingency and recommend a paid pilot phase.</div>
+  </section>
+
+  <section id="biz">
+    <h2><span class="g">2</span>Business &amp; programme context</h2>
+    <div class="scroll"><table>
+      <thead><tr><th class="id">#</th><th>Question</th><th>Priority</th></tr></thead>
+      <tbody>
+        <tr><td class="id">B1</td><td>What is the primary driver — data-centre exit / lease end, cost, resilience, M&amp;A, regulatory, capability? Is there a hard date?</td><td><span class="prio must">MUST</span></td></tr>
+        <tr><td class="id">B2</td><td>Is there a fixed budget envelope or funding model for the migration programme?</td><td><span class="prio must">MUST</span></td></tr>
+        <tr><td class="id">B3</td><td>What does &ldquo;done&rdquo; look like — full exit, hybrid steady-state, or a first tranche only?</td><td><span class="prio must">MUST</span></td></tr>
+        <tr><td class="id">B4</td><td>Target Azure region(s) and any data-residency constraint on region choice?</td><td><span class="prio must">MUST</span></td></tr>
+        <tr><td class="id">B5</td><td>Appetite for change during migration — pure rehost (&ldquo;lift &amp; shift&rdquo;) vs opportunistic modernisation?</td><td><span class="prio should">SHOULD</span></td></tr>
+        <tr><td class="id">B6</td><td>Known business blackout periods (year-end, peak trading, regulatory reporting)?</td><td><span class="prio should">SHOULD</span></td></tr>
+        <tr><td class="id">B7</td><td>Who is the executive sponsor, and who signs off wave go/no-go?</td><td><span class="prio should">SHOULD</span></td></tr>
+        <tr><td class="id">B8</td><td>Is there an incumbent partner / MSP whose scope or contracts we must work around?</td><td><span class="prio should">SHOULD</span></td></tr>
+      </tbody>
+    </table></div>
+  </section>
+
+  <section id="comm">
+    <h2><span class="g">3</span>Commercial &amp; Microsoft programmes</h2>
+    <div class="scroll"><table>
+      <thead><tr><th class="id">#</th><th>Question</th><th>Priority</th></tr></thead>
+      <tbody>
+        <tr><td class="id">C1</td><td>Existing agreement type — EA, MCA, CSP? Renewal date?</td><td><span class="prio should">SHOULD</span></td></tr>
+        <tr><td class="id">C2</td><td>Is there an Azure Consumption Commitment (MACC) this programme could retire against?</td><td><span class="prio should">SHOULD</span></td></tr>
+        <tr><td class="id">C3</td><td>Any active Microsoft funding (AMM / Azure Migrate and Modernize, ECIF) already in play, and which Microsoft account team?</td><td><span class="prio should">SHOULD</span></td></tr>
+        <tr><td class="id">C4</td><td>Software Assurance coverage on Windows Server / SQL Server — quantities eligible for Azure Hybrid Benefit?</td><td><span class="prio should">SHOULD</span></td></tr>
+        <tr><td class="id">C5</td><td>Commitment appetite for Reserved Instances / Savings Plans (1yr / 3yr) to reduce run-rate?</td><td><span class="prio nice">NICE</span></td></tr>
+        <tr><td class="id">C6</td><td>Is a post-migration managed-run service in scope of this RFP or separate?</td><td><span class="prio should">SHOULD</span></td></tr>
+      </tbody>
+    </table></div>
+  </section>
+
+  <section id="infra">
+    <h2><span class="g">4</span>Compute &amp; virtualisation</h2>
+    <div class="scroll"><table>
+      <thead><tr><th class="id">#</th><th>Question</th><th>Priority</th></tr></thead>
+      <tbody>
+        <tr><td class="id">I1</td><td>Hypervisor(s) and version — VMware (vSphere ver.), Hyper-V, Nutanix, bare metal count?</td><td><span class="prio must">MUST</span></td></tr>
+        <tr><td class="id">I2</td><td>Total VMs by environment (prod / non-prod / dev / DR) and by OS family + version?</td><td><span class="prio must">MUST</span></td></tr>
+        <tr><td class="id">I3</td><td>Any unsupported / end-of-life OS (Windows 2008/2012, RHEL 6, etc.) — counts?</td><td><span class="prio must">MUST</span></td></tr>
+        <tr><td class="id">I4</td><td>Physical servers that cannot be virtualised, and why?</td><td><span class="prio should">SHOULD</span></td></tr>
+        <tr><td class="id">I5</td><td>Specialised compute — GPU, HPC clusters, large-memory (&gt; 512 GB) hosts?</td><td><span class="prio should">SHOULD</span></td></tr>
+        <tr><td class="id">I6</td><td>Appliances / non-x86 — mainframe, AS/400, network appliances, hardware dongles?</td><td><span class="prio must">MUST</span></td></tr>
+        <tr><td class="id">I7</td><td>Typical utilisation profile — are hosts heavily over-provisioned? Any known idle/zombie servers?</td><td><span class="prio should">SHOULD</span></td></tr>
+        <tr><td class="id">I8</td><td>Server build standard / golden image, and patching toolset?</td><td><span class="prio nice">NICE</span></td></tr>
+      </tbody>
+    </table></div>
+  </section>
+
+  <section id="stor">
+    <h2><span class="g">5</span>Storage &amp; backup</h2>
+    <div class="scroll"><table>
+      <thead><tr><th class="id">#</th><th>Question</th><th>Priority</th></tr></thead>
+      <tbody>
+        <tr><td class="id">S1</td><td>Total allocated vs used capacity — block, file, object — by tier?</td><td><span class="prio must">MUST</span></td></tr>
+        <tr><td class="id">S2</td><td>Storage arrays / NAS in use, and any that back multiple apps (shared LUNs, CIFS/NFS shares)?</td><td><span class="prio should">SHOULD</span></td></tr>
+        <tr><td class="id">S3</td><td>Performance-sensitive volumes — IOPS / throughput / latency targets?</td><td><span class="prio should">SHOULD</span></td></tr>
+        <tr><td class="id">S4</td><td>Backup product, backup windows, retention policy, and off-site / immutable copy?</td><td><span class="prio must">MUST</span></td></tr>
+        <tr><td class="id">S5</td><td>Any archive / WORM / regulatory-retention data, and volumes?</td><td><span class="prio should">SHOULD</span></td></tr>
+        <tr><td class="id">S6</td><td>Large data sets to seed to Azure — is offline transfer (Data Box) needed, or is bandwidth sufficient?</td><td><span class="prio should">SHOULD</span></td></tr>
+      </tbody>
+    </table></div>
+  </section>
+
+  <section id="data2">
+    <h2><span class="g">6</span>Databases &amp; middleware</h2>
+    <div class="scroll"><table>
+      <thead><tr><th class="id">#</th><th>Question</th><th>Priority</th></tr></thead>
+      <tbody>
+        <tr><td class="id">D1</td><td>Database engines, versions, and instance/DB counts — SQL Server, Oracle, PostgreSQL, MySQL, others?</td><td><span class="prio must">MUST</span></td></tr>
+        <tr><td class="id">D2</td><td>Largest databases (size), and any with strict RPO/RTO or 24×7 no-downtime needs?</td><td><span class="prio must">MUST</span></td></tr>
+        <tr><td class="id">D3</td><td>HA/DR config today — Always On AG, clustering, log shipping, Data Guard, RAC?</td><td><span class="prio should">SHOULD</span></td></tr>
+        <tr><td class="id">D4</td><td>Openness to PaaS targets (Azure SQL MI / Flexible Server) vs IaaS-only?</td><td><span class="prio should">SHOULD</span></td></tr>
+        <tr><td class="id">D5</td><td>Oracle licensing model and any constraint on running Oracle in Azure?</td><td><span class="prio should">SHOULD</span></td></tr>
+        <tr><td class="id">D6</td><td>Middleware / integration — message brokers, ESB, MFT, batch schedulers, app servers?</td><td><span class="prio should">SHOULD</span></td></tr>
+        <tr><td class="id">D7</td><td>Certificates, service accounts, hardcoded IPs / hostnames known to be embedded in apps?</td><td><span class="prio should">SHOULD</span></td></tr>
+      </tbody>
+    </table></div>
+  </section>
+
+  <section id="apps">
+    <h2><span class="g">7</span>Application portfolio</h2>
+    <div class="scroll"><table>
+      <thead><tr><th class="id">#</th><th>Question</th><th>Priority</th></tr></thead>
+      <tbody>
+        <tr><td class="id">A1</td><td>Confirmed application count, and completeness of the portfolio list (is it maintained?)</td><td><span class="prio must">MUST</span></td></tr>
+        <tr><td class="id">A2</td><td>For each app: business criticality (1–4), user base, peak usage pattern?</td><td><span class="prio must">MUST</span></td></tr>
+        <tr><td class="id">A3</td><td>Apps already earmarked to Retire or replace with SaaS in the next 12–18 months?</td><td><span class="prio must">MUST</span></td></tr>
+        <tr><td class="id">A4</td><td>COTS/vendor apps — is the vendor's support statement for Azure known? Any that block migration?</td><td><span class="prio should">SHOULD</span></td></tr>
+        <tr><td class="id">A5</td><td>Custom/in-house apps — source code availability, active dev team, build pipeline?</td><td><span class="prio should">SHOULD</span></td></tr>
+        <tr><td class="id">A6</td><td>Internet-facing apps and their current WAF / load-balancer / CDN arrangement?</td><td><span class="prio should">SHOULD</span></td></tr>
+        <tr><td class="id">A7</td><td>Apps with hardware dependencies (dongles, fax, telephony, SCADA, lab equipment)?</td><td><span class="prio must">MUST</span></td></tr>
+        <tr><td class="id">A8</td><td>Apps under active change freeze, audit, or major project that constrains timing?</td><td><span class="prio should">SHOULD</span></td></tr>
+        <tr><td class="id">A9</td><td>Who can authorise and perform UAT for each app, and is that capacity available?</td><td><span class="prio must">MUST</span></td></tr>
+      </tbody>
+    </table></div>
+  </section>
+
+  <section id="dep">
+    <h2><span class="g">8</span>Dependencies &amp; integration</h2>
+    <div class="scroll"><table>
+      <thead><tr><th class="id">#</th><th>Question</th><th>Priority</th></tr></thead>
+      <tbody>
+        <tr><td class="id">X1</td><td>Is a dependency map maintained? If not, how are integrations currently understood — SMEs, docs, tribal knowledge?</td><td><span class="prio must">MUST</span></td></tr>
+        <tr><td class="id">X2</td><td>Known &ldquo;chatty&rdquo; app-to-app or app-to-DB pairs that must move together?</td><td><span class="prio must">MUST</span></td></tr>
+        <tr><td class="id">X3</td><td>External / third-party integrations (partners, SaaS, payment, gov) and how they authenticate / whitelist IPs?</td><td><span class="prio should">SHOULD</span></td></tr>
+        <tr><td class="id">X4</td><td>Shared services everything depends on — AD, DNS, NTP, SMTP, file shares, print, monitoring?</td><td><span class="prio must">MUST</span></td></tr>
+        <tr><td class="id">X5</td><td>Latency-sensitive integrations that will not tolerate a hybrid (on-prem ↔ Azure) hop during transition?</td><td><span class="prio should">SHOULD</span></td></tr>
+      </tbody>
+    </table></div>
+  </section>
+
+  <section id="net">
+    <h2><span class="g">9</span>Network &amp; connectivity</h2>
+    <div class="scroll"><table>
+      <thead><tr><th class="id">#</th><th>Question</th><th>Priority</th></tr></thead>
+      <tbody>
+        <tr><td class="id">N1</td><td>Current WAN — carrier, bandwidth, MPLS/SD-WAN, and spare capacity for migration traffic?</td><td><span class="prio must">MUST</span></td></tr>
+        <tr><td class="id">N2</td><td>Preferred Azure connectivity — ExpressRoute (bandwidth?), VPN, or both? Is a circuit already ordered?</td><td><span class="prio must">MUST</span></td></tr>
+        <tr><td class="id">N3</td><td>On-prem IP address plan — RFC1918 ranges in use, and any overlap risk with Azure/partners?</td><td><span class="prio must">MUST</span></td></tr>
+        <tr><td class="id">N4</td><td>Can applications tolerate re-IP, or must IPs be preserved (hardcoded, firewall rules, licences)?</td><td><span class="prio must">MUST</span></td></tr>
+        <tr><td class="id">N5</td><td>DNS design — internal zones, split-horizon, who manages it?</td><td><span class="prio should">SHOULD</span></td></tr>
+        <tr><td class="id">N6</td><td>Perimeter today — firewalls (vendor), IDS/IPS, proxy, DDoS — and which must be replicated in Azure?</td><td><span class="prio should">SHOULD</span></td></tr>
+        <tr><td class="id">N7</td><td>Egress / internet breakout model, and any forced-tunnelling or inspection requirement?</td><td><span class="prio should">SHOULD</span></td></tr>
+        <tr><td class="id">N8</td><td>Existing Azure footprint / networking we must integrate with (existing hub, subscriptions)?</td><td><span class="prio should">SHOULD</span></td></tr>
+      </tbody>
+    </table></div>
+  </section>
+
+  <section id="id">
+    <h2><span class="g">10</span>Identity &amp; directory</h2>
+    <div class="scroll"><table>
+      <thead><tr><th class="id">#</th><th>Question</th><th>Priority</th></tr></thead>
+      <tbody>
+        <tr><td class="id">ID1</td><td>Active Directory — forest/domain structure, DC locations, functional level?</td><td><span class="prio must">MUST</span></td></tr>
+        <tr><td class="id">ID2</td><td>Entra ID (Azure AD) in use today? Entra Connect / federation (ADFS)? Licence tier (P1/P2)?</td><td><span class="prio must">MUST</span></td></tr>
+        <tr><td class="id">ID3</td><td>Will AD extend to Azure (DCs in Azure / Entra Domain Services), or is greenfield identity possible?</td><td><span class="prio should">SHOULD</span></td></tr>
+        <tr><td class="id">ID4</td><td>Privileged access model — PAM tooling, break-glass, admin tiering?</td><td><span class="prio should">SHOULD</span></td></tr>
+        <tr><td class="id">ID5</td><td>Service accounts / Kerberos / gMSA usage that migration must preserve?</td><td><span class="prio should">SHOULD</span></td></tr>
+      </tbody>
+    </table></div>
+  </section>
+
+  <section id="sec">
+    <h2><span class="g">11</span>Security &amp; compliance</h2>
+    <div class="scroll"><table>
+      <thead><tr><th class="id">#</th><th>Question</th><th>Priority</th></tr></thead>
+      <tbody>
+        <tr><td class="id">SC1</td><td>Regulatory / compliance regimes in scope — PCI-DSS, HIPAA, GDPR, SOX, ISO 27001, local data laws?</td><td><span class="prio must">MUST</span></td></tr>
+        <tr><td class="id">SC2</td><td>Data classification scheme, and any data that may not leave a jurisdiction or must be encrypted with customer-managed keys?</td><td><span class="prio must">MUST</span></td></tr>
+        <tr><td class="id">SC3</td><td>Mandated security controls / baselines (CIS, NIST, internal standard) the landing zone must meet?</td><td><span class="prio should">SHOULD</span></td></tr>
+        <tr><td class="id">SC4</td><td>Current SIEM / SOC — will it consume Azure logs, or is Microsoft Sentinel in scope?</td><td><span class="prio should">SHOULD</span></td></tr>
+        <tr><td class="id">SC5</td><td>Vulnerability management, endpoint protection, and CASB tooling to carry forward or replace?</td><td><span class="prio should">SHOULD</span></td></tr>
+        <tr><td class="id">SC6</td><td>Pen-test / security sign-off gates required before go-live?</td><td><span class="prio should">SHOULD</span></td></tr>
+        <tr><td class="id">SC7</td><td>Approval needed to place client data in our Data Lake for this assessment — who signs, and any redaction required?</td><td><span class="prio must">MUST</span></td></tr>
+      </tbody>
+    </table></div>
+  </section>
+
+  <section id="ops">
+    <h2><span class="g">12</span>Operations &amp; ITSM</h2>
+    <div class="scroll"><table>
+      <thead><tr><th class="id">#</th><th>Question</th><th>Priority</th></tr></thead>
+      <tbody>
+        <tr><td class="id">O1</td><td>ITSM platform (ServiceNow, etc.) and change-management process / CAB cadence?</td><td><span class="prio should">SHOULD</span></td></tr>
+        <tr><td class="id">O2</td><td>Monitoring &amp; alerting stack today, and target — Azure Monitor, keep existing, hybrid?</td><td><span class="prio should">SHOULD</span></td></tr>
+        <tr><td class="id">O3</td><td>Standard maintenance windows by environment, and typical approved downtime for a cutover?</td><td><span class="prio must">MUST</span></td></tr>
+        <tr><td class="id">O4</td><td>Runbook / automation maturity — IaC, config management (Ansible, DSC, Puppet)?</td><td><span class="prio nice">NICE</span></td></tr>
+        <tr><td class="id">O5</td><td>Who operates the estate post-migration — client, us, third party — and target operating model?</td><td><span class="prio should">SHOULD</span></td></tr>
+        <tr><td class="id">O6</td><td>Tagging / naming / cost-allocation standards to enforce in Azure?</td><td><span class="prio nice">NICE</span></td></tr>
+      </tbody>
+    </table></div>
+  </section>
+
+  <section id="dr">
+    <h2><span class="g">13</span>Resilience &amp; DR</h2>
+    <div class="scroll"><table>
+      <thead><tr><th class="id">#</th><th>Question</th><th>Priority</th></tr></thead>
+      <tbody>
+        <tr><td class="id">R1</td><td>RPO / RTO targets by application tier?</td><td><span class="prio must">MUST</span></td></tr>
+        <tr><td class="id">R2</td><td>Current DR approach — second DC, cold/warm/hot, and when it was last tested?</td><td><span class="prio should">SHOULD</span></td></tr>
+        <tr><td class="id">R3</td><td>Target Azure resilience — single region + AZ, region pair, active/active? Any app that needs multi-region?</td><td><span class="prio must">MUST</span></td></tr>
+        <tr><td class="id">R4</td><td>Backup retention &amp; restore-test obligations to meet in Azure?</td><td><span class="prio should">SHOULD</span></td></tr>
+        <tr><td class="id">R5</td><td>Is the migration itself the DR event (i.e. no rollback), or is a fallback to on-prem required per wave?</td><td><span class="prio must">MUST</span></td></tr>
+      </tbody>
+    </table></div>
+  </section>
+
+  <section id="nfr">
+    <h2><span class="g">14</span>Non-functional &amp; constraints</h2>
+    <div class="scroll"><table>
+      <thead><tr><th class="id">#</th><th>Question</th><th>Priority</th></tr></thead>
+      <tbody>
+        <tr><td class="id">F1</td><td>Performance SLAs users expect (response time, batch completion) that must be held or improved?</td><td><span class="prio should">SHOULD</span></td></tr>
+        <tr><td class="id">F2</td><td>Availability SLAs contractually committed to the business or to external customers?</td><td><span class="prio should">SHOULD</span></td></tr>
+        <tr><td class="id">F3</td><td>Sustainability / carbon reporting objectives tied to this programme?</td><td><span class="prio nice">NICE</span></td></tr>
+        <tr><td class="id">F4</td><td>Constraints on our team — security clearance, on-site presence, working hours, nationality, background checks?</td><td><span class="prio must">MUST</span></td></tr>
+        <tr><td class="id">F5</td><td>Tooling constraints — can we use ASR, DMS, Azure Migrate <em>agentless</em> from Azure side, or is even that disallowed?</td><td><span class="prio must">MUST</span></td></tr>
+        <tr><td class="id">F6</td><td>Language / documentation / handover format requirements?</td><td><span class="prio nice">NICE</span></td></tr>
+      </tbody>
+    </table></div>
+    <div class="callout hi"><b>F5 matters a lot.</b> The client has ruled out on-prem tooling. We need to confirm whether replication tooling (ASR agent on the VM, DMS) is also excluded — that determines whether waves are online (near-zero downtime) or offline (backup/restore, longer windows, more effort).</div>
+  </section>
+
+  <section id="mig">
+    <h2><span class="g">15</span>Migration preferences</h2>
+    <div class="scroll"><table>
+      <thead><tr><th class="id">#</th><th>Question</th><th>Priority</th></tr></thead>
+      <tbody>
+        <tr><td class="id">M1</td><td>Preferred wave sizing — by business unit, by DC rack, by app affinity, by risk?</td><td><span class="prio should">SHOULD</span></td></tr>
+        <tr><td class="id">M2</td><td>Any &ldquo;wave zero&rdquo; pilot candidates — low-risk apps the client is happy to move first?</td><td><span class="prio should">SHOULD</span></td></tr>
+        <tr><td class="id">M3</td><td>Cutover windows available — weeknights, weekends, how many per month?</td><td><span class="prio must">MUST</span></td></tr>
+        <tr><td class="id">M4</td><td>Acceptable coexistence period (how long on-prem and Azure run in parallel)?</td><td><span class="prio should">SHOULD</span></td></tr>
+        <tr><td class="id">M5</td><td>Data-centre exit hard stop / lease end date driving the overall schedule?</td><td><span class="prio must">MUST</span></td></tr>
+        <tr><td class="id">M6</td><td>Client resources committed to the programme (app owners, DBAs, testers, network) — named and available?</td><td><span class="prio must">MUST</span></td></tr>
+      </tbody>
+    </table></div>
+  </section>
+
+  <hr class="rule">
+
+  <section id="assume">
+    <h2><span class="g">16</span>Working assumptions register</h2>
+    <p class="sub">These hold until a questionnaire answer replaces them. Each is priced into the estimate; if the client disagrees, effort and/or schedule change via change control.</p>
+    <div class="scroll"><table>
+      <thead><tr><th class="id">ID</th><th>Assumption</th><th>If wrong</th></tr></thead>
+      <tbody>
+        <tr><td class="id">AS-01</td><td>Client-supplied inventory covers ≥ 90% of the estate and is &lt; 6 months old.</td><td>+10–25% assessment effort; extend timeline; may need paid discovery</td></tr>
+        <tr><td class="id">AS-02</td><td>≥ 30 days of performance data is available for production servers.</td><td>Conservative right-sizing, larger RI risk, recommend paid monitoring phase</td></tr>
+        <tr><td class="id">AS-03</td><td>Azure-side replication tooling (ASR agent, DMS) is permitted even though on-prem discovery tooling is not.</td><td>Move to offline migration — longer cutover windows, +20–30% execution effort</td></tr>
+        <tr><td class="id">AS-04</td><td>Disposition mix ≈ 70% rehost / 18% replatform / rest retire-retain-repurchase.</td><td>Each app reclassified up a band adds 8–14 PD</td></tr>
+        <tr><td class="id">AS-05</td><td>Single target region + one paired region for DR; one network hub.</td><td>Multi-region / multi-hub adds 15–30 PD landing zone + ongoing cost</td></tr>
+        <tr><td class="id">AS-06</td><td>Standard corporate compliance only — no PCI/HIPAA/regulated-data controls.</td><td>+15–30 PD controls, dedicated landing zone, security sign-off gates</td></tr>
+        <tr><td class="id">AS-07</td><td>ExpressRoute circuit ordered by client in month 1; client owns carrier lead time.</td><td>Schedule slips 2–6 weeks; interim VPN adds rework</td></tr>
+        <tr><td class="id">AS-08</td><td>Client provides named app owners, DBAs and testers, available to the programme cadence.</td><td>Test effort +20%, schedule slip, more coordination overhead</td></tr>
+        <tr><td class="id">AS-09</td><td>Applications tolerate re-IP; no large-scale IP preservation required.</td><td>IP-preservation design + firewall rework, +10–20 PD network</td></tr>
+        <tr><td class="id">AS-10</td><td>No application refactoring — replatform limited to configuration and PaaS data moves.</td><td>Refactor is a separate workstream, priced on its own</td></tr>
+        <tr><td class="id">AS-11</td><td>UAT is run by the client; we support and triage defects.</td><td>If we own UAT, +1 test FTE for the delivery duration</td></tr>
+        <tr><td class="id">AS-12</td><td>Client authorises placement of inventory data in our Data Lake under existing MNDA.</td><td>Legal step on critical path; possible redaction effort before ingest</td></tr>
+        <tr><td class="id">AS-13</td><td>No mainframe, midrange, or non-x86 systems in migration scope.</td><td>Out of scope — separate assessment and specialist partner</td></tr>
+        <tr><td class="id">AS-14</td><td>Post-migration managed run is out of scope of this RFP response.</td><td>Add transition-to-run workstream and pricing</td></tr>
+      </tbody>
+    </table></div>
+  </section>
+
+  <section id="risk">
+    <h2><span class="g">17</span>Risk register</h2>
+    <p class="sub">Severity = pre-mitigation impact &times; likelihood given a no-tooling discovery. Carried into the RFP risk section and the delivery RAID log.</p>
+    <div class="scroll"><table>
+      <thead><tr><th class="id">ID</th><th>Risk</th><th>Sev</th><th>Mitigation / owner</th></tr></thead>
+      <tbody>
+        <tr><td class="id">RK-01</td><td>Inventory incomplete or stale — ghost servers, missing apps, wrong sizing surface during execution.</td><td><span class="sev h">HIGH</span></td><td>15% contingency; wave-plan sign-off gate; propose 2-week paid discovery; reconciliation report to client — <em>Lead Architect</em></td></tr>
+        <tr><td class="id">RK-02</td><td>No performance data — VMs over- or under-sized in Azure, cost or performance surprise post-cutover.</td><td><span class="sev h">HIGH</span></td><td>Conservative sizing + right-size review 30 days post-move; Azure Advisor; RI purchase deferred to month 3 — <em>Lead Architect</em></td></tr>
+        <tr><td class="id">RK-03</td><td>Hidden dependencies break an app when its partner moves in a different wave.</td><td><span class="sev h">HIGH</span></td><td>SME workshops per wave; keep affinity groups intact; hybrid connectivity through transition; wave dress rehearsals — <em>Migration Lead</em></td></tr>
+        <tr><td class="id">RK-04</td><td>ExpressRoute / carrier lead time delays the whole programme.</td><td><span class="sev m">MED</span></td><td>Client-owned action tracked from day 1; VPN interim path designed in; schedule float in month 1–2 — <em>Client + Network Specialist</em></td></tr>
+        <tr><td class="id">RK-05</td><td>Client SME / tester capacity below plan — UAT and cutovers slip.</td><td><span class="sev h">HIGH</span></td><td>Named-resource assumption AS-08; RACI agreed at mobilisation; escalation path to sponsor — <em>Delivery Lead</em></td></tr>
+        <tr><td class="id">RK-06</td><td>Replatform apps more complex than assumed (integration, licensing, vendor support gaps).</td><td><span class="sev m">MED</span></td><td>Per-app design spike before commit; vendor support statements collected in discovery (A4); change control — <em>App Migration Lead</em></td></tr>
+        <tr><td class="id">RK-07</td><td>Compliance requirement (PCI, data residency, CMK) emerges after pricing.</td><td><span class="sev m">MED</span></td><td>Questions SC1–SC2 are MUST; landing-zone design allows a regulated spoke; change control if triggered — <em>Security Specialist</em></td></tr>
+        <tr><td class="id">RK-08</td><td>Azure-side replication tooling also disallowed → offline migrations only.</td><td><span class="sev h">HIGH</span></td><td>Confirm via F5 before submission; if excluded, re-price execution +20–30% and extend windows — <em>Lead Architect</em></td></tr>
+        <tr><td class="id">RK-09</td><td>Data-classification / legal approval to load inventory into our Data Lake delayed.</td><td><span class="sev m">MED</span></td><td>Start MNDA / DPA review in parallel with RFP; offer client-tenant hosting as fallback — <em>Engagement Lead</em></td></tr>
+        <tr><td class="id">RK-10</td><td>Unsupported OS (2008/2012) needs in-place upgrade or extended security updates, adding effort.</td><td><span class="sev m">MED</span></td><td>Quantify via I3; ESU cost or upgrade PD added per server; sequence these apps later — <em>Migration Lead</em></td></tr>
+        <tr><td class="id">RK-11</td><td>Estimate consumed as a fixed price despite DRAFT status and stated assumptions.</td><td><span class="sev m">MED</span></td><td>T&amp;M ceiling with assumptions schedule attached; watermark; commercial review gate — <em>Pre-sales Director</em></td></tr>
+        <tr><td class="id">RK-12</td><td>Bandwidth insufficient for data seeding within the schedule.</td><td><span class="sev l">LOW</span></td><td>Assess via S6 / N1; Azure Data Box for bulk; stagger replication seeding off-peak — <em>Network Specialist</em></td></tr>
+      </tbody>
+    </table></div>
+  </section>
+
+  <footer>Landfall · Client Discovery Questionnaire v1.0 · 2026-09-06 · DRAFT — return with the §1 data pack before the RFP clarification deadline</footer>
+</div>

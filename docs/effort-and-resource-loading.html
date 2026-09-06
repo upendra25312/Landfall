@@ -1,0 +1,321 @@
+<title>Landfall Effort &amp; Resource Loading</title>
+<meta name="description" content="Pre-sales effort estimation and resource loading model for an Azure landing zone and migration engagement.">
+<style>
+  :root{
+    --ink:#12263A;--paper:#EEF2F4;--surface:#FFFFFF;--surface-2:#F7FAFB;
+    --accent:#0E7C8B;--accent-deep:#0A5866;--line:#D3DDE2;--muted:#5A6B76;
+    --good:#2E7D5B;--warn:#9A6A16;--crit:#B23B3B;
+    --code-bg:#0E1D28;--code-ink:#D6E2E8;--code-dim:#7E94A0;--code-accent:#5FC6D6;
+    --band:#E3EEF0;
+  }
+  @media (prefers-color-scheme:dark){
+    :root:not([data-theme="light"]){
+      --ink:#E6EDF1;--paper:#0B151D;--surface:#111F2A;--surface-2:#152430;
+      --accent:#3AAEBF;--accent-deep:#7FD4E1;--line:#25343F;--muted:#94A5B0;
+      --good:#5FB98C;--warn:#D0A44E;--crit:#E07A7A;
+      --code-bg:#0A141C;--code-ink:#D6E2E8;--code-dim:#7E94A0;--code-accent:#5FC6D6;
+      --band:#183038;
+    }
+  }
+  :root[data-theme="dark"]{
+    --ink:#E6EDF1;--paper:#0B151D;--surface:#111F2A;--surface-2:#152430;
+    --accent:#3AAEBF;--accent-deep:#7FD4E1;--line:#25343F;--muted:#94A5B0;
+    --good:#5FB98C;--warn:#D0A44E;--crit:#E07A7A;
+    --code-bg:#0A141C;--code-ink:#D6E2E8;--code-dim:#7E94A0;--code-accent:#5FC6D6;
+    --band:#183038;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--paper);color:var(--ink);font-family:"IBM Plex Sans",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;line-height:1.6;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1000px;margin:0 auto;padding:60px 26px 120px}
+  .eyebrow{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:.72rem;letter-spacing:.18em;text-transform:uppercase;color:var(--accent-deep);margin:0 0 16px}
+  h1{font-family:"Spectral",Georgia,serif;font-weight:600;font-size:clamp(2.1rem,5vw,3rem);line-height:1.06;margin:0 0 12px;text-wrap:balance}
+  .lede{font-family:"Spectral",Georgia,serif;font-size:1.12rem;color:var(--muted);max-width:66ch;margin:0 0 26px}
+  .meta{display:flex;flex-wrap:wrap;gap:8px 10px;font-family:"IBM Plex Mono",monospace;font-size:.72rem;border-top:1px solid var(--line);border-bottom:1px solid var(--line);padding:14px 0;margin-bottom:50px}
+  .meta span{color:var(--muted)} .meta b{color:var(--ink);font-weight:500} .meta .sep{color:var(--line)}
+  section{margin:0 0 50px}
+  h2{font-family:"Spectral",Georgia,serif;font-weight:600;font-size:1.5rem;margin:0 0 6px}
+  h3{font-size:1rem;font-weight:600;margin:24px 0 8px}
+  .sub{color:var(--muted);font-size:.92rem;margin:0 0 20px}
+  p{margin:0 0 13px;max-width:70ch} ul{margin:0 0 13px;padding-left:20px;max-width:70ch} li{margin:0 0 5px}
+  strong{font-weight:600}
+  .rule{height:1px;background:var(--line);border:0;margin:50px 0}
+  .scroll{overflow-x:auto;border:1px solid var(--line);border-radius:8px;margin:10px 0}
+  table{border-collapse:collapse;width:100%;font-size:.85rem;min-width:640px}
+  th,td{text-align:left;padding:9px 13px;border-bottom:1px solid var(--line);vertical-align:top}
+  th{font-family:"IBM Plex Mono",monospace;font-size:.66rem;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);background:var(--surface-2)}
+  tr:last-child td{border-bottom:0}
+  td.n,th.n{text-align:right;font-family:"IBM Plex Mono",monospace;font-variant-numeric:tabular-nums;white-space:nowrap}
+  tfoot td{font-weight:600;background:var(--surface-2);border-top:2px solid var(--line)}
+  .band td{background:var(--band)}
+  caption{caption-side:top;text-align:left;font-family:"IBM Plex Mono",monospace;font-size:.68rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);padding:10px 13px}
+  .callout{background:var(--surface);border:1px solid var(--line);border-left:3px solid var(--accent);border-radius:6px;padding:13px 15px;font-size:.88rem;margin:14px 0}
+  .callout b{color:var(--accent-deep)}
+  .callout.warn{border-left-color:var(--warn)} .callout.warn b{color:var(--warn)}
+  .grid2{display:grid;gap:16px}
+  @media(min-width:680px){.grid2{grid-template-columns:1fr 1fr}}
+  .kpi{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:16px}
+  .kpi .v{font-family:"Spectral",serif;font-size:1.9rem;font-weight:600;line-height:1}
+  .kpi .l{font-family:"IBM Plex Mono",monospace;font-size:.66rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-top:6px}
+  .kpis{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin:16px 0}
+  @media(min-width:680px){.kpis{grid-template-columns:repeat(4,1fr)}}
+  code{font-family:"IBM Plex Mono",monospace;font-size:.85em;background:var(--surface-2);border:1px solid var(--line);border-radius:4px;padding:.05em .35em}
+  footer{margin-top:70px;padding-top:18px;border-top:1px solid var(--line);font-family:"IBM Plex Mono",monospace;font-size:.7rem;color:var(--muted)}
+  :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+</style>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Spectral:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+
+<div class="wrap">
+  <p class="eyebrow">Landfall · Pre-Sales Estimation Pack</p>
+  <h1>Migration Effort &amp; Resource Loading Model</h1>
+  <p class="lede">A parametric effort model and month-by-month resource-loading plan for an Azure landing-zone build and server/application migration, sized from client-supplied inventory. Prepared by the pre-sales architecture team for RFP response.</p>
+  <div class="meta">
+    <span>Version <b>1.0</b></span><span class="sep">/</span>
+    <span>Date <b>2026-09-06</b></span><span class="sep">/</span>
+    <span>Basis <b>reference estate, adjust to client</b></span><span class="sep">/</span>
+    <span>Status <b>DRAFT — architect &amp; commercial review required</b></span>
+  </div>
+
+  <section>
+    <h2>1 · How to use this</h2>
+    <p>This is a <strong>parametric model</strong>: effort is driven by a small set of unit rates applied to counts from the client inventory (servers, applications, waves), plus fixed blocks for one-time work. Change the <em>reference estate</em> numbers in §3 to the client's actuals and every downstream table re-derives on the same logic.</p>
+    <p>Two things the pre-sales team owns and must confirm before this goes external:</p>
+    <ul>
+      <li><strong>Unit rates &amp; complexity bands</strong> (§2) — calibrate against your last 2&ndash;3 comparable deliveries.</li>
+      <li><strong>Blended day rates</strong> (§6) — from the current rate card / partner cost model, by delivery geography and on/offshore mix.</li>
+    </ul>
+    <div class="callout warn"><b>No discovery tooling.</b> The client will not run Azure Migrate or install agents. This model therefore carries a heavier <em>manual assessment</em> block (§4.2) and a <strong>+15% inventory-quality contingency</strong> (§7). If the client later permits a short paid discovery, that contingency drops to +5% and replatform effort tightens.</div>
+  </section>
+
+  <section>
+    <h2>2 · Estimation basis — unit rates</h2>
+    <p class="sub">Person-days (PD). 1 PD = 8 productive hours. Rates assume a competent team using ALZ accelerators, Azure Site Recovery / Azure Database Migration Service, and IaC. "At scale" reductions apply above ~50 servers.</p>
+    <div class="scroll"><table>
+      <caption>2.1 — Landing zone &amp; foundation (one-time)</caption>
+      <thead><tr><th>Element</th><th>Basis</th><th class="n">PD</th></tr></thead>
+      <tbody>
+        <tr><td>ALZ platform design (mgmt groups, subs, RBAC, naming, policy set)</td><td>fixed</td><td class="n">12</td></tr>
+        <tr><td>Identity &amp; hybrid connectivity (Entra, DNS, ExpressRoute/VPN, hub)</td><td>fixed</td><td class="n">10</td></tr>
+        <tr><td>Network &amp; security baseline (firewall, NSG/ASG, Bastion, DDoS, Defender)</td><td>fixed</td><td class="n">10</td></tr>
+        <tr><td>Monitoring, logging, backup &amp; DR platform (LAW, AMBA, ASR vault, policy)</td><td>fixed</td><td class="n">8</td></tr>
+        <tr><td>IaC pipeline, environments, landing-zone-as-code</td><td>fixed</td><td class="n">7</td></tr>
+        <tr><td>Application landing zones (spokes)</td><td>0.5 PD per spoke</td><td class="n">per §3</td></tr>
+      </tbody>
+      <tfoot><tr><td colspan="2">Foundation fixed subtotal</td><td class="n">47</td></tr></tfoot>
+    </table></div>
+
+    <div class="scroll"><table>
+      <caption>2.2 — Assessment &amp; planning (manual, no tooling)</caption>
+      <thead><tr><th>Activity</th><th>Unit rate</th><th class="n">Driver</th></tr></thead>
+      <tbody>
+        <tr><td>Server data validation, cleanse, right-size mapping</td><td class="n">0.15 PD / server</td><td>server count</td></tr>
+        <tr><td>Application profiling, dependency validation, disposition (6 R's)</td><td class="n">1.5 PD / app</td><td>app count</td></tr>
+        <tr><td>Wave / move-group design</td><td class="n">10 PD + 0.5 PD / app</td><td>app count</td></tr>
+        <tr><td>Target architecture &amp; HLD per pattern</td><td class="n">3 PD / distinct pattern</td><td>~6 patterns</td></tr>
+        <tr><td>Migration runbook templates</td><td class="n">8 PD fixed</td><td>&mdash;</td></tr>
+      </tbody>
+    </table></div>
+
+    <div class="scroll"><table>
+      <caption>2.3 — Execution</caption>
+      <thead><tr><th>Disposition / activity</th><th>Unit rate</th><th class="n">Notes</th></tr></thead>
+      <tbody>
+        <tr><td>Rehost (IaaS, ASR) — per server</td><td class="n">0.5 PD / server</td><td>at scale; 0.75 PD below 50</td></tr>
+        <tr><td>Replatform — Small app (single DB to Azure SQL/Flexible, minor config)</td><td class="n">8 PD / app</td><td>incl. build</td></tr>
+        <tr><td>Replatform — Medium app</td><td class="n">14 PD / app</td><td></td></tr>
+        <tr><td>Replatform — Large app (multi-tier, integration, AKS)</td><td class="n">22 PD / app</td><td></td></tr>
+        <tr><td>Repurchase (SaaS cutover, data export/import)</td><td class="n">6 PD / app</td><td></td></tr>
+        <tr><td>Retire</td><td class="n">0.25 PD / app</td><td>decommission plan</td></tr>
+        <tr><td>Retain (document exclusion, connectivity)</td><td class="n">0.5 PD / app</td><td></td></tr>
+        <tr><td>Functional + non-functional test — per app by size</td><td class="n">S 1 / M 2.5 / L 5 / XL 10 PD</td><td>client UAT support</td></tr>
+        <tr><td>Wave cutover &amp; hypercare support</td><td class="n">3 PD / wave</td><td>weekend windows</td></tr>
+        <tr><td>Post-migration hypercare</td><td class="n">15 PD / month</td><td>1&ndash;2 months</td></tr>
+      </tbody>
+    </table></div>
+
+    <div class="scroll"><table>
+      <caption>2.4 — Overheads (applied to delivery subtotal)</caption>
+      <thead><tr><th>Item</th><th class="n">Rate</th></tr></thead>
+      <tbody>
+        <tr><td>Programme &amp; delivery management (PMO)</td><td class="n">15%</td></tr>
+        <tr><td>Solution architecture governance &amp; assurance</td><td class="n">10%</td></tr>
+        <tr><td>Mobilisation, onboarding, tooling setup</td><td class="n">10 PD fixed</td></tr>
+        <tr><td>Knowledge transfer &amp; run-book handover</td><td class="n">8 PD fixed</td></tr>
+      </tbody>
+    </table></div>
+  </section>
+
+  <hr class="rule">
+
+  <section>
+    <h2>3 · Reference estate</h2>
+    <p class="sub">Placeholder figures for a mid-size engagement. Replace with client inventory aggregates from the Landfall agent.</p>
+    <div class="kpis">
+      <div class="kpi"><div class="v">150</div><div class="l">Servers / VMs</div></div>
+      <div class="kpi"><div class="v">45</div><div class="l">Applications</div></div>
+      <div class="kpi"><div class="v">6</div><div class="l">Migration waves</div></div>
+      <div class="kpi"><div class="v">12</div><div class="l">App landing zones</div></div>
+    </div>
+    <div class="scroll"><table>
+      <thead><tr><th>Dimension</th><th>Assumption</th></tr></thead>
+      <tbody>
+        <tr><td>Disposition mix (apps)</td><td>70% Rehost · 18% Replatform · 4% Repurchase · 4% Retire · 4% Retain</td></tr>
+        <tr><td>Replatform size mix (of 8 apps)</td><td>3 Small · 3 Medium · 2 Large</td></tr>
+        <tr><td>Test size mix (of 45 apps)</td><td>22 S · 15 M · 6 L · 2 XL</td></tr>
+        <tr><td>Servers under rehost</td><td>~120 (apps not replatformed/retired)</td></tr>
+        <tr><td>Environments</td><td>Prod · Non-prod · DR (secondary region)</td></tr>
+        <tr><td>Connectivity</td><td>ExpressRoute + backup VPN, single hub</td></tr>
+        <tr><td>Compliance scope</td><td>Standard corporate; no PCI/HIPAA (confirm)</td></tr>
+        <tr><td>Delivery window</td><td>~6 months from mobilisation to end of hypercare</td></tr>
+      </tbody>
+    </table></div>
+  </section>
+
+  <section>
+    <h2>4 · Effort roll-up — reference estate</h2>
+    <div class="scroll"><table>
+      <caption>4.1 — Effort by workstream</caption>
+      <thead><tr><th>Workstream</th><th>Derivation</th><th class="n">PD</th></tr></thead>
+      <tbody>
+        <tr><td>Mobilisation &amp; setup</td><td>fixed</td><td class="n">10</td></tr>
+        <tr><td>Landing zone &amp; foundation</td><td>47 + (12 spokes &times; 0.5)</td><td class="n">53</td></tr>
+        <tr class="band"><td>Assessment &mdash; servers</td><td>150 &times; 0.15</td><td class="n">23</td></tr>
+        <tr class="band"><td>Assessment &mdash; applications</td><td>45 &times; 1.5</td><td class="n">68</td></tr>
+        <tr class="band"><td>Wave &amp; move-group design</td><td>10 + 45 &times; 0.5</td><td class="n">33</td></tr>
+        <tr class="band"><td>Target architecture / HLD</td><td>6 patterns &times; 3 + 8</td><td class="n">26</td></tr>
+        <tr><td>Rehost execution</td><td>120 &times; 0.5</td><td class="n">60</td></tr>
+        <tr><td>Replatform execution</td><td>3&times;8 + 3&times;14 + 2&times;22</td><td class="n">110</td></tr>
+        <tr><td>Repurchase execution</td><td>2 &times; 6</td><td class="n">12</td></tr>
+        <tr><td>Retire / Retain</td><td>2&times;0.25 + 2&times;0.5</td><td class="n">2</td></tr>
+        <tr><td>Testing (functional + NFR)</td><td>22&times;1 + 15&times;2.5 + 6&times;5 + 2&times;10</td><td class="n">110</td></tr>
+        <tr><td>Wave cutover support</td><td>6 &times; 3</td><td class="n">18</td></tr>
+        <tr><td>Hypercare</td><td>15 &times; 2 months</td><td class="n">30</td></tr>
+        <tr><td>Knowledge transfer &amp; handover</td><td>fixed</td><td class="n">8</td></tr>
+      </tbody>
+      <tfoot>
+        <tr><td colspan="2">Delivery subtotal</td><td class="n">573</td></tr>
+        <tr><td colspan="2">PMO @ 15%</td><td class="n">86</td></tr>
+        <tr><td colspan="2">Architecture governance @ 10%</td><td class="n">57</td></tr>
+        <tr><td colspan="2">Base estimate</td><td class="n">716</td></tr>
+        <tr><td colspan="2">Inventory-quality contingency @ 15%</td><td class="n">107</td></tr>
+        <tr><td colspan="2"><b>Estimate at completion</b></td><td class="n"><b>823 PD</b></td></tr>
+      </tfoot>
+    </table></div>
+    <div class="kpis">
+      <div class="kpi"><div class="v">823</div><div class="l">Person-days EAC</div></div>
+      <div class="kpi"><div class="v">~37</div><div class="l">Person-months</div></div>
+      <div class="kpi"><div class="v">6</div><div class="l">Elapsed months</div></div>
+      <div class="kpi"><div class="v">~7.0</div><div class="l">Peak FTE</div></div>
+    </div>
+    <p class="sub" id="s42"><strong>4.2 note — manual assessment.</strong> The 91 PD combined server + application assessment (highlighted) is roughly double a tooling-assisted equivalent. It covers reconciling RVTools/CMDB extracts, chasing owners for missing utilisation and dependencies, and manual right-sizing. This is the single largest schedule risk if client data is poor.</p>
+  </section>
+
+  <hr class="rule">
+
+  <section>
+    <h2>5 · Resource loading — 6-month plan</h2>
+    <p class="sub">FTE by role by month (M1&ndash;M6). Fractional = part-time or shared. Totals in person-months (PM).</p>
+    <div class="scroll"><table>
+      <thead><tr><th>Role</th><th class="n">M1</th><th class="n">M2</th><th class="n">M3</th><th class="n">M4</th><th class="n">M5</th><th class="n">M6</th><th class="n">PM</th></tr></thead>
+      <tbody>
+        <tr><td>Engagement / Delivery Lead</td><td class="n">0.5</td><td class="n">0.5</td><td class="n">0.5</td><td class="n">0.5</td><td class="n">0.5</td><td class="n">0.5</td><td class="n">3.0</td></tr>
+        <tr><td>Lead Cloud Architect</td><td class="n">1.0</td><td class="n">1.0</td><td class="n">0.8</td><td class="n">0.6</td><td class="n">0.6</td><td class="n">0.5</td><td class="n">4.5</td></tr>
+        <tr><td>Landing Zone / Platform Engineer</td><td class="n">1.0</td><td class="n">1.0</td><td class="n">0.4</td><td class="n">0.3</td><td class="n">0.3</td><td class="n">0.2</td><td class="n">3.2</td></tr>
+        <tr><td>Network &amp; Security Specialist</td><td class="n">0.6</td><td class="n">0.6</td><td class="n">0.4</td><td class="n">0.3</td><td class="n">0.2</td><td class="n">0.2</td><td class="n">2.3</td></tr>
+        <tr><td>Migration Engineer — Rehost (&times;2)</td><td class="n">0.5</td><td class="n">2.0</td><td class="n">2.0</td><td class="n">2.0</td><td class="n">2.0</td><td class="n">1.0</td><td class="n">9.5</td></tr>
+        <tr><td>App / Data Migration Engineer — Replatform</td><td class="n">0.3</td><td class="n">1.0</td><td class="n">1.5</td><td class="n">1.5</td><td class="n">1.5</td><td class="n">1.0</td><td class="n">6.8</td></tr>
+        <tr><td>Test Lead / Engineer</td><td class="n">&mdash;</td><td class="n">0.3</td><td class="n">1.0</td><td class="n">1.0</td><td class="n">1.0</td><td class="n">0.8</td><td class="n">4.1</td></tr>
+        <tr><td>PMO / Migration Coordinator</td><td class="n">0.5</td><td class="n">0.5</td><td class="n">0.5</td><td class="n">0.5</td><td class="n">0.5</td><td class="n">0.5</td><td class="n">3.0</td></tr>
+      </tbody>
+      <tfoot>
+        <tr><td>Total FTE</td><td class="n">4.9</td><td class="n">6.9</td><td class="n">7.1</td><td class="n">6.7</td><td class="n">6.6</td><td class="n">4.7</td><td class="n">36.4</td></tr>
+      </tfoot>
+    </table></div>
+    <p class="sub">36.4 PM &times; ~21.7 working days/month ≈ 790 PD delivered capacity vs 823 PD EAC — the ~4% gap is absorbed by overtime in cutover windows or a small M6 extension. Tighten by adding 0.3 FTE rehost in M3&ndash;M5.</p>
+
+    <h3>Phase overlay</h3>
+    <div class="scroll"><table>
+      <thead><tr><th>Phase</th><th>Months</th><th>Exit criteria</th></tr></thead>
+      <tbody>
+        <tr><td>Mobilise &amp; Assess</td><td>M1 &ndash; mid M2</td><td>Validated inventory, disposition, wave plan signed off</td></tr>
+        <tr><td>Landing Zone Build</td><td>M1 &ndash; M2</td><td>ALZ live, connectivity tested, first spoke ready</td></tr>
+        <tr><td>Migrate — Waves 1&ndash;3 (low risk)</td><td>M2 &ndash; M4</td><td>~50% servers in Azure, run-books proven</td></tr>
+        <tr><td>Migrate — Waves 4&ndash;6 (complex)</td><td>M4 &ndash; M5</td><td>All in-scope workloads migrated &amp; UAT passed</td></tr>
+        <tr><td>Hypercare &amp; Handover</td><td>M5 &ndash; M6</td><td>Stability period met, run-books &amp; KT accepted</td></tr>
+      </tbody>
+    </table></div>
+  </section>
+
+  <hr class="rule">
+
+  <section>
+    <h2>6 · Commercial roll-up</h2>
+    <p class="sub">Illustrative only — apply the live rate card. Blended rate below is a placeholder for a mixed onshore/offshore pod.</p>
+    <div class="scroll"><table>
+      <thead><tr><th>Component</th><th class="n">PD</th><th class="n">Blended rate</th><th class="n">Amount (USD)</th></tr></thead>
+      <tbody>
+        <tr><td>Delivery (excl. contingency)</td><td class="n">716</td><td class="n">$780</td><td class="n">$558,480</td></tr>
+        <tr><td>Contingency @ 15%</td><td class="n">107</td><td class="n">$780</td><td class="n">$83,460</td></tr>
+        <tr><td>Expenses &amp; travel (cutover windows)</td><td class="n">&mdash;</td><td class="n">&mdash;</td><td class="n">~$18,000</td></tr>
+      </tbody>
+      <tfoot>
+        <tr><td>Services total (T&amp;M ceiling)</td><td class="n">823</td><td class="n"></td><td class="n">~$660,000</td></tr>
+      </tfoot>
+    </table></div>
+    <div class="callout"><b>Separate line items for the proposal, not in the above:</b> Azure run-rate (from the Landfall <code>azure_retail_prices</code> tool — compute, storage, ExpressRoute, backup, landing-zone fixed services), Microsoft funding offsets (see §8), third-party tooling (ASR is free for 31 days/VM; DMS free tier), and any managed-service run contract post-hypercare.</p></div>
+    <h3>Microsoft partner levers to net down the client price</h3>
+    <ul>
+      <li><strong>Azure Migrate and Modernize (AMM)</strong> — partner-led funding for assessment &amp; migration; typically covers a meaningful share of eligible delivery cost. Engage the Alliance team to submit the engagement early.</li>
+      <li><strong>Azure Consumption Commitment (MACC)</strong> — if the client has one, this deal retires against it; use as a closing lever.</li>
+      <li><strong>Cloud Accelerate Factory / FastTrack for Azure</strong> — Microsoft engineering assistance for landing-zone and first workloads at no cost; reduces the LZ build PD.</li>
+      <li><strong>Azure Hybrid Benefit + Reserved Instances / Savings Plans</strong> — model in the run-rate to strengthen the TCO case vs on-prem.</li>
+    </ul>
+  </section>
+
+  <hr class="rule">
+
+  <section>
+    <h2>7 · Assumptions &amp; exclusions</h2>
+    <div class="grid2">
+      <div>
+        <h3>Assumptions</h3>
+        <ul>
+          <li>Client provides timely access to owners, credentials, and change windows.</li>
+          <li>Inventory covers ≥ 90% of the estate; unknowns handled via contingency.</li>
+          <li>ExpressRoute circuit ordered by client in M1.</li>
+          <li>One target region + one DR region; single hub.</li>
+          <li>Non-prod migrated ahead of prod for each wave.</li>
+          <li>Client runs UAT; we support and trace defects.</li>
+          <li>No application code remediation beyond replatform config (refactor is out).</li>
+        </ul>
+      </div>
+      <div>
+        <h3>Exclusions</h3>
+        <ul>
+          <li>Application refactor / re-architecture (Refactor disposition).</li>
+          <li>Data centre exit, hardware disposal, contract termination.</li>
+          <li>Mainframe / midrange / appliance migration.</li>
+          <li>End-user compute, M365, identity greenfield.</li>
+          <li>Net-new security tooling licences.</li>
+          <li>Managed run service after hypercare (priced separately).</li>
+          <li>24&times;7 cover outside cutover weekends.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>8 · Key risks to the estimate</h2>
+    <div class="scroll"><table>
+      <thead><tr><th>Risk</th><th>Effort impact</th><th>Mitigation</th></tr></thead>
+      <tbody>
+        <tr><td>Inventory worse than assumed (no utilisation, stale dependencies)</td><td class="n">+10&ndash;25% assessment &amp; replatform</td><td>Contingency held; propose 2-week paid discovery; gate at wave-plan sign-off</td></tr>
+        <tr><td>More Large/XL replatform apps than the reference mix</td><td class="n">+8&ndash;14 PD per reclassified app</td><td>Re-run model against real disposition output before submission</td></tr>
+        <tr><td>Connectivity (ExpressRoute) slips</td><td class="n">schedule +2&ndash;6 weeks</td><td>Client-owned critical path; VPN interim; flag in RFP dependencies</td></tr>
+        <tr><td>Client UAT capacity limited</td><td class="n">schedule slip, test PD +20%</td><td>Named client test resources as an assumption; automate smoke tests</td></tr>
+        <tr><td>Compliance scope emerges (PCI, data residency)</td><td class="n">+15&ndash;30 PD LZ &amp; controls</td><td>Confirm in questionnaire; change control if discovered</td></tr>
+      </tbody>
+    </table></div>
+  </section>
+
+  <footer>Landfall · Migration Effort &amp; Resource Loading Model v1.0 · 2026-09-06 · DRAFT — architect &amp; commercial review required before external issue</footer>
+</div>
