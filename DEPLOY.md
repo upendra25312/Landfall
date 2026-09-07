@@ -1,5 +1,9 @@
 # Deploying Landfall with `azd`
 
+> For a clean machine — every prerequisite, per-OS install commands, Azure account
+> setup, verification and teardown — use **[INSTALL.md](INSTALL.md)**. This file is the
+> condensed version.
+
 The whole solution provisions from one template with the **Azure Developer CLI**.
 
 ```

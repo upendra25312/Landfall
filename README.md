@@ -54,7 +54,11 @@ azd up
 
 `azd up` provisions everything in `infra/`, runs `scripts/postprovision.*` (loads the SQL
 schema, builds the AI Search index, creates the Foundry agent), then deploys `src/api` and
-`src/web`. Full prerequisites, step-by-step, and manual follow-ups: **[DEPLOY.md](DEPLOY.md)**.
+`src/web`.
+
+- **[INSTALL.md](INSTALL.md)** — full walkthrough from a clean machine: every prerequisite,
+  tool install commands per OS, Azure account setup, deploy, verify, troubleshoot, tear down.
+- **[DEPLOY.md](DEPLOY.md)** — the short version for when the tooling is already in place.
 
 ## Repository layout
 
