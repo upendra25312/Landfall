@@ -83,7 +83,9 @@ blob events.
 | `docs/effort-and-resource-loading.html` | pre-sales parametric effort model + 6-month resource loading |
 | `docs/discovery-questionnaire.html` | client questionnaire + assumptions register (AS-01…14) + risk register (RK-01…12) |
 
-Open the `docs/*.html` files in a browser — self-contained, theme-aware pages.
+Read them online at **[upendra25312.github.io/Landfall](https://upendra25312.github.io/Landfall/)**
+(GitHub Pages, served from `docs/`), or open the `docs/*.html` files locally — each is a
+self-contained, theme-aware page.
 
 ## Before you run a real estimate
 
