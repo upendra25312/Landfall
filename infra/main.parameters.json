@@ -5,10 +5,12 @@
     "environmentName": { "value": "${AZURE_ENV_NAME}" },
     "location": { "value": "${AZURE_LOCATION}" },
     "principalId": { "value": "${AZURE_PRINCIPAL_ID}" },
-    "chatModelName": { "value": "${CHAT_MODEL_NAME=gpt-4o-mini}" },
-    "chatModelVersion": { "value": "${CHAT_MODEL_VERSION=2024-07-18}" },
+    "chatModelName": { "value": "${CHAT_MODEL_NAME=gpt-4o}" },
+    "chatModelVersion": { "value": "${CHAT_MODEL_VERSION=2024-11-20}" },
     "embeddingModelName": { "value": "${EMBEDDING_MODEL_NAME=text-embedding-3-small}" },
     "embeddingModelVersion": { "value": "${EMBEDDING_MODEL_VERSION=1}" },
-    "modelCapacity": { "value": "${MODEL_CAPACITY=30}" }
+    "modelCapacity": { "value": "${MODEL_CAPACITY=30}" },
+    "webImageName": { "value": "${SERVICE_WEB_IMAGE_NAME}" },
+    "agentId": { "value": "${AGENT_ID}" }
   }
 }

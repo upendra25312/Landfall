@@ -10,6 +10,12 @@ param embeddingModelName string
 param embeddingModelVersion string
 param modelCapacity int
 
+@description('Chat-UI container image. Empty on first provision (placeholder is used); azd sets SERVICE_WEB_IMAGE_NAME after the first deploy so re-provisioning keeps the real image.')
+param webImageName string = ''
+
+@description('Foundry agent name. Empty on first provision; the postprovision hook creates the agent and stores AGENT_ID in the azd env so re-provisioning keeps it wired to both services.')
+param agentId string = ''
+
 // ---------- built-in role definition ids ----------
 var roles = {
   storageBlobDataOwner: 'b7e6dc6d-f1e8-4753-8033-0f276bb0955b'
@@ -20,6 +26,7 @@ var roles = {
   searchIndexDataContributor: '8ebe5a00-799e-43f5-93ac-243d3dce84a7'
   cognitiveServicesOpenAiUser: '5e0bd9bd-7b93-4f28-af87-19fc36ad61bd'
   azureAiDeveloper: '64702f94-c441-49e6-a78b-ef80e0188fee'
+  foundryUser: '53ca6127-db72-4b80-b1b0-d745d6d5456d' // new Foundry: invoke projects / prompt agents (Responses API)
   acrPull: '7f951dda-4ed3-4680-a7ca-43fe172d538d'
   keyVaultSecretsUser: '4633458b-17de-408a-b874-0445c86b69e6'
 }
@@ -130,7 +137,7 @@ resource search 'Microsoft.Search/searchServices@2024-06-01-preview' = {
 // ==================================================================
 // Azure AI Foundry (AIServices account + project) + model deployments
 // ==================================================================
-resource foundry 'Microsoft.CognitiveServices/accounts@2024-10-01' = {
+resource foundry 'Microsoft.CognitiveServices/accounts@2025-06-01' = {
   name: '${abbrs.cognitiveServicesAccounts}${resourceToken}'
   location: location
   tags: tags
@@ -141,10 +148,11 @@ resource foundry 'Microsoft.CognitiveServices/accounts@2024-10-01' = {
     customSubDomainName: '${abbrs.cognitiveServicesAccounts}${resourceToken}'
     publicNetworkAccess: 'Enabled'
     disableLocalAuth: false
+    allowProjectManagement: true
   }
 }
 
-resource foundryProject 'Microsoft.CognitiveServices/accounts/projects@2024-10-01' = {
+resource foundryProject 'Microsoft.CognitiveServices/accounts/projects@2025-06-01' = {
   parent: foundry
   name: 'landfall'
   location: location
@@ -169,7 +177,7 @@ resource chatDeployment 'Microsoft.CognitiveServices/accounts/deployments@2024-1
 resource embeddingDeployment 'Microsoft.CognitiveServices/accounts/deployments@2024-10-01' = {
   parent: foundry
   name: embeddingModelName
-  sku: { name: 'Standard', capacity: modelCapacity }
+  sku: { name: 'GlobalStandard', capacity: modelCapacity }
   dependsOn: [ chatDeployment ] // deployments must be created serially
   properties: {
     model: { format: 'OpenAI', name: embeddingModelName, version: embeddingModelVersion }
@@ -274,13 +282,13 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
       containers: [
         {
           name: 'web'
-          image: 'mcr.microsoft.com/azuredocs/containerapps-helloworld:latest' // replaced by azd deploy
+          image: !empty(webImageName) ? webImageName : 'mcr.microsoft.com/azuredocs/containerapps-helloworld:latest' // placeholder until first azd deploy
           resources: { cpu: json('0.5'), memory: '1Gi' }
           env: [
             { name: 'FOUNDRY_PROJECT_ENDPOINT', value: '${foundry.properties.endpoint}api/projects/landfall' }
             { name: 'AZURE_CLIENT_ID', value: uami.properties.clientId }
             { name: 'APPLICATIONINSIGHTS_CONNECTION_STRING', value: appInsights.properties.ConnectionString }
-            { name: 'AGENT_ID', value: '' } // set by postprovision via `az containerapp update`
+            { name: 'AGENT_ID', value: agentId } // seeded from azd env; postprovision refreshes it
           ]
         }
       ]
@@ -345,11 +353,30 @@ resource functionApp 'Microsoft.Web/sites@2023-12-01' = {
         // app config consumed by function_app.py
         { name: 'STORAGE_URL', value: storage.properties.primaryEndpoints.blob }
         { name: 'FOUNDRY_PROJECT_ENDPOINT', value: '${foundry.properties.endpoint}api/projects/landfall' }
-        { name: 'AGENT_ID', value: '' } // set by postprovision
+        { name: 'AGENT_ID', value: agentId } // seeded from azd env; postprovision refreshes it
       ]
     }
   }
 }
+
+// ==================================================================
+// Event Grid - Flex Consumption requires EventGrid as the blob-trigger
+// source. System topic on the storage account -> the `start` function.
+// ==================================================================
+resource egSystemTopic 'Microsoft.EventGrid/systemTopics@2024-06-01-preview' = {
+  name: '${abbrs.storageStorageAccounts}${resourceToken}-egst'
+  location: location
+  tags: tags
+  identity: { type: 'SystemAssigned' }
+  properties: {
+    source: storage.id
+    topicType: 'Microsoft.Storage.StorageAccounts'
+  }
+}
+
+// The `landfall-questions` event subscription is created by the postdeploy hook
+// (scripts/eventgrid.*): its webhook URL needs the function app's `blobs_extension`
+// system key, which only exists after `azd deploy` has published the `start` function.
 
 // ==================================================================
 // Role assignments (data plane)
@@ -416,6 +443,15 @@ resource ra_uami_openai 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
   scope: foundry
   properties: {
     roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', roles.cognitiveServicesOpenAiUser)
+    principalId: uami.properties.principalId
+    principalType: 'ServicePrincipal'
+  }
+}
+resource ra_uami_foundryUser 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  name: guid(foundry.id, uami.id, roles.foundryUser)
+  scope: foundry
+  properties: {
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', roles.foundryUser)
     principalId: uami.properties.principalId
     principalType: 'ServicePrincipal'
   }
@@ -499,6 +535,7 @@ output foundryProjectEndpoint string = '${foundry.properties.endpoint}api/projec
 output sqlServerFqdn string = sqlServer.properties.fullyQualifiedDomainName
 output sqlDatabaseName string = sqlDatabase.name
 output functionAppName string = functionApp.name
+output eventGridSystemTopicName string = egSystemTopic.name
 output containerAppName string = containerApp.name
 output containerAppUri string = 'https://${containerApp.properties.configuration.ingress.fqdn}'
 output containerRegistryLoginServer string = acr.properties.loginServer

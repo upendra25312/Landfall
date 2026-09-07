@@ -2,7 +2,7 @@
 Project Sounding - RFP question-sheet batch runner (Azure Durable Functions, Python v2)
 
 Flow:  blob lands in questions/*.xlsx
-       -> starter copies it to _work/ and kicks off the orchestrator
+       -> starter copies it to work/ and kicks off the orchestrator
        -> orchestrator parses the sheet, fans out one `ask` activity per question
           (throttled by host.json maxConcurrentActivityFunctions), fans back in
        -> write_results builds answers/<name>_answered.xlsx
@@ -47,13 +47,30 @@ from azure.identity import DefaultAzureCredential
 from azure.ai.projects import AIProjectClient
 from azure.storage.blob import BlobServiceClient
 
-app = func.FunctionApp()
+app = df.DFApp()
 
+# Lazily built on first use - keep module import (and worker function indexing) fast
+# and free of network/token calls.
 _cred = DefaultAzureCredential()
-_proj = AIProjectClient(endpoint=os.environ["FOUNDRY_PROJECT_ENDPOINT"], credential=_cred)
-_blob = BlobServiceClient(os.environ["STORAGE_URL"], credential=_cred)
+_clients: dict = {}
 
-AGENT_ID = os.environ["AGENT_ID"]
+
+def _blob_client() -> BlobServiceClient:
+    if "blob" not in _clients:
+        _clients["blob"] = BlobServiceClient(os.environ["STORAGE_URL"], credential=_cred)
+    return _clients["blob"]
+
+
+def _openai_client():
+    if "openai" not in _clients:
+        proj = AIProjectClient(
+            endpoint=os.environ["FOUNDRY_PROJECT_ENDPOINT"], credential=_cred
+        )
+        _clients["openai"] = proj.get_openai_client()
+    return _clients["openai"]
+
+
+AGENT_NAME = os.environ.get("AGENT_ID", "")  # Foundry prompt agent, addressed by name
 MAX_ROWS = 300  # budget guard: reject oversized sheets
 
 ANSWER_FORMAT = (
@@ -66,11 +83,16 @@ ANSWER_FORMAT = (
 # --------------------------------------------------------------------------
 # starter: fires when a workbook is dropped in questions/
 # --------------------------------------------------------------------------
-@app.blob_trigger(arg_name="src", path="questions/{name}.xlsx", connection="STORAGE_CONN")
+@app.blob_trigger(
+    arg_name="src",
+    path="questions/{name}.xlsx",
+    connection="STORAGE_CONN",
+    source=func.BlobSource.EVENT_GRID,  # required on the Flex Consumption plan
+)
 @app.durable_client_input(client_name="client")
 async def start(src: func.InputStream, client):
     name = os.path.basename(src.name)
-    _blob.get_blob_client("_work", name).upload_blob(src.read(), overwrite=True)
+    _blob_client().get_blob_client("work", name).upload_blob(src.read(), overwrite=True)
     instance_id = await client.start_new("orchestrator", client_input=name)
     logging.info("started orchestration %s for %s", instance_id, name)
 
@@ -78,19 +100,19 @@ async def start(src: func.InputStream, client):
 # --------------------------------------------------------------------------
 # orchestrator: fan-out / fan-in
 # --------------------------------------------------------------------------
-@app.orchestration_trigger(context_name="ctx")
-def orchestrator(ctx: df.DurableOrchestrationContext):
-    name = ctx.get_input()
+@app.orchestration_trigger(context_name="context")
+def orchestrator(context: df.DurableOrchestrationContext):
+    name = context.get_input()
 
-    questions = yield ctx.call_activity("parse_sheet", name)
+    questions = yield context.call_activity("parse_sheet", name)
     if questions == "TOO_MANY_ROWS":
         logging.error("%s exceeded MAX_ROWS=%d - skipped", name, MAX_ROWS)
         return
 
-    tasks = [ctx.call_activity("ask", q) for q in questions]
-    rows = yield ctx.task_all(tasks)
+    tasks = [context.call_activity("ask", q) for q in questions]
+    rows = yield context.task_all(tasks)
 
-    yield ctx.call_activity("write_results", {"name": name, "rows": rows})
+    yield context.call_activity("write_results", {"name": name, "rows": rows})
 
 
 # --------------------------------------------------------------------------
@@ -98,7 +120,7 @@ def orchestrator(ctx: df.DurableOrchestrationContext):
 # --------------------------------------------------------------------------
 @app.activity_trigger(input_name="name")
 def parse_sheet(name: str):
-    data = _blob.get_blob_client("_work", name).download_blob().readall()
+    data = _blob_client().get_blob_client("work", name).download_blob().readall()
     frame = pd.read_excel(io.BytesIO(data))
     if "Question" not in frame.columns:
         raise ValueError(f"{name}: no 'Question' column found")
@@ -107,24 +129,37 @@ def parse_sheet(name: str):
     return frame["Question"].fillna("").astype(str).tolist()
 
 
+def _citations(resp) -> str:
+    seen = []
+    for item in getattr(resp, "output", None) or []:
+        for content in getattr(item, "content", None) or []:
+            for ann in getattr(content, "annotations", None) or []:
+                label = (
+                    getattr(ann, "filename", None)
+                    or getattr(ann, "title", None)
+                    or getattr(ann, "url", None)
+                )
+                if label and label not in seen:
+                    seen.append(label)
+    return "; ".join(sorted(seen))
+
+
 @app.activity_trigger(input_name="question")
 def ask(question: str):
-    """One question -> one grounded answer via the Foundry agent."""
+    """One question -> one grounded answer via the Foundry agent (Responses API)."""
     if not question.strip():
         return {"q": question, "answer": "", "cites": "", "status": "empty"}
     try:
-        thread = _proj.agents.threads.create()
-        _proj.agents.messages.create(
-            thread.id, role="user", content=question + ANSWER_FORMAT
+        resp = _openai_client().responses.create(
+            input=question + ANSWER_FORMAT,
+            extra_body={
+                "agent_reference": {"type": "agent_reference", "name": AGENT_NAME}
+            },
         )
-        run = _proj.agents.runs.create_and_process(thread.id, agent_id=AGENT_ID)
-        if run.status != "completed":
-            return {"q": question, "answer": "", "cites": "", "status": f"run_{run.status}"}
-
-        msg = _proj.agents.messages.get_last_message_by_role(thread.id, "assistant")
-        text = "\n".join(t.text.value for t in msg.text_messages)
-        cites = "; ".join(sorted({a.file_name for a in msg.file_citation_annotations}))
-        return {"q": question, "answer": text, "cites": cites, "status": "ok"}
+        text = (resp.output_text or "").strip()
+        if not text:
+            return {"q": question, "answer": "", "cites": "", "status": f"run_{resp.status}"}
+        return {"q": question, "answer": text, "cites": _citations(resp), "status": "ok"}
     except Exception as exc:  # noqa: BLE001 - want every row to complete
         logging.exception("ask failed for: %s", question)
         return {"q": question, "answer": "", "cites": "", "status": f"error: {exc}"}
@@ -149,6 +184,6 @@ def write_results(payload: dict):
     buf.seek(0)
 
     out_name = payload["name"].replace(".xlsx", "_answered.xlsx")
-    _blob.get_blob_client("answers", out_name).upload_blob(buf, overwrite=True)
+    _blob_client().get_blob_client("answers", out_name).upload_blob(buf, overwrite=True)
     logging.info("wrote answers/%s (%d rows)", out_name, len(out))
     # optional: send the workbook by email here via Microsoft Graph

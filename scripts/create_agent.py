@@ -1,21 +1,29 @@
 """
-Create (or update) the Landfall "Migration Estimator" agent in the Foundry project
-and print its id.  Called by the postprovision hook; can also be run by hand.
+Create (or version) the Landfall "Migration Estimator" agent in the Foundry project
+and print its name.  Called by the postprovision hook; can also be run by hand.
+
+This targets the current Microsoft Foundry Agents surface (prompt agents, Responses
+API, versioned).  The agent is referenced everywhere by NAME, not an `asst_` id.
 
 Reads from environment (azd populates these in .azure/<env>/.env):
   FOUNDRY_PROJECT_ENDPOINT
   AZURE_OPENAI_CHAT_DEPLOYMENT
-  AZURE_SEARCH_ENDPOINT
   AZURE_SEARCH_INDEX_NAME
 
-Writes AGENT_ID back to stdout as `AGENT_ID=<id>` (the hook captures it with `azd env set`).
+Writes AGENT_ID back to stdout as `AGENT_ID=<name>` (the hook captures it with `azd env set`).
 """
 import os
 import sys
 
 from azure.identity import DefaultAzureCredential
 from azure.ai.projects import AIProjectClient
-from azure.ai.agents.models import AzureAISearchTool, McpTool
+from azure.ai.projects.models import (
+    PromptAgentDefinition,
+    MCPTool,
+    AzureAISearchTool,
+    AzureAISearchToolResource,
+    AISearchIndexResource,
+)
 
 AGENT_NAME = "landfall-migration-estimator"
 
@@ -37,61 +45,64 @@ say so and give a ranged estimate. Output is a DRAFT for architect review, not a
 
 def main() -> None:
     endpoint = os.environ["FOUNDRY_PROJECT_ENDPOINT"]
-    model = os.environ.get("AZURE_OPENAI_CHAT_DEPLOYMENT", "gpt-4o-mini")
-    search_endpoint = os.environ.get("AZURE_SEARCH_ENDPOINT", "")
+    model = os.environ.get("AZURE_OPENAI_CHAT_DEPLOYMENT", "gpt-4o")
     index_name = os.environ.get("AZURE_SEARCH_INDEX_NAME", "landfall-docs")
 
     project = AIProjectClient(endpoint=endpoint, credential=DefaultAzureCredential())
 
     tools: list = []
-    tool_resources: dict = {}
 
-    # --- Microsoft Learn MCP (public, read-only) ---
-    mcp = McpTool(
-        server_label="microsoft_docs",
-        server_url="https://learn.microsoft.com/api/mcp",
-        allowed_tools=[],
+    # --- Microsoft Learn MCP (public, read-only, no approval prompt) ---
+    tools.append(
+        MCPTool(
+            server_label="microsoft_docs",
+            server_url="https://learn.microsoft.com/api/mcp",
+            require_approval="never",
+        )
     )
-    mcp.set_approval_mode("never")
-    tools += mcp.definitions
 
-    # --- Azure AI Search over the narrative docs index ---
-    if search_endpoint:
-        conn = _find_search_connection(project, search_endpoint)
-        if conn:
-            ais = AzureAISearchTool(index_connection_id=conn, index_name=index_name)
-            tools += ais.definitions
-            tool_resources.update(ais.resources)
-        else:
-            print("WARN: no Foundry connection found for the search service - add it in the "
-                  "portal (Management center > Connected resources) and re-run.", file=sys.stderr)
-
-    # --- OpenAPI tools (query_inventory, vm_rightsize, azure_retail_prices) ---
-    # These are registered against the deployed Function app. Attach them in the portal
-    # or extend this script with OpenApiTool once the function OpenAPI specs are published
-    # under src/api/openapi/. Left as a documented follow-up so first deploy succeeds.
-
-    existing = next((a for a in project.agents.list_agents() if a.name == AGENT_NAME), None)
-    if existing:
-        agent = project.agents.update_agent(
-            existing.id, model=model, instructions=SYSTEM_PROMPT,
-            tools=tools, tool_resources=tool_resources or None,
+    # --- Azure AI Search over the narrative-docs index ---
+    conn = _find_search_connection(project)
+    if conn:
+        tools.append(
+            AzureAISearchTool(
+                azure_ai_search=AzureAISearchToolResource(
+                    indexes=[
+                        AISearchIndexResource(
+                            project_connection_id=conn,
+                            index_name=index_name,
+                            query_type="vector_semantic_hybrid",
+                        )
+                    ]
+                )
+            )
         )
     else:
-        agent = project.agents.create_agent(
-            model=model, name=AGENT_NAME, instructions=SYSTEM_PROMPT,
-            tools=tools, tool_resources=tool_resources or None,
+        print(
+            "WARN: no Foundry connection found for the search service - add it in the "
+            "portal (Management center > Connected resources) and re-run.",
+            file=sys.stderr,
         )
 
-    print(f"AGENT_ID={agent.id}")
+    # --- OpenAPI tools (query_inventory, vm_rightsize, azure_retail_prices) ---
+    # Attach in the portal once the Function OpenAPI specs are published, or extend
+    # this with OpenApiTool. Left as a documented follow-up so first deploy succeeds.
+
+    definition = PromptAgentDefinition(
+        model=model, instructions=SYSTEM_PROMPT, tools=tools
+    )
+    version = project.agents.create_version(AGENT_NAME, definition=definition)
+
+    # agents are addressed by name; print it for the hook / services
+    print(f"AGENT_ID={version.get('name', AGENT_NAME)}")
 
 
-def _find_search_connection(project, search_endpoint):
-    host = search_endpoint.replace("https://", "").rstrip("/")
+def _find_search_connection(project):
+    """Return the connection name of the project's Azure AI Search connection, if any."""
     for c in project.connections.list():
-        target = (getattr(c, "target", "") or "").replace("https://", "").rstrip("/")
-        if host in target:
-            return c.id
+        ctype = str(getattr(c, "type", "") or "").lower()
+        if "search" in ctype or "search" in (getattr(c, "name", "") or "").lower():
+            return c.name
     return None
 
 

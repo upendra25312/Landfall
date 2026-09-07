@@ -1,9 +1,11 @@
 """
 Landfall chat UI - a thin FastAPI front end over the Foundry Migration Estimator agent.
 
-One page, one endpoint. Each browser tab keeps its own agent thread id so the
-conversation has memory. Authentication in front of this app is handled by the
-Container App's built-in Entra ID (Easy Auth) - configure it after first deploy.
+One page, one endpoint. The agent is a Microsoft Foundry prompt agent addressed by
+name and driven through the Responses API; each browser tab carries the last
+response id so the conversation keeps its memory. Authentication in front of this
+app is handled by the Container App's built-in Entra ID (Easy Auth) - configure it
+after first deploy.
 """
 import os
 import logging
@@ -16,40 +18,63 @@ from azure.ai.projects import AIProjectClient
 logging.basicConfig(level=logging.INFO)
 
 PROJECT_ENDPOINT = os.environ["FOUNDRY_PROJECT_ENDPOINT"]
-AGENT_ID = os.environ.get("AGENT_ID", "")
+AGENT_NAME = os.environ.get("AGENT_ID", "")  # Foundry agents are addressed by name
 
 _cred = DefaultAzureCredential()
 _project = AIProjectClient(endpoint=PROJECT_ENDPOINT, credential=_cred)
+_openai = _project.get_openai_client()
 
 app = FastAPI(title="Landfall")
 
 
+def _citations(resp) -> list:
+    """Pull document/URL citation labels out of a Responses API result."""
+    seen = []
+    for item in getattr(resp, "output", None) or []:
+        for content in getattr(item, "content", None) or []:
+            for ann in getattr(content, "annotations", None) or []:
+                label = (
+                    getattr(ann, "filename", None)
+                    or getattr(ann, "title", None)
+                    or getattr(ann, "url", None)
+                )
+                if label and label not in seen:
+                    seen.append(label)
+    return sorted(seen)
+
+
 @app.get("/healthz")
 def health():
-    return {"ok": True, "agent_configured": bool(AGENT_ID)}
+    return {"ok": True, "agent_configured": bool(AGENT_NAME)}
 
 
 @app.post("/api/chat")
 async def chat(req: Request):
     body = await req.json()
     question = (body.get("message") or "").strip()
-    thread_id = body.get("thread_id")
+    prev_id = body.get("thread_id")  # last response id, kept per browser tab
     if not question:
         return JSONResponse({"error": "empty message"}, status_code=400)
-    if not AGENT_ID:
+    if not AGENT_NAME:
         return JSONResponse({"error": "AGENT_ID not set - run the postprovision hook"}, status_code=503)
 
     try:
-        if not thread_id:
-            thread_id = _project.agents.threads.create().id
-        _project.agents.messages.create(thread_id, role="user", content=question)
-        run = _project.agents.runs.create_and_process(thread_id, agent_id=AGENT_ID)
-        if run.status != "completed":
-            return JSONResponse({"error": f"run {run.status}", "thread_id": thread_id}, status_code=502)
-        msg = _project.agents.messages.get_last_message_by_role(thread_id, "assistant")
-        text = "\n".join(t.text.value for t in msg.text_messages)
-        cites = sorted({a.file_name for a in msg.file_citation_annotations})
-        return {"answer": text, "citations": cites, "thread_id": thread_id}
+        kwargs = {
+            "input": question,
+            "extra_body": {
+                "agent_reference": {"type": "agent_reference", "name": AGENT_NAME}
+            },
+        }
+        if prev_id:
+            kwargs["previous_response_id"] = prev_id
+        resp = _openai.responses.create(**kwargs)
+        text = (resp.output_text or "").strip()
+        if not text:
+            return JSONResponse(
+                {"error": f"agent returned no text (status {resp.status})", "thread_id": resp.id},
+                status_code=502,
+            )
+        return {"answer": text, "citations": _citations(resp), "thread_id": resp.id}
     except Exception as exc:  # noqa: BLE001
         logging.exception("chat failed")
         return JSONResponse({"error": str(exc)}, status_code=500)

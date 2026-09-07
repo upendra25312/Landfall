@@ -19,6 +19,7 @@ services:
     host: containerapp
     docker:
       path: Dockerfile
+      remoteBuild: true
 
 hooks:
   postprovision:
@@ -32,3 +33,13 @@ hooks:
       run: ./scripts/postprovision.sh
       interactive: true
       continueOnError: false
+  postdeploy:
+    windows:
+      shell: pwsh
+      run: ./scripts/eventgrid.ps1
+      continueOnError: true
+    posix:
+      shell: sh
+      run: ./scripts/eventgrid.sh
+      interactive: true
+      continueOnError: true

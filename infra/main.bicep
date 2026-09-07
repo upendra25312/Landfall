@@ -12,8 +12,8 @@ param location string
 param principalId string = ''
 
 @description('Model + version for the chat model deployment')
-param chatModelName string = 'gpt-4o-mini'
-param chatModelVersion string = '2024-07-18'
+param chatModelName string = 'gpt-4o'
+param chatModelVersion string = '2024-11-20'
 
 @description('Model + version for the embedding model deployment')
 param embeddingModelName string = 'text-embedding-3-small'
@@ -21,6 +21,12 @@ param embeddingModelVersion string = '1'
 
 @description('TPM (thousands) cap for each model deployment - doubles as a spend brake')
 param modelCapacity int = 30
+
+@description('Chat-UI container image; azd populates SERVICE_WEB_IMAGE_NAME after the first deploy')
+param webImageName string = ''
+
+@description('Foundry agent name; the postprovision hook stores AGENT_ID in the azd env')
+param agentId string = ''
 
 var abbrs = loadJsonContent('./abbreviations.json')
 var resourceToken = toLower(uniqueString(subscription().id, environmentName, location))
@@ -46,6 +52,8 @@ module resources './resources.bicep' = {
     embeddingModelName: embeddingModelName
     embeddingModelVersion: embeddingModelVersion
     modelCapacity: modelCapacity
+    webImageName: webImageName
+    agentId: agentId
   }
 }
 
@@ -71,6 +79,7 @@ output AZURE_SQL_SERVER_FQDN string = resources.outputs.sqlServerFqdn
 output AZURE_SQL_DATABASE string = resources.outputs.sqlDatabaseName
 
 output SERVICE_API_NAME string = resources.outputs.functionAppName
+output AZURE_EVENTGRID_SYSTEM_TOPIC string = resources.outputs.eventGridSystemTopicName
 output SERVICE_WEB_NAME string = resources.outputs.containerAppName
 output SERVICE_WEB_URI string = resources.outputs.containerAppUri
 
