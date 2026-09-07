@@ -5,6 +5,36 @@ Operating model: [`landfall-5x5-prd.md` §7](landfall-5x5-prd.md). Tracker:
 
 ---
 
+## Cycle 2 — deploy wiring + docs for the ingestion pipeline (E1.6, partial)
+
+**Date:** 2026-09-07 · **Owner:** SRE + Writer · **Tracker:** E1.6, D1.
+
+**Plan.** Make the ingestion pipeline reachable through `azd` and documented.
+
+**Done.**
+- `scripts/eventgrid.{sh,ps1}` already add the `landfall-inventory` subscription (cycle 1);
+  reviewed — webhook `functionName=Host.Functions.ingest_blob`, subject prefix
+  `/blobServices/default/containers/raw/blobs/inventory/`.
+- `DEPLOY.md` + `INSTALL.md`: postdeploy now documented as two subscriptions; §"Load
+  client data" rewritten around `raw/inventory/` + the DQ report; troubleshooting rows for
+  "files don't load" and "wrong table / dropped columns"; note that `schema.sql` is a
+  destructive recreate.
+- `D1` closed except the `estimation_config.json` doc claim (removed in E6.1).
+
+**Check.** Docs only — no runnable check. Reviewed the eventgrid scripts against the
+blueprint function name.
+
+**Deferred (still E1.6).** The live end-to-end check — `azd provision` (to apply the
+schema changes: dropped FKs, new columns, `performance` / `ingest_log` tables) + `azd
+deploy api` + drop a file in `raw/inventory/` on `rg-landfall` + confirm SQL + DQ report.
+Needs the user to run `azd` against the live subscription; the schema recreate wipes the
+current synthetic data (re-loadable from `sample-estate/`).
+
+**Act.** E1.6 stays `in-progress` pending the live check. Proceeding to the cost engine
+(E2) since it is the next audit blocker and fully buildable/testable offline.
+
+---
+
 ## Cycle 1a — sample-estate performance & flow data (user request, out-of-band)
 
 **Date:** 2026-09-07 · **Owner:** SWE + PMO · **Tracker:** feeds E2 (cost engine inputs),

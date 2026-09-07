@@ -225,13 +225,14 @@ This runs, in order:
      pushed to the Function app and Container App.
 3. **deploy** — zip-deploys `src/api` to the Function app; builds the `src/web` Docker
    image, pushes it to the container registry, and updates the Container App.
-4. **postdeploy** — `scripts/eventgrid.ps1` / `.sh`: creates the `landfall-questions`
-   Event Grid subscription on the storage account's system topic so blobs dropped in the
-   `questions/` container trigger the batch runner. On the Flex Consumption plan a blob
-   trigger *must* be driven by Event Grid, and the subscription's webhook needs the
-   function app's `blobs_extension` key — which only exists after `deploy` — so this is a
-   post-deploy step. It is idempotent and marked `continueOnError`: if the function host
-   is still warming up when it runs, re-run it by hand once the host is up:
+4. **postdeploy** — `scripts/eventgrid.ps1` / `.sh`: creates two Event Grid subscriptions
+   on the storage account's system topic — `landfall-questions` (`questions/` → the batch
+   runner) and `landfall-inventory` (`raw/inventory/` → the `ingest_blob` ingestion
+   function). On the Flex Consumption plan a blob trigger *must* be driven by Event Grid,
+   and each subscription's webhook needs the function app's `blobs_extension` key — which
+   only exists after `deploy` — so this is a post-deploy step. It is idempotent and marked
+   `continueOnError`: if the function host is still warming up when it runs, re-run it by
+   hand once the host is up:
    ```bash
    azd hooks run postdeploy
    ```
@@ -333,26 +334,42 @@ ACC=$(azd env get-value AZURE_STORAGE_ACCOUNT)
 az storage blob upload-batch --account-name "$ACC" --auth-mode login \
   -d "raw/docs" -s ./client-docs
 
-# inventory spreadsheets -> staged; load into SQL next
+# inventory exports -> the ingestion pipeline detects the format, maps columns to the
+# schema, loads Azure SQL, and writes a data-quality report to answers/_ingest/
 az storage blob upload-batch --account-name "$ACC" --auth-mode login \
   -d "raw/inventory" -s ./client-inventory
 ```
 
-### 7.2 Load inventory into SQL
+### 7.2 What the ingestion pipeline does
 
-Load your RVTools / CMDB / app-portfolio spreadsheets into the `servers`,
-`applications`, `dependencies`, `storage` tables (`scripts/schema.sql` defines them).
-Use Azure Data Studio's flat-file import, `bcp`, or a small load script — whatever fits
-your data. Column names in `schema.sql` are what the agent's `query_inventory` tool
-expects.
+Each file dropped in `raw/inventory/` triggers the `ingest_blob` function:
+
+1. **Detect** the source — RVTools vInfo, generic CMDB export, a daily performance /
+   utilisation export, or a Landfall-native CSV — by header signature and file name.
+2. **Map** its columns to `scripts/schema.sql`, **normalise** units (MiB→GiB, VMware OS
+   strings → name + version, power state).
+3. **Load** `servers` / `applications` / `dependencies` / `storage` / `performance`,
+   keyed by source file (re-uploading a corrected file replaces only its rows).
+4. **Report** to `answers/_ingest/<file>.dq.md` — an overall confidence (High / Medium /
+   Low) and a plain-English list of what is missing that the estimate needs (no
+   performance history, unmapped servers, missing OS, orphan references). Send that list
+   to the client as the discovery follow-up.
+
+If a column is mis-detected, adjust the profile in `src/api/ingest/core.py` and
+`azd deploy api`. You can also call the pipeline directly for one file:
+`curl -X POST https://<func>.azurewebsites.net/api/ingest -d '{"blob":"servers.csv"}'`.
 
 **No client data yet?** `sample-estate/` ships a synthetic 250-server / 31-application
-estate (plus a completed discovery questionnaire and effort model as narrative docs):
+estate with 30-day performance data (plus a completed discovery questionnaire and effort
+model as narrative docs):
 
 ```bash
-python sample-estate/load_estate.py                         # -> SQL, Entra auth
-az storage blob upload-batch --account-name "$(azd env get-value AZURE_STORAGE_ACCOUNT)" \
-  --auth-mode login -d raw/docs -s sample-estate --pattern "*.md"   # -> search index
+ACC=$(azd env get-value AZURE_STORAGE_ACCOUNT)
+az storage blob upload-batch --account-name "$ACC" --auth-mode login \
+  -d raw/inventory -s sample-estate --pattern "*.csv"              # -> ingestion pipeline
+az storage blob upload-batch --account-name "$ACC" --auth-mode login \
+  -d raw/docs -s sample-estate --pattern "*.md"                    # -> search index
+# or load SQL directly without deploying: python sample-estate/load_estate.py
 ```
 
 ### 7.3 Ask questions
@@ -438,6 +455,8 @@ containers first) if you must retain a prior client's data.
 | `create_agent.py` warns about the search connection | See [§6.2](#62-if-warned-add-the-foundry--ai-search-connection). |
 | Chat UI returns `503 AGENT_ID not set` | postprovision did not finish. Re-run: `azd hooks run postprovision` (reloads env, re-creates the agent, re-pushes `AGENT_ID`). Or by hand: `python scripts/create_agent.py` prints `AGENT_ID=<name>`; then `azd env set AGENT_ID <name>` and `az containerapp update -g <rg> -n <web> --set-env-vars AGENT_ID=<name>`. |
 | Batch runner never fires when a workbook lands in `questions/` | The Event Grid subscription is missing (postdeploy skipped or the key wasn't ready). Run `azd hooks run postdeploy`. Check it exists: `az eventgrid system-topic event-subscription list --system-topic-name "$(azd env get-value AZURE_EVENTGRID_SYSTEM_TOPIC)" -g <rg> -o table`. |
+| Files in `raw/inventory/` don't load / no DQ report appears | Same cause — the `landfall-inventory` Event Grid subscription is missing. `azd hooks run postdeploy`, then check the list command above shows both `landfall-questions` and `landfall-inventory`. Or run one file now: `curl -X POST https://<func>.azurewebsites.net/api/ingest -d '{"blob":"servers.csv"}'`. |
+| Ingestion loads a file to the wrong table / drops columns | Read `answers/_ingest/<file>.dq.json` — it lists the matched `profile` and every `unmapped_headers`. Add the missing aliases to the profile in `src/api/ingest/core.py`, `azd deploy api`, re-upload. |
 | `create_agent.py` fails with `allowProjectManagement` / project-agents API errors | The region or the Foundry account predates the prompt-agents surface. Confirm the account was provisioned with `allowProjectManagement: true` (it is in `infra/resources.bicep`) and that the region supports it; redeploy in `eastus2` if unsure. |
 | `create_agent.py` prints `WARN: SERVICE_API_NAME not set` (OpenAPI tools skipped) | It ran before provision finished, or env is stale. Reload (`azd env get-values`) and re-run `python scripts/create_agent.py`. |
 | Agent tool calls to `query_inventory` return 500 / `mssql` errors | Either the `db_datareader` grant did not run (re-run `azd hooks run postprovision`, or `grant_api_sql.sql` by hand), or the `mssql-python` wheel didn't resolve on the remote build. Check `azd deploy api` logs; if the wheel is the issue, swap `mssql-python` for `pymssql` in `src/api/requirements.txt`. |

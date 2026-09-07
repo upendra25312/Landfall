@@ -13,7 +13,8 @@ azd up
 ```
 
 `azd up` = `azd provision` (Bicep in `infra/`) → `postprovision` hook → `azd deploy`
-(pushes `src/api` and `src/web`) → `postdeploy` hook (Event Grid subscription).
+(pushes `src/api` and `src/web`) → `postdeploy` hook (two Event Grid subscriptions:
+`landfall-questions` for the batch runner, `landfall-inventory` for the ingestion pipeline).
 
 ---
 
@@ -73,9 +74,10 @@ What `azd up` does:
      running services.
 3. **deploy** — zip-deploys `src/api` to the Function app and builds + pushes the
    `src/web` image to the registry, then updates the Container App.
-4. **postdeploy** (`scripts/eventgrid.*`) — creates the `landfall-questions` Event Grid
-   subscription so blobs dropped in `questions/` trigger the `start` function. This runs
-   after `deploy` because the subscription's webhook needs the function app's
+4. **postdeploy** (`scripts/eventgrid.*`) — creates two Event Grid subscriptions:
+   `landfall-questions` (blobs in `questions/` → the `start` batch-runner function) and
+   `landfall-inventory` (blobs in `raw/inventory/` → the `ingest_blob` function). This runs
+   after `deploy` because each subscription's webhook needs the function app's
    `blobs_extension` system key, which only exists once the function is published.
    Idempotent and `continueOnError` — re-run by hand with `azd hooks run postdeploy` if
    the function host was still warming up.
@@ -132,16 +134,34 @@ These need the portal or a couple of CLI calls once, after the first `azd up`:
    endpoints reachable. Skip this only if the agent must call `query_inventory` and you
    accept the public endpoint for the life of the engagement.
 
-4. **Load client data.** Upload narrative docs to `raw/docs/` (the indexer picks them up
-   on its 6-hour schedule, or run it now). Load the four inventory tables in SQL with
-   your own import (Azure Data Studio, `bcp`, or a script). **To demo without client
-   data**, `sample-estate/` has a synthetic 250-server / 31-app estate plus a completed
-   discovery questionnaire and effort model:
+4. **Load client data.**
+   - **Inventory** → drop the client's exports (RVTools workbook, CMDB extract,
+     application portfolio, dependency/flow list, performance export) into
+     `raw/inventory/`. The `ingest_blob` function detects the format, maps columns to
+     `scripts/schema.sql`, normalises units, and loads Azure SQL. A data-quality report
+     lands in `answers/_ingest/<file>.dq.md` — an overall confidence plus a
+     "what's missing to firm up the estimate" list to send back to the client.
+     Re-uploading a corrected file replaces only its rows.
+   - **Narrative docs** → `raw/docs/` (the AI Search indexer picks them up on its 6-hour
+     schedule, or run it now).
    ```bash
-   python sample-estate/load_estate.py            # -> SQL (Entra auth)
    ACC=$(azd env get-value AZURE_STORAGE_ACCOUNT)
    az storage blob upload-batch --account-name "$ACC" --auth-mode login \
+     -d raw/inventory -s ./client-inventory --pattern "*.csv"
+   az storage blob upload-batch --account-name "$ACC" --auth-mode login \
+     -d raw/docs -s ./client-docs
+   ```
+   **To demo without client data**, `sample-estate/` has a synthetic 250-server / 31-app
+   estate with 30-day performance data, plus a completed discovery questionnaire and
+   effort model:
+   ```bash
+   ACC=$(azd env get-value AZURE_STORAGE_ACCOUNT)
+   az storage blob upload-batch --account-name "$ACC" --auth-mode login \
+     -d raw/inventory -s sample-estate --pattern "*.csv"     # -> ingestion pipeline
+   az storage blob upload-batch --account-name "$ACC" --auth-mode login \
      -d raw/docs -s sample-estate --pattern "*.md"
+   # or, no deploy needed, load SQL directly:
+   python sample-estate/load_estate.py
    ```
 
 5. **Budget alert.** Cost Management → Budgets → $25 with alerts at 50 / 80 / 100%.
@@ -155,7 +175,9 @@ azd deploy api          # redeploy just the Function app after a code change
 azd deploy web          # rebuild + redeploy just the chat UI
 azd provision           # re-apply infra changes
 azd hooks run postprovision   # rebuild SQL schema / search index / agent
-azd hooks run postdeploy      # re-create the Event Grid subscription for the batch runner
+                              # NOTE: schema.sql DROPs and recreates the inventory tables
+
+azd hooks run postdeploy      # re-create the Event Grid subscriptions (batch runner + ingestion)
 azd env get-values      # see all endpoints / names
 azd down --purge        # delete everything (including soft-deleted Key Vault / Foundry)
 ```

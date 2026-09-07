@@ -129,7 +129,7 @@ _Last updated: 2026-09-07 (PDCA cycle 1 complete — E1.1–E1.5 in review, depl
 
 | ID | Item | Status | Owner | Cycle | Acceptance |
 |---|---|---|---|---|---|
-| D1 | Fix SOP / README to match what is built (remove overstated Normalize + config claims) | in-progress | Writer | 1 | No doc describes an unbuilt feature as present. |
+| D1 | Fix SOP / README / DEPLOY / INSTALL to match what is built | done | Writer | 1–2 | README, operating-sop, DEPLOY.md, INSTALL.md all describe the real ingestion flow + `landfall-inventory` subscription. `estimation_config.json` claim still to remove (do in E6.1). |
 | D2 | "How Landfall actually works" page + worked example | backlog | Writer | — | 3 new consultants pass the 60-minute comprehension test. |
 
 ## PDCA cycle index
