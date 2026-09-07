@@ -201,9 +201,30 @@ _NATIVE_SERVERS = {
         "server_id": _txt, "hostname": _txt, "env": _txt, "os_name": _txt,
         "os_version": _txt, "os_eol_date": _iso_date, "vcpu": _int, "ram_gb": _num,
         "provisioned_disk_gb": _num, "used_disk_gb": _num, "cpu_avg_pct": _num,
-        "cpu_peak_pct": _num, "ram_avg_pct": _num, "cluster": _txt, "datacenter": _txt,
+        "cpu_peak_pct": _num, "ram_avg_pct": _num, "disk_iops_avg": _num,
+        "disk_iops_peak": _num, "net_in_gb_30d": _num, "net_out_gb_30d": _num,
+        "cluster": _txt, "datacenter": _txt,
         "powerstate": _powerstate, "app_id": _txt, "notes": _txt,
     }.items()
+}
+_NATIVE_PERF = {
+    "server_id": Col(("server_id", "host", "vm"), _txt, required=True),
+    "sample_date": Col(("sample_date", "date", "timestamp", "day", "collected"), _iso_date, required=True),
+    "cpu_avg_pct": Col(("cpu_avg_pct", "cpu avg", "cpu_avg"), _num),
+    "cpu_peak_pct": Col(("cpu_peak_pct", "cpu peak", "cpu_max"), _num),
+    "cpu_p95_pct": Col(("cpu_p95_pct", "cpu p95"), _num),
+    "mem_avg_pct": Col(("mem_avg_pct", "memory avg", "mem_avg", "ram_avg_pct"), _num),
+    "mem_peak_pct": Col(("mem_peak_pct", "memory peak", "mem_max"), _num),
+    "mem_p95_pct": Col(("mem_p95_pct", "mem p95"), _num),
+    "disk_iops_avg": Col(("disk_iops_avg", "iops avg", "iops"), _num),
+    "disk_iops_peak": Col(("disk_iops_peak", "iops peak", "iops_max"), _num),
+    "disk_read_iops_avg": Col(("disk_read_iops_avg", "read iops"), _num),
+    "disk_write_iops_avg": Col(("disk_write_iops_avg", "write iops"), _num),
+    "disk_throughput_mbps_avg": Col(("disk_throughput_mbps_avg", "disk mbps", "throughput mbps"), _num),
+    "net_in_gb": Col(("net_in_gb", "network in gb", "ingress gb", "rx gb"), _num),
+    "net_out_gb": Col(("net_out_gb", "network out gb", "egress gb", "tx gb"), _num),
+    "net_in_peak_mbps": Col(("net_in_peak_mbps", "net in peak", "rx peak mbps"), _num),
+    "net_out_peak_mbps": Col(("net_out_peak_mbps", "net out peak", "tx peak mbps"), _num),
 }
 _NATIVE_APPS = {
     c: Col((c,), t)
@@ -217,7 +238,8 @@ _NATIVE_DEPS = {
     c: Col((c,), t)
     for c, t in {
         "src_id": _txt, "dst_id": _txt, "port": _int, "protocol": _txt,
-        "direction": _txt, "confidence": _txt,
+        "direction": _txt, "confidence": _txt, "bytes_30d_gb": _num,
+        "flows_30d": _int, "last_seen": _iso_date,
     }.items()
 }
 _NATIVE_STORAGE = {
@@ -259,6 +281,9 @@ _CMDB = {
 
 
 PROFILES: tuple[Profile, ...] = (
+    Profile("landfall_performance", "performance",
+            (("server_id", "host"), ("sample_date", "date", "timestamp"),
+             ("cpu_avg_pct", "cpu avg")), _NATIVE_PERF),
     Profile("landfall_servers", "servers",
             (("server_id", "hostname"), ("vcpu",), ("ram_gb",)), _NATIVE_SERVERS),
     Profile("landfall_applications", "applications",
@@ -275,6 +300,8 @@ PROFILES: tuple[Profile, ...] = (
 )
 
 _FILENAME_HINTS = {
+    "perf": "landfall_performance", "utilization": "landfall_performance",
+    "utilisation": "landfall_performance", "metrics": "landfall_performance",
     "server": "landfall_servers", "vminfo": "rvtools_vinfo", "vinfo": "rvtools_vinfo",
     "rvtools": "rvtools_vinfo", "application": "landfall_applications",
     "app": "landfall_applications", "portfolio": "landfall_applications",

@@ -1,0 +1,4 @@
+server_id,date,cpu avg,cpu peak,memory avg,iops avg,iops peak,network in gb,network out gb
+srv-0001,2026-08-08,22.4,61.0,54.1,120.5,410.2,6.1,44.8
+srv-0001,2026-08-09,25.9,70.3,55.6,133.0,388.7,7.4,52.0
+srv-0002,2026-08-08,8.1,33.0,41.2,980.0,3400.0,3.0,2.1

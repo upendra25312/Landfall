@@ -18,6 +18,7 @@ CRITICAL = {
     "applications": ["app_name", "criticality", "compliance_scope", "business_owner"],
     "dependencies": ["src_id", "dst_id"],
     "storage": ["server_id", "size_gb", "type"],
+    "performance": ["server_id", "sample_date", "cpu_avg_pct", "mem_avg_pct"],
 }
 PERF_COLS = ["cpu_avg_pct", "cpu_peak_pct", "ram_avg_pct"]
 
@@ -62,8 +63,8 @@ def build_report(results: list[NormResult], existing_keys: dict | None = None) -
     for table, reslist in grouped.items():
         rows = [row for r in reslist for row in r.rows]
         issues = [i for r in reslist for i in r.issues]
-        pk = {"servers": "server_id", "applications": "app_id",
-              "storage": "storage_id", "dependencies": None}[table]
+        pk = {"servers": "server_id", "applications": "app_id", "storage": "storage_id",
+              "dependencies": None, "performance": None}.get(table)
         entry = {
             "profile": ", ".join(sorted({r.profile for r in reslist if r.profile})),
             "rows_in": sum(r.row_count_in for r in reslist),

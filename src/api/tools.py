@@ -68,14 +68,21 @@ Every table also has source_file and ingested_at (ignore unless asked about prov
 
 servers(server_id, hostname, env /* prod|nonprod|dev|dr */, os_name, os_version,
         os_eol_date, vcpu, ram_gb, provisioned_disk_gb, used_disk_gb,
-        cpu_avg_pct, cpu_peak_pct, ram_avg_pct, cluster, datacenter, powerstate,
-        app_id /* -> applications.app_id */, notes)
+        cpu_avg_pct, cpu_peak_pct, ram_avg_pct /* 30-day rollups */,
+        disk_iops_avg, disk_iops_peak, net_in_gb_30d, net_out_gb_30d /* 30-day totals */,
+        cluster, datacenter, powerstate, app_id /* -> applications.app_id */, notes)
 applications(app_id, app_name, business_owner, criticality /* 1 high..4 */, users,
         tech_stack, db_engine, internet_facing /* bit */, compliance_scope,
         disposition, complexity /* S|M|L|XL */, wave)
-dependencies(dep_id, src_id, dst_id, port, protocol, direction, confidence)
+dependencies(dep_id, src_id, dst_id, port, protocol, direction, confidence,
+        bytes_30d_gb, flows_30d, last_seen /* observed over the 30-day window */)
 storage(storage_id, server_id /* -> servers.server_id */, type /* block|file|object|db */,
         size_gb, iops, target_service)
+performance(perf_id, server_id, sample_date, cpu_avg_pct, cpu_peak_pct, cpu_p95_pct,
+        mem_avg_pct, mem_peak_pct, mem_p95_pct, disk_iops_avg, disk_iops_peak,
+        disk_read_iops_avg, disk_write_iops_avg, disk_throughput_mbps_avg,
+        net_in_gb, net_out_gb, net_in_peak_mbps, net_out_peak_mbps)
+        /* one row per server per day; ~30-day window; only monitored servers */
 """
 
 _SQL_SYSTEM = (

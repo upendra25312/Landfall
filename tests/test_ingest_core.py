@@ -16,14 +16,41 @@ def test_native_servers_detected_and_identity_mapped():
     assert not [i for i in res.issues if i.level == "error"]
 
 
-def test_native_applications_and_dependencies_and_storage():
+def test_native_applications_dependencies_storage_performance():
     for fname, prof, table in (
         ("applications.csv", "landfall_applications", "applications"),
         ("dependencies.csv", "landfall_dependencies", "dependencies"),
         ("storage.csv", "landfall_storage", "storage"),
+        ("performance.csv", "landfall_performance", "performance"),
     ):
         res = normalize(fname, sample_bytes(fname))
         assert (res.profile, res.table) == (prof, table), fname
+
+
+def test_performance_series_maps_30_day_window_and_egress():
+    res = normalize("performance.csv", sample_bytes("performance.csv"))
+    assert len(res.rows) == 5190                       # 173 monitored servers x 30 days
+    dates = {r["sample_date"] for r in res.rows}
+    assert min(dates) == "2026-08-08" and max(dates) == "2026-09-06"
+    r0 = res.rows[0]
+    for c in ("cpu_avg_pct", "cpu_peak_pct", "mem_avg_pct", "disk_iops_avg",
+              "net_in_gb", "net_out_gb", "net_out_peak_mbps"):
+        assert r0[c] is not None, c
+
+
+def test_dependencies_carry_observed_flow_metrics():
+    res = normalize("dependencies.csv", sample_bytes("dependencies.csv"))
+    r0 = res.rows[0]
+    assert r0["bytes_30d_gb"] is not None
+    assert isinstance(r0["flows_30d"], int)
+    assert r0["last_seen"] and r0["last_seen"].startswith("2026-")
+
+
+def test_generic_perf_export_headers_are_recognised():
+    res = normalize("client_utilization_report.csv", fixture_bytes("perf_daily.csv"))
+    assert res.profile == "landfall_performance"
+    assert res.rows[0]["disk_iops_avg"] == 120.5
+    assert res.rows[0]["net_out_gb"] == 44.8
 
 
 def test_rvtools_vinfo_mapped_with_unit_conversion():

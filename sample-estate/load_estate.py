@@ -28,11 +28,18 @@ TABLES = [
     ("dbo.servers", "servers.csv",
      ["server_id", "hostname", "env", "os_name", "os_version", "os_eol_date", "vcpu",
       "ram_gb", "provisioned_disk_gb", "used_disk_gb", "cpu_avg_pct", "cpu_peak_pct",
-      "ram_avg_pct", "cluster", "datacenter", "powerstate", "app_id", "notes"]),
+      "ram_avg_pct", "disk_iops_avg", "disk_iops_peak", "net_in_gb_30d", "net_out_gb_30d",
+      "cluster", "datacenter", "powerstate", "app_id", "notes"]),
     ("dbo.storage", "storage.csv",
      ["storage_id", "server_id", "type", "size_gb", "iops", "target_service"]),
     ("dbo.dependencies", "dependencies.csv",
-     ["src_id", "dst_id", "port", "protocol", "direction", "confidence"]),
+     ["src_id", "dst_id", "port", "protocol", "direction", "confidence",
+      "bytes_30d_gb", "flows_30d", "last_seen"]),
+    ("dbo.performance", "performance.csv",
+     ["server_id", "sample_date", "cpu_avg_pct", "cpu_peak_pct", "cpu_p95_pct",
+      "mem_avg_pct", "mem_peak_pct", "mem_p95_pct", "disk_iops_avg", "disk_iops_peak",
+      "disk_read_iops_avg", "disk_write_iops_avg", "disk_throughput_mbps_avg",
+      "net_in_gb", "net_out_gb", "net_in_peak_mbps", "net_out_peak_mbps"]),
 ]
 # dependencies.src_id/dst_id can be "internet" (not a real server) - drop those rows,
 # the servers.app_id FK and storage.server_id FK must resolve.
@@ -63,8 +70,8 @@ def main():
     cur = conn.cursor()
 
     if not args.append:
-        # child tables first (FKs)
-        for t in ("dbo.dependencies", "dbo.storage", "dbo.servers", "dbo.applications"):
+        for t in ("dbo.performance", "dbo.dependencies", "dbo.storage",
+                  "dbo.servers", "dbo.applications"):
             cur.execute(f"DELETE FROM {t}")
         print("cleared existing rows")
 
@@ -86,7 +93,7 @@ def main():
 
     conn.commit()
 
-    for t in ("servers", "applications", "dependencies", "storage"):
+    for t in ("servers", "applications", "dependencies", "storage", "performance"):
         cur.execute(f"SELECT COUNT(*) FROM dbo.{t}")
         print(f"  dbo.{t}: {cur.fetchone()[0]} rows")
     conn.close()

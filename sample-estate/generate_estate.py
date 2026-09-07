@@ -5,7 +5,11 @@ network dependencies between them, and their storage - everything the assessment
 tables in scripts/schema.sql expect.
 
 Deterministic (seeded). Writes CSVs whose headers match the SQL columns exactly:
-  servers.csv  applications.csv  dependencies.csv  storage.csv
+  servers.csv  applications.csv  dependencies.csv  storage.csv  performance.csv
+
+servers.csv carries 30-day utilisation rollups (CPU/RAM %, disk IOPS, network in/out GB);
+performance.csv is the daily series behind them (one row per monitored server per day);
+dependencies.csv carries observed 30-day flow metrics (bytes, connection count, last seen).
 
     python sample-estate/generate_estate.py
 
@@ -208,8 +212,12 @@ def new_server(role_hint, os_kind, env_hint=None, app_id=None):
         "vcpu": vcpu, "ram_gb": ram,
         "provisioned_disk_gb": prov_disk, "used_disk_gb": used_disk,
         "cpu_avg_pct": cpu_avg, "cpu_peak_pct": cpu_peak, "ram_avg_pct": ram_avg,
+        # 30-day rollups - filled by build_performance() for monitored servers
+        "disk_iops_avg": "", "disk_iops_peak": "",
+        "net_in_gb_30d": "", "net_out_gb_30d": "",
         "cluster": cluster, "datacenter": dc, "powerstate": powerstate,
         "app_id": app_id or "", "notes": "; ".join(notes_bits),
+        "_role": role_hint,   # scratch, dropped before write
     })
     return sid
 
@@ -332,7 +340,112 @@ print(f"servers: {len(servers)}  (Windows {win_n}, Linux {lin_n})")
 print(f"applications: {len(apps)}")
 
 # ----------------------------------------------------------------------------
-# dependencies
+# performance - 30 daily samples per MONITORED server (those that already have a
+# summary reading). Newly-provisioned / unmonitored VMs stay blank so the
+# low-confidence right-sizing path is still exercised.
+#   CPU %, memory %, disk IOPS, and network ingress/egress (GB/day + peak Mbps).
+# servers.csv gets the rollups; performance.csv gets the daily series.
+# ----------------------------------------------------------------------------
+from datetime import timedelta
+
+WINDOW_DAYS = 30
+WINDOW_END = date(2026, 9, 6)                       # matches the repo "today"
+WINDOW_START = WINDOW_END - timedelta(days=WINDOW_DAYS - 1)
+
+# per-role shape: IOPS per (2 vCPU), daily network GB base (in/out), spike size
+ROLE_PROFILE = {
+    "web":   dict(iops_base=40,  net_in=2.0, net_out=8.0, burst=2.3),
+    "app":   dict(iops_base=85,  net_in=4.0, net_out=3.0, burst=2.0),
+    "db":    dict(iops_base=380, net_in=2.5, net_out=1.8, burst=1.7),
+    "infra": dict(iops_base=55,  net_in=1.0, net_out=1.0, burst=1.6),
+    "srv":   dict(iops_base=35,  net_in=0.6, net_out=0.6, burst=1.8),
+}
+
+perf_rows = []
+app_by_id = {a["app_id"]: a for a in apps}
+
+
+def build_performance():
+    for s in servers:
+        if s["cpu_avg_pct"] == "" or s["powerstate"] == "poweredOff":
+            continue
+        rng = random.Random(f"perf::{s['server_id']}")   # deterministic per server
+        prof = ROLE_PROFILE.get(s["_role"], ROLE_PROFILE["srv"])
+        vcpu = float(s["vcpu"])
+        app = app_by_id.get(s["app_id"])
+        users = float(app["users"]) if app and app["users"] not in ("", None) else 50.0
+        inet = bool(app and app["internet_facing"] == 1)
+        user_scale = 1 + users / 60000.0                 # gentle: 210k users -> ~4.5x
+
+        cpu_center = float(s["cpu_avg_pct"])
+        mem_center = float(s["ram_avg_pct"]) if s["ram_avg_pct"] != "" else rng.uniform(35, 75)
+        iops_center = prof["iops_base"] * max(1.0, vcpu / 2) * rng.uniform(0.6, 1.4)
+        net_out_day = prof["net_out"] * user_scale * (1.8 if inet else 1.0) * rng.uniform(0.7, 1.4)
+        net_in_day = prof["net_in"] * (1 + users / 120000.0) * rng.uniform(0.7, 1.4)
+
+        cpu_avgs, cpu_peaks, mem_avgs, iops_avgs, iops_peaks = [], [], [], [], []
+        nin_sum = nout_sum = 0.0
+
+        for d in range(WINDOW_DAYS):
+            day = WINDOW_START + timedelta(days=d)
+            weekend = day.weekday() >= 5
+            f = (0.65 if weekend else 1.0) * rng.uniform(0.85, 1.15)
+            spike = prof["burst"] if rng.random() < 0.06 else 1.0
+
+            cpu_a = min(94, max(1, cpu_center * f * rng.uniform(0.85, 1.12)))
+            cpu_pk = min(99, cpu_a * rng.uniform(1.25, 1.7) * (spike if spike > 1 else 1.0))
+            cpu_p95 = min(99, cpu_a + (cpu_pk - cpu_a) * 0.65)
+            mem_a = min(95, max(6, mem_center * (0.92 + 0.16 * f)))
+            mem_pk = min(99, mem_a * rng.uniform(1.05, 1.22))
+            mem_p95 = min(99, mem_a + (mem_pk - mem_a) * 0.65)
+
+            io_a = iops_center * f * rng.uniform(0.75, 1.25)
+            io_pk = io_a * rng.uniform(1.8, 2.8) * (spike if spike > 1 else 1.0)
+            io_rd = io_a * (0.7 if s["_role"] == "db" else 0.55)
+            io_wr = io_a - io_rd
+            io_mbps = io_a * (0.03 if s["_role"] == "db" else 0.05)
+
+            nin = max(0.02, net_in_day * f * rng.uniform(0.65, 1.4) * (spike if spike > 1 else 1.0))
+            nout = max(0.02, net_out_day * f * rng.uniform(0.65, 1.45) * (spike if spike > 1 else 1.0))
+            nin_mbps = nin * 8000 / 86400 * rng.uniform(4, 10)         # peak burst >> daily mean
+            nout_mbps = nout * 8000 / 86400 * rng.uniform(4, 11)
+
+            cpu_avgs.append(cpu_a); cpu_peaks.append(cpu_pk)
+            mem_avgs.append(mem_a); iops_avgs.append(io_a); iops_peaks.append(io_pk)
+            nin_sum += nin; nout_sum += nout
+
+            perf_rows.append({
+                "server_id": s["server_id"], "sample_date": day.isoformat(),
+                "cpu_avg_pct": round(cpu_a, 1), "cpu_peak_pct": round(cpu_pk, 1),
+                "cpu_p95_pct": round(cpu_p95, 1),
+                "mem_avg_pct": round(mem_a, 1), "mem_peak_pct": round(mem_pk, 1),
+                "mem_p95_pct": round(mem_p95, 1),
+                "disk_iops_avg": round(io_a, 1), "disk_iops_peak": round(io_pk, 1),
+                "disk_read_iops_avg": round(io_rd, 1), "disk_write_iops_avg": round(io_wr, 1),
+                "disk_throughput_mbps_avg": round(io_mbps, 2),
+                "net_in_gb": round(nin, 3), "net_out_gb": round(nout, 3),
+                "net_in_peak_mbps": round(nin_mbps, 1), "net_out_peak_mbps": round(nout_mbps, 1),
+            })
+
+        # roll up into servers.csv (keep it the single source for summary figures)
+        s["cpu_avg_pct"] = round(sum(cpu_avgs) / len(cpu_avgs), 1)
+        s["cpu_peak_pct"] = round(max(cpu_peaks), 1)
+        s["ram_avg_pct"] = round(sum(mem_avgs) / len(mem_avgs), 1)
+        s["disk_iops_avg"] = round(sum(iops_avgs) / len(iops_avgs), 1)
+        s["disk_iops_peak"] = round(max(iops_peaks), 1)
+        s["net_in_gb_30d"] = round(nin_sum, 1)
+        s["net_out_gb_30d"] = round(nout_sum, 1)
+
+
+build_performance()
+_monitored = sum(1 for s in servers if s["cpu_avg_pct"] != "")
+print(f"performance: {len(perf_rows)} daily samples over {WINDOW_DAYS} days "
+      f"({_monitored}/{len(servers)} servers monitored)")
+
+# ----------------------------------------------------------------------------
+# dependencies - edges plus 30-day OBSERVED flow metrics (bytes moved, connection
+# count, last-seen). ~4% of edges are stale (last seen weeks ago) to exercise the
+# "is this dependency still real?" question in an assessment.
 # ----------------------------------------------------------------------------
 deps = []
 by_app_role = {}
@@ -348,6 +461,33 @@ PORTS = {
     "user->web": [(443, "HTTPS")],
 }
 CONF = ["high", "high", "medium", "low"]
+# kind -> (GB over 30d lo, hi), (connections over 30d lo, hi)
+FLOW = {
+    "web->app":   ((40, 900),      (80_000, 3_000_000)),
+    "app->db":    ((15, 450),      (400_000, 22_000_000)),
+    "ldap":       ((0.8, 18),      (4_000, 90_000)),
+    "dns":        ((0.15, 3.5),    (18_000, 420_000)),
+    "internet":   ((300, 5200),    (60_000, 2_400_000)),
+}
+
+
+def add_dep(src, dst, port, proto, direction, conf, kind):
+    (glo, ghi), (clo, chi) = FLOW[kind]
+    gb = round(random.uniform(glo, ghi) * random.uniform(0.6, 1.5), 2)
+    flows = int(random.uniform(clo, chi))
+    if random.random() < 0.04:                      # stale edge
+        seen = WINDOW_START - timedelta(days=random.randint(3, 25))
+        gb = round(gb * random.uniform(0.01, 0.15), 2)
+        flows = int(flows * random.uniform(0.01, 0.1))
+        conf = "low"
+    else:
+        seen = WINDOW_END - timedelta(days=random.randint(0, 2))
+    deps.append({
+        "src_id": src, "dst_id": dst, "port": port, "protocol": proto,
+        "direction": direction, "confidence": conf,
+        "bytes_30d_gb": gb, "flows_30d": flows, "last_seen": seen.isoformat(),
+    })
+
 
 for app in apps:
     aid = app["app_id"]
@@ -357,12 +497,12 @@ for app in apps:
     for w in webs:
         for a in apps_:
             p, pr = random.choice(PORTS["web->app"])
-            deps.append((w, a, p, pr, "outbound", random.choice(CONF)))
+            add_dep(w, a, p, pr, "outbound", random.choice(CONF), "web->app")
     src_tier = apps_ or webs
     for a in src_tier:
         for d in dbs:
             p, pr = random.choice(PORTS["app->db"])
-            deps.append((a, d, p, pr, "outbound", random.choice(CONF)))
+            add_dep(a, d, p, pr, "outbound", random.choice(CONF), "app->db")
 
 # every server talks to AD + DNS + monitoring
 dc_ids = [s["server_id"] for s in servers if s["hostname"].startswith("inf") and s["os_name"] == "Windows Server"][:6]
@@ -371,15 +511,15 @@ for s in servers:
     if s["powerstate"] == "poweredOff":
         continue
     if dc_ids and random.random() < 0.9:
-        deps.append((s["server_id"], random.choice(dc_ids), random.choice([389, 636, 88]), "LDAP", "outbound", "medium"))
+        add_dep(s["server_id"], random.choice(dc_ids), random.choice([389, 636, 88]), "LDAP", "outbound", "medium", "ldap")
     if dns_ids and random.random() < 0.8:
-        deps.append((s["server_id"], random.choice(dns_ids), 53, "DNS", "outbound", "low"))
+        add_dep(s["server_id"], random.choice(dns_ids), 53, "DNS", "outbound", "low", "dns")
 
 # internet-facing apps get an inbound edge from "internet"
 for app in apps:
     if app["internet_facing"] == 1:
         for w in by_app_role.get((app["app_id"], "web"), []) or by_app_role.get((app["app_id"], "app"), [])[:1]:
-            deps.append(("internet", w, 443, "HTTPS", "inbound", "high"))
+            add_dep("internet", w, 443, "HTTPS", "inbound", "high", "internet")
 
 print(f"dependencies: {len(deps)}")
 
@@ -447,19 +587,31 @@ def write_csv(name, rows, cols):
     print(f"  wrote {name}  ({len(rows)} rows)")
 
 
+for s in servers:
+    s.pop("_role", None)
+
 write_csv("servers.csv", servers, [
     "server_id", "hostname", "env", "os_name", "os_version", "os_eol_date", "vcpu",
     "ram_gb", "provisioned_disk_gb", "used_disk_gb", "cpu_avg_pct", "cpu_peak_pct",
-    "ram_avg_pct", "cluster", "datacenter", "powerstate", "app_id", "notes",
+    "ram_avg_pct", "disk_iops_avg", "disk_iops_peak", "net_in_gb_30d", "net_out_gb_30d",
+    "cluster", "datacenter", "powerstate", "app_id", "notes",
 ])
 write_csv("applications.csv", apps, [
     "app_id", "app_name", "business_owner", "criticality", "users", "tech_stack",
     "db_engine", "internet_facing", "compliance_scope", "disposition", "complexity", "wave",
 ])
-write_csv("dependencies.csv",
-          [dict(zip(["src_id", "dst_id", "port", "protocol", "direction", "confidence"], d)) for d in deps],
-          ["src_id", "dst_id", "port", "protocol", "direction", "confidence"])
+write_csv("dependencies.csv", deps, [
+    "src_id", "dst_id", "port", "protocol", "direction", "confidence",
+    "bytes_30d_gb", "flows_30d", "last_seen",
+])
 write_csv("storage.csv", storage,
           ["storage_id", "server_id", "type", "size_gb", "iops", "target_service"])
+write_csv("performance.csv", perf_rows, [
+    "server_id", "sample_date", "cpu_avg_pct", "cpu_peak_pct", "cpu_p95_pct",
+    "mem_avg_pct", "mem_peak_pct", "mem_p95_pct",
+    "disk_iops_avg", "disk_iops_peak", "disk_read_iops_avg", "disk_write_iops_avg",
+    "disk_throughput_mbps_avg", "net_in_gb", "net_out_gb",
+    "net_in_peak_mbps", "net_out_peak_mbps",
+])
 
 print(f"\nGenerated {date.today()} - seed 42. Load with sample-estate/load_estate.py")

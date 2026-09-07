@@ -137,4 +137,5 @@ _Last updated: 2026-09-07 (PDCA cycle 1 complete — E1.1–E1.5 in review, depl
 | Cycle | Scope | Log |
 |---|---|---|
 | 1 | E1.1–E1.5 — ingestion & data-quality core (normalize + profiles + DQ + loader + tests); D1 partial | [pdca-log.md](pdca-log.md) · **done** |
+| 1a | sample-estate 30-day performance + flow data (user request) — `performance.csv`, servers/deps rollups, `landfall_performance` profile, schema `dbo.performance` | [pdca-log.md](pdca-log.md) · **done** |
 | 2 | E1.6 — wire ingestion into `azd` deploy, end-to-end check on live `rg-landfall`, finish D1 (DEPLOY/INSTALL) | planned |

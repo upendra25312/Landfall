@@ -5,6 +5,43 @@ Operating model: [`landfall-5x5-prd.md` §7](landfall-5x5-prd.md). Tracker:
 
 ---
 
+## Cycle 1a — sample-estate performance & flow data (user request, out-of-band)
+
+**Date:** 2026-09-07 · **Owner:** SWE + PMO · **Tracker:** feeds E2 (cost engine inputs),
+E4 (wave engine — flow-based move groups), E10.1 (back-test reference estate).
+
+**Ask.** Add 30 days of performance data to `sample-estate/` — CPU, memory, disk IOPS,
+network ingress/egress volume — plus observed dependency data.
+
+**Done.**
+- `sample-estate/generate_estate.py` — new `build_performance()` (deterministic per
+  server): 30 daily samples over 2026-08-08→09-06 for the 173 monitored+powered-on
+  servers. Per day: CPU avg/peak/p95 %, memory avg/peak/p95 %, disk IOPS
+  (avg/peak/read/write) + throughput, network in/out GB + peak Mbps. Weekday/weekend
+  shape, ~6% spike days. Rolls up into `servers.csv` (`cpu_*_pct`, `ram_avg_pct`,
+  `disk_iops_avg/peak`, `net_in_gb_30d`, `net_out_gb_30d`). 66 servers (26%) stay
+  unmonitored — preserves the low-confidence path and the `effort-inputs.md` number.
+- Dependencies now carry `bytes_30d_gb`, `flows_30d`, `last_seen`; ~3% stale edges.
+- New files: `sample-estate/performance.csv` (5,190 rows). Regenerated all 5 CSVs.
+- Schema: `dbo.performance` table; `servers` +4 cols; `dependencies` +3 cols.
+- Ingestion: `landfall_performance` profile + `_NATIVE_PERF` mapping (also recognises
+  generic "cpu avg / iops avg / network out gb" headers); `_NATIVE_SERVERS` / `_NATIVE_DEPS`
+  extended; `loader.TABLE_COLS` + `dq.CRITICAL` updated. `tools.py` `SCHEMA_HINT` updated.
+- `sample-estate/load_estate.py` loads `performance.csv`.
+- Tests: +3 cases (21 total, all green). Docs: `sample-estate/README.md`,
+  `generate_estate.py` docstring.
+
+**Check.** `pytest tests -q` → `21 passed`. Distribution spot-check: cpu_avg median 21%
+(over-provisioned, matches narrative), net_out_gb_30d median 68 GB / max ~2.8 TB
+(ecommerce tier), deps 484 with 16 stale. Generator is deterministic (seed 42 +
+per-server `random.Random("perf::"+id)`).
+
+**Act.** Real utilisation data is now in the reference estate — unblocks building
+`estimate_compute_cost` / `rightsize` (E2) against something other than summary guesses,
+and flow-weighted move groups (E4). No PRD scope change.
+
+---
+
 ## Cycle 1 — Ingestion & data-quality core
 
 **Date:** 2026-09-07 · **Owner:** SWE (with PMO on the DQ findings) ·

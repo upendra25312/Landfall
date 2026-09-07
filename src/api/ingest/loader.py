@@ -16,15 +16,21 @@ import os
 TABLE_COLS = {
     "servers": ["server_id", "hostname", "env", "os_name", "os_version", "os_eol_date",
                 "vcpu", "ram_gb", "provisioned_disk_gb", "used_disk_gb", "cpu_avg_pct",
-                "cpu_peak_pct", "ram_avg_pct", "cluster", "datacenter", "powerstate",
+                "cpu_peak_pct", "ram_avg_pct", "disk_iops_avg", "disk_iops_peak",
+                "net_in_gb_30d", "net_out_gb_30d", "cluster", "datacenter", "powerstate",
                 "app_id", "notes", "source_file"],
     "applications": ["app_id", "app_name", "business_owner", "criticality", "users",
                      "tech_stack", "db_engine", "internet_facing", "compliance_scope",
                      "disposition", "complexity", "wave", "source_file"],
     "dependencies": ["src_id", "dst_id", "port", "protocol", "direction", "confidence",
-                     "source_file"],
+                     "bytes_30d_gb", "flows_30d", "last_seen", "source_file"],
     "storage": ["storage_id", "server_id", "type", "size_gb", "iops", "target_service",
                 "source_file"],
+    "performance": ["server_id", "sample_date", "cpu_avg_pct", "cpu_peak_pct", "cpu_p95_pct",
+                    "mem_avg_pct", "mem_peak_pct", "mem_p95_pct", "disk_iops_avg",
+                    "disk_iops_peak", "disk_read_iops_avg", "disk_write_iops_avg",
+                    "disk_throughput_mbps_avg", "net_in_gb", "net_out_gb",
+                    "net_in_peak_mbps", "net_out_peak_mbps", "source_file"],
 }
 _PK = {"servers": "server_id", "applications": "app_id", "storage": "storage_id"}
 
