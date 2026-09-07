@@ -212,14 +212,17 @@ This runs, in order:
    plus all role assignments on a shared user-assigned managed identity.
 2. **postprovision** — `scripts/postprovision.ps1` (Windows) or `.sh` (macOS/Linux):
    - installs `scripts/requirements.txt`,
-   - loads `scripts/schema.sql` into the SQL database via `sqlcmd` (Entra auth),
+   - loads `scripts/schema.sql` into the SQL database via `sqlcmd` (Entra auth), then
+     `scripts/grant_api_sql.sql` — a read-only (`db_datareader`) contained user for the
+     workload identity, used by the `query_inventory` tool,
    - runs `scripts/setup_search.py` — builds the AI Search data source, skillset
      (split + embed at 512 dimensions), index, and indexer,
    - runs `scripts/create_agent.py` — creates (versions) the **Migration Estimator**
-     prompt agent with the Microsoft Learn MCP tool and the AI Search tool. The agent is
-     addressed by **name** (`landfall-migration-estimator`), not an `asst_` id; that name
-     is stored as `AGENT_ID` in the azd environment and pushed to the Function app and
-     Container App.
+     prompt agent with the Microsoft Learn MCP tool, the AI Search tool, and the three
+     OpenAPI tools (`query_inventory`, `vm_rightsize`, `azure_retail_prices`) pointed at
+     the Function app. The agent is addressed by **name** (`landfall-migration-estimator`),
+     not an `asst_` id; that name is stored as `AGENT_ID` in the azd environment and
+     pushed to the Function app and Container App.
 3. **deploy** — zip-deploys `src/api` to the Function app; builds the `src/web` Docker
    image, pushes it to the container registry, and updates the Container App.
 4. **postdeploy** — `scripts/eventgrid.ps1` / `.sh`: creates the `landfall-questions`
@@ -280,12 +283,31 @@ Then re-run just the agent step:
 python scripts/create_agent.py
 ```
 
-### 6.3 (Optional, adds SQL + pricing answers) The three OpenAPI tools
+### 6.3 (Strongly recommended) Harden `query_inventory`
 
-`query_inventory`, `vm_rightsize`, and `azure_retail_prices` are Function endpoints the
-agent calls. Their scaffolds are a follow-up task; the agent answers document questions
-without them. When built, add each in **Foundry → Agents → Migration Estimator → Tools →
-+ Add → OpenAPI 3.0** and paste the spec URL from the Function app.
+The three OpenAPI tools (`query_inventory`, `vm_rightsize`, `azure_retail_prices`) are
+built and attached by `create_agent.py` — they ship as **anonymous** HTTP functions on
+the Function app so the first deploy works. `vm_rightsize` and `azure_retail_prices` carry
+no client data. `query_inventory` returns inventory rows (SELECT-only, read-only DB user,
+200-row cap), so put Entra auth in front of it:
+
+```bash
+RG=$(azd env get-value AZURE_RESOURCE_GROUP)
+FUNC=$(azd env get-value SERVICE_API_NAME)
+FOUNDRY_MI=$(az cognitiveservices account show -g "$RG" \
+  -n "$(azd env get-value FOUNDRY_ACCOUNT_NAME)" --query identity.principalId -o tsv)
+
+# 1. edit scripts/funcapp-auth.json: <TENANT_ID>, an <APP_REGISTRATION_CLIENT_ID>,
+#    api://$FUNC as the audience, and $FOUNDRY_MI as the allowed principal
+az webapp auth set -g "$RG" -n "$FUNC" --body @scripts/funcapp-auth.json
+
+# 2. re-attach query_inventory so Foundry calls it with its managed identity
+AGENT_TOOL_AUTH=managed python scripts/create_agent.py
+```
+
+`excludedPaths: ["/runtime"]` in the template keeps the Event Grid webhook and durable
+endpoints working. Skip this only if the agent must reach `query_inventory` and you accept
+a public endpoint for the engagement's lifetime (the resource group is torn down after).
 
 ### 6.4 (Recommended) Budget alert
 
@@ -358,11 +380,23 @@ curl -s "$(azd env get-value SERVICE_WEB_URI)/healthz"
 # search index built
 az search service show -g "$RG" -n "$(azd env get-value AZURE_SEARCH_ENDPOINT | sed 's|https://||;s|.search.windows.net||')" \
   --query "status" -o tsv
+
+# agent tools respond (before you harden query_inventory)
+FUNC=$(azd env get-value SERVICE_API_NAME)
+curl -s -X POST "https://$FUNC.azurewebsites.net/api/vm_rightsize" \
+  -H 'content-type: application/json' \
+  -d '{"servers":[{"server_id":"s1","vcpu":8,"ram_gb":32,"cpu_peak_pct":40}]}'
+curl -s "https://$FUNC.azurewebsites.net/api/azure_retail_prices?arm_sku_name=Standard_D4s_v5&arm_region_name=eastus&price_type=Consumption"
+# after loading some server rows into SQL:
+curl -s -X POST "https://$FUNC.azurewebsites.net/api/query_inventory" \
+  -H 'content-type: application/json' -d '{"question":"how many prod servers and total vCPU"}'
 ```
 
 In the **Azure AI Foundry portal → Agents**, you should see `landfall-migration-estimator`
-with the `microsoft_docs` (MCP) and `search_documents` tools attached. Use the playground
-to test.
+with `microsoft_docs` (MCP), `search_documents`, and the three OpenAPI tools attached. Use
+the playground: *"how many prod Windows servers and their total vCPU, then estimate the
+monthly Azure compute cost"* should call `query_inventory` → `vm_rightsize` →
+`azure_retail_prices`.
 
 ---
 
@@ -396,6 +430,9 @@ containers first) if you must retain a prior client's data.
 | Chat UI returns `503 AGENT_ID not set` | postprovision did not finish. Re-run: `azd hooks run postprovision` (reloads env, re-creates the agent, re-pushes `AGENT_ID`). Or by hand: `python scripts/create_agent.py` prints `AGENT_ID=<name>`; then `azd env set AGENT_ID <name>` and `az containerapp update -g <rg> -n <web> --set-env-vars AGENT_ID=<name>`. |
 | Batch runner never fires when a workbook lands in `questions/` | The Event Grid subscription is missing (postdeploy skipped or the key wasn't ready). Run `azd hooks run postdeploy`. Check it exists: `az eventgrid system-topic event-subscription list --system-topic-name "$(azd env get-value AZURE_EVENTGRID_SYSTEM_TOPIC)" -g <rg> -o table`. |
 | `create_agent.py` fails with `allowProjectManagement` / project-agents API errors | The region or the Foundry account predates the prompt-agents surface. Confirm the account was provisioned with `allowProjectManagement: true` (it is in `infra/resources.bicep`) and that the region supports it; redeploy in `eastus2` if unsure. |
+| `create_agent.py` prints `WARN: SERVICE_API_NAME not set` (OpenAPI tools skipped) | It ran before provision finished, or env is stale. Reload (`azd env get-values`) and re-run `python scripts/create_agent.py`. |
+| Agent tool calls to `query_inventory` return 500 / `mssql` errors | Either the `db_datareader` grant did not run (re-run `azd hooks run postprovision`, or `grant_api_sql.sql` by hand), or the `mssql-python` wheel didn't resolve on the remote build. Check `azd deploy api` logs; if the wheel is the issue, swap `mssql-python` for `pymssql` in `src/api/requirements.txt`. |
+| `vm_rightsize` / `azure_retail_prices` 404 | `azd deploy api` didn't publish the HTTP functions. Redeploy; confirm with `az functionapp function list -g <rg> -n <func> -o table`. |
 | `azd deploy web` fails to build | Docker Desktop not running, or you are not logged into the registry. `azd` handles registry auth; ensure `docker info` works. |
 | First chat request after idle is slow (~10 s) | Container App and SQL free offer both scale/auto-pause. Expected. Set Container App `minReplicas: 1` in `infra/resources.bicep` if you need it warm (small cost). |
 | Search index near 50 MB / indexer errors | Free tier cap. Index fewer docs (put the rest in `raw/archive/`), or move to AI Search Basic — change `sku.name` to `basic` in `infra/resources.bicep` (~$75/mo). |

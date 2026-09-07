@@ -1,0 +1,25 @@
+{
+  "_comment": "Template for: az webapp auth set -g <rg> -n <func> --body @scripts/funcapp-auth.json  --  see DEPLOY.md 'Harden query_inventory'. Replace every <...> token first.",
+  "platform": { "enabled": true },
+  "globalValidation": {
+    "requireAuthentication": true,
+    "unauthenticatedClientAction": "Return401",
+    "excludedPaths": ["/runtime"]
+  },
+  "identityProviders": {
+    "azureActiveDirectory": {
+      "enabled": true,
+      "registration": {
+        "openIdIssuer": "https://login.microsoftonline.com/<TENANT_ID>/v2.0",
+        "clientId": "<APP_REGISTRATION_CLIENT_ID>"
+      },
+      "validation": {
+        "allowedAudiences": ["api://<FUNCTION_APP_NAME>"],
+        "defaultAuthorizationPolicy": {
+          "allowedPrincipals": { "identities": ["<FOUNDRY_ACCOUNT_MI_OBJECT_ID>"] }
+        }
+      }
+    }
+  },
+  "login": { "tokenStore": { "enabled": true } }
+}

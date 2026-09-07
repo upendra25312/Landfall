@@ -1,0 +1,76 @@
+{
+  "openapi": "3.0.1",
+  "info": {
+    "title": "vm_rightsize",
+    "description": "Map on-prem servers to Azure VM SKUs and managed-disk tiers with a documented heuristic.",
+    "version": "1.0.0"
+  },
+  "servers": [{ "url": "https://REPLACE/api" }],
+  "paths": {
+    "/vm_rightsize": {
+      "post": {
+        "operationId": "vm_rightsize",
+        "summary": "Recommend an Azure VM SKU + disk tier per server",
+        "description": "Stateless heuristic. If cpu_peak_pct is present the SKU is sized to keep 75% headroom on peak; if absent the allocation is assumed oversized, mapped one size down, and flagged low confidence. Never silently guesses - every row returns its basis.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["servers"],
+                "properties": {
+                  "servers": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "required": ["server_id", "vcpu", "ram_gb"],
+                      "properties": {
+                        "server_id": { "type": "string" },
+                        "vcpu": { "type": "number" },
+                        "ram_gb": { "type": "number" },
+                        "cpu_peak_pct": { "type": "number", "nullable": true },
+                        "used_disk_gb": { "type": "number", "nullable": true }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "One recommendation per input server",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "recommendations": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "server_id": { "type": "string" },
+                          "sku": { "type": "string" },
+                          "family": { "type": "string" },
+                          "vcpu": { "type": "integer" },
+                          "ram_gb": { "type": "number" },
+                          "disk_tier": { "type": "string" },
+                          "confidence": { "type": "string", "enum": ["high", "medium", "low"] },
+                          "basis": { "type": "string" }
+                        }
+                      }
+                    },
+                    "heuristic": { "type": "string", "description": "the rule set applied" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

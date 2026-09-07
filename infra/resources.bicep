@@ -354,6 +354,10 @@ resource functionApp 'Microsoft.Web/sites@2023-12-01' = {
         { name: 'STORAGE_URL', value: storage.properties.primaryEndpoints.blob }
         { name: 'FOUNDRY_PROJECT_ENDPOINT', value: '${foundry.properties.endpoint}api/projects/landfall' }
         { name: 'AGENT_ID', value: agentId } // seeded from azd env; postprovision refreshes it
+        // config consumed by tools.py (query_inventory / vm_rightsize / azure_retail_prices)
+        { name: 'AZURE_OPENAI_CHAT_DEPLOYMENT', value: chatModelName } // text-to-SQL model
+        { name: 'AZURE_SQL_SERVER_FQDN', value: sqlServer.properties.fullyQualifiedDomainName }
+        { name: 'AZURE_SQL_DATABASE', value: sqlDatabase.name }
       ]
     }
   }
@@ -541,3 +545,4 @@ output containerAppUri string = 'https://${containerApp.properties.configuration
 output containerRegistryLoginServer string = acr.properties.loginServer
 output uamiClientId string = uami.properties.clientId
 output uamiPrincipalId string = uami.properties.principalId
+output uamiName string = uami.name

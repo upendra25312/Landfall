@@ -47,7 +47,10 @@ from azure.identity import DefaultAzureCredential
 from azure.ai.projects import AIProjectClient
 from azure.storage.blob import BlobServiceClient
 
+from tools import bp  # query_inventory / vm_rightsize / azure_retail_prices HTTP tools
+
 app = df.DFApp()
+app.register_functions(bp)
 
 # Lazily built on first use - keep module import (and worker function indexing) fast
 # and free of network/token calls.

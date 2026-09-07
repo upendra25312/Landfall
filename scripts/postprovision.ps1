@@ -16,8 +16,13 @@ Write-Host "==> Loading SQL schema (Entra auth via sqlcmd)"
 if (Get-Command sqlcmd -ErrorAction SilentlyContinue) {
   sqlcmd -S $env:AZURE_SQL_SERVER_FQDN -d $env:AZURE_SQL_DATABASE `
     --authentication-method ActiveDirectoryDefault -i scripts/schema.sql
+  Write-Host "==> Granting the workload identity read-only SQL access (query_inventory tool)"
+  sqlcmd -S $env:AZURE_SQL_SERVER_FQDN -d $env:AZURE_SQL_DATABASE `
+    --authentication-method ActiveDirectoryDefault `
+    -v uami="$env:AZURE_USER_ASSIGNED_IDENTITY_NAME" uamioid="$env:AZURE_USER_ASSIGNED_IDENTITY_PRINCIPAL_ID" `
+    -i scripts/grant_api_sql.sql
 } else {
-  Write-Warning "sqlcmd (go-sqlcmd) not found - skipping. Run scripts/schema.sql manually."
+  Write-Warning "sqlcmd (go-sqlcmd) not found - skipping. Run scripts/schema.sql and scripts/grant_api_sql.sql manually."
 }
 
 Write-Host "==> Building the AI Search index pipeline"

@@ -71,8 +71,11 @@ blob events.
 | `scripts/eventgrid.*` | post-deploy hook — wires `questions/` blobs to the batch runner via an Event Grid subscription (Flex Consumption needs this) |
 | `scripts/schema.sql` | inventory tables — `servers`, `applications`, `dependencies`, `storage` |
 | `scripts/setup_search.py` | builds the AI Search data source / skillset / index / indexer (512-dim) |
-| `scripts/create_agent.py` | creates the **Migration Estimator** agent with the Learn MCP + AI Search tools |
+| `scripts/create_agent.py` | creates the **Migration Estimator** agent — Learn MCP + AI Search + the three OpenAPI tools |
+| `scripts/grant_api_sql.sql` | read-only (`db_datareader`) SQL user for the workload identity (`query_inventory`) |
 | `src/api/function_app.py` | Durable Functions RFP-question-sheet batch runner (fan-out / fan-in) |
+| `src/api/tools.py` | the three agent HTTP tools — `query_inventory` (text-to-SQL), `vm_rightsize`, `azure_retail_prices` |
+| `src/api/openapi/` | OpenAPI 3.0 specs for those tools; `create_agent.py` points them at the deployed Function app |
 | `src/web/` | FastAPI chat UI container |
 | `samples/smoke-questions.xlsx` | two-question sheet for a first end-to-end test of the batch runner |
 | `docs/build-spec.html` | solution build specification |

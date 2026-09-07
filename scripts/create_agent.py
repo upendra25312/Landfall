@@ -9,9 +9,13 @@ Reads from environment (azd populates these in .azure/<env>/.env):
   FOUNDRY_PROJECT_ENDPOINT
   AZURE_OPENAI_CHAT_DEPLOYMENT
   AZURE_SEARCH_INDEX_NAME
+  SERVICE_API_NAME              Function app name - OpenAPI tools point at it
+  AGENT_TOOL_AUTH              (optional) "managed" -> query_inventory uses the Foundry MSI
+  FUNC_AUTH_AUDIENCE          (optional) audience for managed auth, default api://<SERVICE_API_NAME>
 
 Writes AGENT_ID back to stdout as `AGENT_ID=<name>` (the hook captures it with `azd env set`).
 """
+import json
 import os
 import sys
 
@@ -23,9 +27,24 @@ from azure.ai.projects.models import (
     AzureAISearchTool,
     AzureAISearchToolResource,
     AISearchIndexResource,
+    OpenApiTool,
+    OpenApiFunctionDefinition,
+    OpenApiAnonymousAuthDetails,
+    OpenApiManagedAuthDetails,
+    OpenApiManagedSecurityScheme,
 )
 
 AGENT_NAME = "landfall-migration-estimator"
+
+# OpenAPI specs for the three Function tools live next to src/api
+_OPENAPI_DIR = os.path.join(
+    os.path.dirname(__file__), "..", "src", "api", "openapi"
+)
+_OPENAPI_TOOLS = {
+    "query_inventory": "Count / sizing / aggregation questions over the client inventory (Azure SQL).",
+    "vm_rightsize": "Map on-prem servers to Azure VM SKUs + disk tiers with a documented heuristic.",
+    "azure_retail_prices": "Live Azure pay-as-you-go and reserved prices (cached proxy over prices.azure.com).",
+}
 
 SYSTEM_PROMPT = """You help a migration architect estimate an Azure landing zone and a
 server/application migration from client-supplied on-premises inventory.
@@ -84,9 +103,8 @@ def main() -> None:
             file=sys.stderr,
         )
 
-    # --- OpenAPI tools (query_inventory, vm_rightsize, azure_retail_prices) ---
-    # Attach in the portal once the Function OpenAPI specs are published, or extend
-    # this with OpenApiTool. Left as a documented follow-up so first deploy succeeds.
+    # --- OpenAPI tools over the deployed Function app ---
+    tools += _openapi_tools()
 
     definition = PromptAgentDefinition(
         model=model, instructions=SYSTEM_PROMPT, tools=tools
@@ -95,6 +113,47 @@ def main() -> None:
 
     # agents are addressed by name; print it for the hook / services
     print(f"AGENT_ID={version.get('name', AGENT_NAME)}")
+
+
+def _openapi_tools() -> list:
+    """One OpenApiTool per spec in src/api/openapi, with servers[0].url pointed at the
+    deployed Function app. Anonymous auth by default; set AGENT_TOOL_AUTH=managed to make
+    query_inventory use the Foundry managed identity (see DEPLOY.md 'Harden query_inventory')."""
+    func_name = os.environ.get("SERVICE_API_NAME", "")
+    if not func_name:
+        print(
+            "WARN: SERVICE_API_NAME not set - skipping the OpenAPI tools. Re-run this "
+            "script after `azd deploy` to attach them.",
+            file=sys.stderr,
+        )
+        return []
+
+    host = f"{func_name}.azurewebsites.net"
+    managed = os.environ.get("AGENT_TOOL_AUTH") == "managed"
+    audience = os.environ.get("FUNC_AUTH_AUDIENCE", f"api://{func_name}")
+
+    out = []
+    for name, description in _OPENAPI_TOOLS.items():
+        path = os.path.join(_OPENAPI_DIR, f"{name}.json")
+        with open(path, encoding="utf-8") as fh:
+            spec = json.load(fh)
+        spec["servers"] = [{"url": f"https://{host}/api"}]
+
+        if managed and name == "query_inventory":
+            auth = OpenApiManagedAuthDetails(
+                security_scheme=OpenApiManagedSecurityScheme(audience=audience)
+            )
+        else:
+            auth = OpenApiAnonymousAuthDetails()
+
+        out.append(
+            OpenApiTool(
+                openapi=OpenApiFunctionDefinition(
+                    name=name, description=description, spec=spec, auth=auth
+                )
+            )
+        )
+    return out
 
 
 def _find_search_connection(project):

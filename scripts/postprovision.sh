@@ -14,8 +14,14 @@ echo "==> Loading SQL schema (Entra auth via sqlcmd)"
 if command -v sqlcmd >/dev/null 2>&1; then
   sqlcmd -S "$AZURE_SQL_SERVER_FQDN" -d "$AZURE_SQL_DATABASE" \
     --authentication-method ActiveDirectoryDefault -i scripts/schema.sql
+  echo "==> Granting the workload identity read-only SQL access (query_inventory tool)"
+  sqlcmd -S "$AZURE_SQL_SERVER_FQDN" -d "$AZURE_SQL_DATABASE" \
+    --authentication-method ActiveDirectoryDefault \
+    -v uami="$AZURE_USER_ASSIGNED_IDENTITY_NAME" uamioid="$AZURE_USER_ASSIGNED_IDENTITY_PRINCIPAL_ID" \
+    -i scripts/grant_api_sql.sql
 else
-  echo "   ! sqlcmd (go-sqlcmd) not found - skipping. Run scripts/schema.sql manually:"
+  echo "   ! sqlcmd (go-sqlcmd) not found - skipping. Run scripts/schema.sql and"
+  echo "     scripts/grant_api_sql.sql manually:"
   echo "     https://learn.microsoft.com/sql/tools/sqlcmd/sqlcmd-utility"
 fi
 

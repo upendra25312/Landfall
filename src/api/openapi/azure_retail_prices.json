@@ -1,0 +1,59 @@
+{
+  "openapi": "3.0.1",
+  "info": {
+    "title": "azure_retail_prices",
+    "description": "Thin cached proxy over the public Azure Retail Prices API (prices.azure.com). USD.",
+    "version": "1.0.0"
+  },
+  "servers": [{ "url": "https://REPLACE/api" }],
+  "paths": {
+    "/azure_retail_prices": {
+      "get": {
+        "operationId": "azure_retail_prices",
+        "summary": "Look up live Azure pay-as-you-go and reserved prices",
+        "description": "Returns matching price items from prices.azure.com for the given SKU / region. Use arm_sku_name (e.g. Standard_D4s_v5) for VM compute. price_type Consumption = pay-as-you-go, Reservation = 1yr/3yr RI (reservationTerm on each item). Results are cached 6 hours.",
+        "parameters": [
+          { "name": "arm_sku_name", "in": "query", "required": false, "schema": { "type": "string" }, "description": "ARM SKU, e.g. Standard_D4s_v5" },
+          { "name": "sku_name", "in": "query", "required": false, "schema": { "type": "string" }, "description": "retail SKU name substring, e.g. 'D4s v5'" },
+          { "name": "arm_region_name", "in": "query", "required": false, "schema": { "type": "string" }, "description": "e.g. eastus, westeurope" },
+          { "name": "service_name", "in": "query", "required": false, "schema": { "type": "string" }, "description": "e.g. 'Virtual Machines', 'Storage'" },
+          { "name": "price_type", "in": "query", "required": false, "schema": { "type": "string", "enum": ["Consumption", "Reservation"] } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Matching price items (trimmed)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "filter": { "type": "string", "description": "the OData $filter used" },
+                    "count": { "type": "integer" },
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "armSkuName": { "type": "string" },
+                          "skuName": { "type": "string" },
+                          "productName": { "type": "string" },
+                          "meterName": { "type": "string" },
+                          "armRegionName": { "type": "string" },
+                          "retailPrice": { "type": "number" },
+                          "unitOfMeasure": { "type": "string" },
+                          "type": { "type": "string" },
+                          "reservationTerm": { "type": "string", "nullable": true },
+                          "effectiveStartDate": { "type": "string" }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

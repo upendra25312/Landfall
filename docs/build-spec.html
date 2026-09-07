@@ -212,7 +212,7 @@ storage_id · server_id (FK) · type (block/file/object/db) · size_gb · iops �
     <div class="tools">
       <div class="tool"><div class="ico">01</div><div>
         <p class="t"><code>query_inventory</code> &mdash; Azure SQL</p>
-        <p>OpenAPI tool over a small Function: <code>POST /query {question}</code> &rarr; <code>gpt-4o</code> writes a read-only <code>SELECT</code> constrained to the schema above &rarr; runs it against the Free SQL database &rarr; returns rows <em>and</em> the SQL used. Answers &ldquo;how many prod Windows Server 2012 VMs&rdquo;, &ldquo;total provisioned vCPU&rdquo;, &ldquo;apps with no owner&rdquo;.</p>
+        <p>OpenAPI tool over a small Function: <code>POST /query_inventory {question}</code> &rarr; <code>gpt-4o</code> writes one T-SQL <code>SELECT</code> constrained to the schema above &rarr; a SELECT-only allowlist guard rejects anything with a write/DDL keyword or a second statement &rarr; <code>mssql-python</code> runs it against the Free SQL database as a <code>db_datareader</code> contained user &rarr; returns up to 200 rows <em>and</em> the SQL used. Answers &ldquo;how many prod Windows Server 2012 VMs&rdquo;, &ldquo;total provisioned vCPU&rdquo;, &ldquo;apps with no owner&rdquo;.</p>
       </div></div>
       <div class="tool"><div class="ico">02</div><div>
         <p class="t"><code>vm_rightsize</code> &mdash; Function with documented heuristic</p>
@@ -311,8 +311,8 @@ storage_id · server_id (FK) · type (block/file/object/db) · size_gb · iops �
     </div></div>
     <div class="phase"><div class="step">05</div><div>
       <h3>Tool functions</h3>
-      <p>Deploy three HTTP Functions with OpenAPI specs: <code>query_inventory</code>, <code>vm_rightsize</code>, <code>azure_retail_prices</code> (a thin proxy that adds <code>$filter</code> and caches). Read-only SQL login for <code>query_inventory</code>. Put <code>estimation_config.json</code> in an app setting or blob the functions read.</p>
-      <p class="out">out: three callable tool endpoints</p>
+      <p>Three HTTP functions on the same Function app (<code>src/api/tools.py</code>, a blueprint on the Durable app) with OpenAPI 3.0 specs under <code>src/api/openapi/</code>: <code>query_inventory</code> (question &rarr; <code>gpt-4o</code> writes one T-SQL <code>SELECT</code> &rarr; a SELECT-only allowlist guard &rarr; <code>mssql-python</code> with a workload-identity token &rarr; rows + the SQL, 200-row cap), <code>vm_rightsize</code> (stateless heuristic), <code>azure_retail_prices</code> (cached <code>$filter</code> proxy over <code>prices.azure.com</code>). All three ship <strong>anonymous</strong> so first deploy works; <code>query_inventory</code> reads via a <code>db_datareader</code> contained user (<code>grant_api_sql.sql</code>) and gets Entra auth in front of it as a documented post-deploy step. Put <code>estimation_config.json</code> in an app setting or blob the functions read.</p>
+      <p class="out">out: three callable tool endpoints, attached to the agent by <code>create_agent.py</code></p>
     </div></div>
     <div class="phase"><div class="step">06</div><div>
       <h3>Agent</h3>
@@ -434,7 +434,7 @@ FMT = <span class="s">"\n\nReturn: Answer, Basis, Assumptions, Confidence, Sourc
           <tr><td>Text-to-SQL writes wrong or unsafe query</td><td>Odd counts; errors</td><td>Read-only login, SELECT allowlist, return generated SQL in the answer for audit</td></tr>
           <tr><td>Retail Prices API rate limit / schema drift</td><td>429s, missing SKUs</td><td>Cache responses in blob 24h; fall back to a stored price sheet with a staleness note</td></tr>
           <tr><td>Learn MCP unavailable</td><td>Slow/failing <code>microsoft_docs</code></td><td>Public service, no SLA &mdash; agent proceeds and notes guidance is from model knowledge, flag for review</td></tr>
-          <tr><td>Client data classification</td><td>Inventory may be commercially sensitive</td><td>Private storage, Entra-only UI, no public endpoints, delete on engagement close; confirm data-handling terms before ingest</td></tr>
+          <tr><td>Client data classification</td><td>Inventory may be commercially sensitive</td><td>Private storage, Entra-only UI, delete on engagement close; <code>query_inventory</code> ships anonymous for first deploy &mdash; a documented post-deploy step (DEPLOY.md) puts Entra auth in front of it; confirm data-handling terms before ingest</td></tr>
           <tr><td>Estimate treated as a firm bid</td><td>Someone lifts numbers straight into the proposal</td><td>Every export watermarked &ldquo;DRAFT &mdash; architect review required&rdquo;; confidence column non-optional</td></tr>
           <tr><td>Free SQL auto-pause</td><td>First query after 1h idle slow</td><td>Generous tool timeout; optional 40-min keep-warm timer Function</td></tr>
         </tbody>

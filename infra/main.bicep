@@ -85,3 +85,5 @@ output SERVICE_WEB_URI string = resources.outputs.containerAppUri
 
 output AZURE_CONTAINER_REGISTRY_ENDPOINT string = resources.outputs.containerRegistryLoginServer
 output AZURE_USER_ASSIGNED_IDENTITY_CLIENT_ID string = resources.outputs.uamiClientId
+output AZURE_USER_ASSIGNED_IDENTITY_NAME string = resources.outputs.uamiName
+output AZURE_USER_ASSIGNED_IDENTITY_PRINCIPAL_ID string = resources.outputs.uamiPrincipalId
