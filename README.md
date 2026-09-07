@@ -83,6 +83,7 @@ blob events.
 | `docs/effort-and-resource-loading.html` | pre-sales parametric effort model + 6-month resource loading |
 | `docs/discovery-questionnaire.html` | client questionnaire + assumptions register (AS-01…14) + risk register (RK-01…12) |
 | `prompts/production-readiness-audit.md` | reusable expert-panel audit prompt — "toy → production" review against the pre-sales scenario |
+| `audits/` | recorded runs of that audit — observations, prioritized backlog, rubric scores |
 
 Read them online at **[upendra25312.github.io/Landfall](https://upendra25312.github.io/Landfall/)**
 (GitHub Pages, served from `docs/`), or open the `docs/*.html` files locally — each is a
