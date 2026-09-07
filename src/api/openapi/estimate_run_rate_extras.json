@@ -1,0 +1,76 @@
+{
+  "openapi": "3.0.1",
+  "info": {
+    "title": "estimate_run_rate_extras",
+    "description": "Run-rate lines beyond compute and storage — Azure Backup (vault storage + protected-instance fees), internet egress (from net_out_gb_30d), monitoring (Log Analytics ingestion + Defender for Servers), and a support plan — plus the one-time cost of the migration itself (Azure Migrate / ASR tooling after its free window, replication egress, and dual-running on-prem + Azure during cutover). Deterministic; every rate from estimation_config.json [\"extras\"]. Excludes ExpressRoute/VPN, landing-zone fixed services, and DB compute.",
+    "version": "1.0.0"
+  },
+  "servers": [{ "url": "https://REPLACE/api" }],
+  "paths": {
+    "/estimate_run_rate_extras": {
+      "post": {
+        "operationId": "estimate_run_rate_extras",
+        "summary": "Run-rate extras (backup / egress / monitoring / support) + one-time migration cost",
+        "description": "Pass the servers (used_disk_gb or provisioned_disk_gb, net_out_gb_30d, powerstate) and monthly_infra_cost (the compute + storage totals from estimate_compute_cost + estimate_storage_cost, used for the dual-run one-time line). Returns run_rate_monthly (with a per-line breakdown), one_time, and totals including first_year_extras. Quote the assumptions.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["servers"],
+                "properties": {
+                  "servers": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "required": ["server_id"],
+                      "properties": {
+                        "server_id": { "type": "string" },
+                        "used_disk_gb": { "type": "number", "nullable": true },
+                        "provisioned_disk_gb": { "type": "number", "nullable": true },
+                        "net_out_gb_30d": { "type": "number", "nullable": true },
+                        "powerstate": { "type": "string", "nullable": true }
+                      }
+                    }
+                  },
+                  "monthly_infra_cost": {
+                    "type": "number",
+                    "nullable": true,
+                    "description": "compute + storage monthly total; drives the dual-run one-time line"
+                  },
+                  "config": {
+                    "type": "object",
+                    "nullable": true,
+                    "description": "Overrides merged over estimation_config.json (e.g. {\"extras\":{\"support\":{\"plan\":\"prodirect\"},\"monitoring\":{\"defender_for_servers\":false}}})"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Run-rate extras and one-time migration cost",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "currency": { "type": "string" },
+                    "region": { "type": "string" },
+                    "servers_counted": { "type": "number" },
+                    "run_rate_monthly": { "type": "object" },
+                    "one_time": { "type": "object" },
+                    "totals": { "type": "object" },
+                    "assumptions": { "type": "array", "items": { "type": "string" } }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

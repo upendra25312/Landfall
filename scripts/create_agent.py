@@ -45,6 +45,7 @@ _OPENAPI_TOOLS = {
     "vm_rightsize": "Deterministic Azure VM SKU + disk tier per server - sizes vCPU and RAM independently, uses utilisation data when present, driven by estimation_config.json.",
     "estimate_compute_cost": "Monthly Azure compute + managed-disk cost (bill of materials, PAYG/reserved/AHB, per-environment, low/expected/high) for a set of servers. Right-sizes and prices in one call.",
     "estimate_storage_cost": "Monthly Azure cost for the storage inventory (dbo.storage) - file shares (Files Premium / NetApp), DB volumes (SQL MI / Hyperscale / Flexible Server / Oracle), object (Blob). Block/managed-disk volumes are covered by estimate_compute_cost and excluded here.",
+    "estimate_run_rate_extras": "Run-rate lines beyond compute + storage - backup, internet egress, monitoring (Log Analytics + Defender), support plan - plus one-time migration cost (tooling, replication, dual-run). Pass the servers and the compute+storage monthly total.",
     "azure_retail_prices": "Live Azure pay-as-you-go and reserved prices (cached proxy over prices.azure.com) - for ad-hoc price lookups outside the compute BoM.",
 }
 
@@ -63,6 +64,10 @@ server/application migration from client-supplied on-premises inventory.
   `estimate_storage_cost`. It costs file shares, DB volumes and object storage; block
   volumes are already in `estimate_compute_cost`. Quote its by_type totals and the
   DB-storage caveat (DB compute/licensing is a separate replatform line).
+- For a full run-rate call `estimate_run_rate_extras` with the servers
+  (used_disk_gb, net_out_gb_30d, powerstate) and monthly_infra_cost = the compute +
+  storage total. It adds backup, egress, monitoring, support and the one-time
+  migration cost. Report run_rate_monthly.total_monthly and one_time.total separately.
 - Use `microsoft_docs` for landing-zone, Cloud Adoption Framework, and target-service guidance.
 - Use `search_documents` for client constraints (compliance, network, DR, non-functional).
 

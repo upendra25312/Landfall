@@ -20,6 +20,7 @@ import azure.functions as func
 from .compute_cost import estimate_compute_cost
 from .config import load_config
 from .rightsize import rightsize_many
+from .run_rate import estimate_run_rate_extras
 from .storage_cost import estimate_storage_cost
 
 cost_bp = func.Blueprint()
@@ -88,6 +89,26 @@ def estimate_storage_cost_route(req: func.HttpRequest) -> func.HttpResponse:
     except Exception as exc:                       # noqa: BLE001
         logging.exception("estimate_storage_cost failed")
         return _json({"error": f"storage estimate failed: {exc}"}, 502)
+    return _json(result)
+
+
+@cost_bp.route(route="estimate_run_rate_extras", methods=["POST"], auth_level=func.AuthLevel.ANONYMOUS)
+def estimate_run_rate_extras_route(req: func.HttpRequest) -> func.HttpResponse:
+    try:
+        body = req.get_json() or {}
+    except ValueError:
+        body = {}
+    servers = body.get("servers") or []
+    if not isinstance(servers, list) or not servers:
+        return _json({"error": 'body must be {"servers": [ {server_id, used_disk_gb, net_out_gb_30d, powerstate, ...} ], "monthly_infra_cost": <number>}'}, 400)
+
+    try:
+        cfg = load_config(overrides=body.get("config"))
+        infra = float(body.get("monthly_infra_cost") or 0.0)
+        result = estimate_run_rate_extras(servers[:5000], infra, cfg, body.get("price_date"))
+    except Exception as exc:                       # noqa: BLE001
+        logging.exception("estimate_run_rate_extras failed")
+        return _json({"error": f"run-rate estimate failed: {exc}"}, 500)
     return _json(result)
 
 

@@ -152,6 +152,15 @@ Separate proposal line items (not above):
   *storage only*; DB compute/licensing is a separate replatform line), **object $0**
   (none). Total **~$16.5k/mo (~$0.2M/yr)**, range ~$12.4k–$20.7k. The 522 block volumes
   (~161 TB) are already in the compute BoM's per-VM managed disk, not double-counted here.
+- **Run-rate extras** — the `estimate_run_rate_extras` tool (233 powered-on servers).
+  Backup ~$4.2k/mo, internet egress ~$0.5k/mo, monitoring ~$11.5k/mo (Log Analytics
+  ~$8.0k at 0.5 GB/server/day + Defender for Servers ~$3.5k), support (Standard) $0.1k/mo
+  → **~$16.3k/mo (~$0.2M/yr)**. **One-time migration cost ~$77k** (dual-run: 1.5 months
+  at 50% of the infra bill; Azure Migrate/ASR tooling is inside its 180-day free window).
+  Excludes ExpressRoute/VPN and LZ fixed services.
+- **Full Azure run-rate** = compute+disk ~$86k + storage ~$16.5k + extras ~$16.3k ≈
+  **~$119k/mo (~$1.43M/yr)**, plus ~$77k one-time. All from `estimation_config.json` —
+  tune and re-run.
 - **Microsoft funding** — **Azure Migrate and Modernize (AMM)** partner-led engagement is
   pre-approved (discovery-answers C3); nets down a meaningful share of eligible delivery
   cost. Cloud Accelerate Factory / FastTrack for the landing zone reduces LZ build PD.

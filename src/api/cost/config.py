@@ -74,6 +74,40 @@ DEFAULTS: dict = {
             "managed_premium_ssd_v2": 0.075,   # per GiB, capacity only (excl. IOPS/throughput)
         },
     },
+    "extras": {
+        # estimate_run_rate_extras (E2.4) — run-rate lines beyond compute + storage,
+        # plus one-time migration cost. Slow-moving list rates; pin your negotiated
+        # numbers here. All USD.
+        "backup": {
+            "enabled": True,
+            "backup_size_factor": 1.3,            # protected data GB * this = vault GB (fulls + incrementals + retention)
+            "vault_storage_usd_gb_month": 0.0224, # LRS vault; GRS ~ 0.05
+            "protected_instance_usd_month": 5.0,  # per protected VM (Azure Backup, <500 GB band)
+        },
+        "egress": {
+            "free_gb_month": 100,
+            "usd_per_gb": 0.05,                   # blended internet egress after the free tier
+            "internet_fraction_of_net_out": 0.30, # share of net_out_gb_30d that leaves Azure for the internet
+        },
+        "monitoring": {
+            "log_analytics_gb_per_server_day": 0.5,   # syslog + perf counters (not verbose VM insights)
+            "log_analytics_usd_gb": 2.30,             # pay-as-you-go; commitment tiers discount 15-30%
+            "defender_for_servers": True,
+            "defender_usd_server_month": 15.0,        # Defender for Servers Plan 2
+        },
+        "support": {
+            "plan": "standard",                  # none | developer | standard | prodirect
+            "flat_usd_month": {"developer": 29, "standard": 100, "prodirect": 1000},
+        },
+        "one_time": {
+            "migration_tooling_free_days": 180,          # Azure Migrate / ASR free window per server
+            "migration_tooling_usd_server_month": 25.0,  # after the free window
+            "avg_migration_months_per_server": 3,
+            "replication_egress_usd_per_gb": 0.0,        # on-prem -> Azure is ingress (free); set >0 for cross-cloud
+            "dual_run_overlap_months": 1.5,             # months on-prem + Azure run in parallel during cutover
+            "dual_run_fraction_of_infra": 0.5,         # fraction of the monthly infra bill incurred twice
+        },
+    },
     "effort": {
         "bands_pd": {"S": 8, "M": 14, "L": 22, "XL": 40},
         "assessment_pd_per_server": 0.15,

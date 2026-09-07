@@ -5,6 +5,82 @@ Operating model: [`landfall-5x5-prd.md` §7](landfall-5x5-prd.md). Tracker:
 
 ---
 
+## Cycle 6 — estimate_run_rate_extras (run-rate + one-time migration cost)
+
+**Date:** 2026-09-07 · **Owner:** FinOps + SWE · **Tracker:** E2.4 (done).
+
+### Plan
+
+**Objective.** The lines beyond compute + storage that still land on the monthly Azure
+bill — **backup** (vault storage + protected-instance fees), **internet egress** (from
+`net_out_gb_30d`), **monitoring** (Log Analytics ingestion + Defender for Servers),
+**support plan** — plus the **one-time** cost of the migration (Azure Migrate/ASR
+tooling after its free window, replication egress, dual-running on-prem + Azure during
+cutover). Deterministic; all rates from `estimation_config.json ["extras"]`, nothing
+fetched. `monthly_infra_cost` (compute + storage) drives the dual-run line.
+
+**Acceptance this cycle**
+
+| # | Criterion | Check |
+|---|---|---|
+| C1 | Powered-off servers excluded from every per-server line | unit test |
+| C2 | Backup = protected-data·factor·$/GB + instances·$/instance | unit test |
+| C3 | Egress applies the internet fraction and the free tier | unit test |
+| C4 | Monitoring = LA ingestion + Defender; Defender toggle works | unit test |
+| C5 | Support is the configured flat plan rate (0 for `none`) | unit test |
+| C6 | Tooling one-time = 0 while avg migration months < free window; > 0 after | unit test |
+| C7 | Dual-run one-time scales linearly with `monthly_infra_cost` | unit test |
+| C8 | `total_monthly` reconciles; `first_year_extras = run_rate·12 + one_time` | unit test |
+| C9 | Deterministic over the full sample `servers.csv` | unit test |
+
+**Design.** `cost/run_rate.py` — one pure function, no network. `cost/functions.py` —
+`POST /api/estimate_run_rate_extras`. New `extras` block in `config.py` DEFAULTS +
+`estimation_config.json`. OpenAPI spec + agent tool #6 + prompt line.
+
+**Deferred.** ExpressRoute/VPN and landing-zone fixed services stay separate proposal
+lines (E3 / commercial). Commitment-tier LA discounts are a config edit, not modelled.
+
+### Do
+
+- `src/api/cost/run_rate.py` — new. `functions.py` — 4th route. `config.py` — `extras`
+  block. `__init__.py` exports `estimate_run_rate_extras`.
+- `src/api/openapi/estimate_run_rate_extras.json` — new. `scripts/create_agent.py` —
+  `_OPENAPI_TOOLS` (now 6) + `SYSTEM_PROMPT` run-rate line.
+- `tests/test_run_rate.py` — 9 cases. `estimation_config.json`, `DEPLOY.md`,
+  `sample-estate/effort-inputs.md`, `tests/README.md` updated.
+
+### Check
+
+`pytest tests -q` → **58 passed**. C1–C9 pass (see test names).
+
+Full sample estate (233 powered-on servers), Sweden Central, infra bill $102.9k/mo:
+```
+backup          $  4,163 /mo   (vault storage + 233 protected instances)
+internet egress $    491 /mo   (30% of 33 TB net_out, less 100 GB free, @ $0.05/GB)
+monitoring      $ 11,534 /mo   (Log Analytics $8,039 @ 0.5 GB/server/day + Defender $3,495)
+support         $    100 /mo   (Standard, flat)
+RUN-RATE EXTRAS $ 16,287 /mo   ($195,445 /yr)
+
+one-time: dual-run $77,170 (1.5 mo x 50% of infra) ; tooling $0 (within 180-day free window)
+first-year extras  $272,615
+```
+
+### Act
+
+- **E2.4 done.** Full Azure run-rate for the sample estate: compute+disk ~$86k +
+  storage ~$16.5k + extras ~$16.3k ≈ **~$119k/mo (~$1.43M/yr)**, plus ~$77k one-time.
+- **Watch:** monitoring is the largest extra and the most assumption-sensitive
+  (LA GB/server/day). Default is deliberately conservative (0.5 GB — syslog + counters,
+  not verbose VM insights); a real engagement sets it from the client's logging policy.
+- **E2.1–E2.4 done** — right-size, compute BoM, storage BoM, run-rate extras. Every
+  result already carries a low/expected/high range; **E2.5** (an explicit top-3
+  cost-driver / sensitivity block on each result) is still open, small, and can fold
+  into the E5 deliverable cycle. **Next — Cycle 7:** E3.1/E3.2 — `design_landing_zone`
+  (ALZ topology, spoke count, regulated-spoke flag from the portfolio + compliance
+  scope), using the `azure-enterprise-infra-planner` skill.
+
+---
+
 ## Cycle 5 — estimate_storage_cost (file / DB / object BoM)
 
 **Date:** 2026-09-07 · **Owner:** FinOps + SWE · **Tracker:** E2.3 (done) ·
