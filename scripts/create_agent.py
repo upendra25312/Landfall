@@ -90,7 +90,9 @@ def main() -> None:
                         AISearchIndexResource(
                             project_connection_id=conn,
                             index_name=index_name,
-                            query_type="vector_semantic_hybrid",
+                            # vector + keyword hybrid; "vector_semantic_hybrid" needs the
+                            # semantic ranker, which the Free AI Search tier does not offer
+                            query_type="vector_simple_hybrid",
                         )
                     ]
                 )

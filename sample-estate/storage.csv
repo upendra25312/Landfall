@@ -1,0 +1,574 @@
+storage_id,server_id,type,size_gb,iops,target_service
+stg-0001,srv-0001,block,64,2300,Premium SSD P10
+stg-0002,srv-0002,block,64,2300,Premium SSD P10
+stg-0003,srv-0002,block,1048.6,1100,Ultra Disk
+stg-0004,srv-0003,block,64,500,Premium SSD P10
+stg-0005,srv-0003,block,174.0,1100,Standard SSD E20
+stg-0006,srv-0003,block,273.8,500,Premium SSD P20
+stg-0007,srv-0004,block,64,1100,Premium SSD P10
+stg-0008,srv-0004,block,63.1,2300,Premium SSD P20
+stg-0009,srv-0005,block,64,500,Premium SSD P10
+stg-0010,srv-0005,block,343.6,2300,Standard SSD E20
+stg-0011,srv-0006,block,64,1100,Premium SSD P10
+stg-0012,srv-0006,block,133.2,500,Premium SSD P30
+stg-0013,srv-0006,block,83.4,2300,Premium SSD P30
+stg-0014,srv-0007,block,64,2300,Premium SSD P10
+stg-0015,srv-0007,block,157.7,5000,Premium SSD P30
+stg-0016,srv-0008,block,64,2300,Premium SSD P10
+stg-0017,srv-0009,block,64,2300,Premium SSD P10
+stg-0018,srv-0009,block,1614.2,5000,Ultra Disk
+stg-0019,srv-0009,block,1644.4,7500,Standard SSD E20
+stg-0020,srv-0009,db,3261.8,20000,SQL Managed Instance
+stg-0021,srv-0010,block,64,2300,Premium SSD P10
+stg-0022,srv-0010,block,419.8,5000,Premium SSD v2
+stg-0023,srv-0010,db,336.5,12000,Azure SQL DB Hyperscale
+stg-0024,srv-0011,block,64,500,Premium SSD P10
+stg-0025,srv-0011,block,695.0,500,Premium SSD P20
+stg-0026,srv-0012,block,64,1100,Premium SSD P10
+stg-0027,srv-0012,block,768.1,5000,Standard SSD E20
+stg-0028,srv-0013,block,64,1100,Premium SSD P10
+stg-0029,srv-0013,block,916.9,5000,Premium SSD v2
+stg-0030,srv-0014,block,64,500,Premium SSD P10
+stg-0031,srv-0014,block,679.9,5000,Premium SSD P20
+stg-0032,srv-0014,db,731.9,5000,Azure SQL DB Hyperscale
+stg-0033,srv-0015,block,64,500,Premium SSD P10
+stg-0034,srv-0015,block,373.3,5000,Ultra Disk
+stg-0035,srv-0015,db,450.1,20000,SQL Managed Instance
+stg-0036,srv-0016,block,128,2300,Premium SSD P10
+stg-0037,srv-0016,block,137.4,1100,Standard SSD E20
+stg-0038,srv-0017,block,128,2300,Premium SSD P10
+stg-0039,srv-0017,block,41.3,1100,Premium SSD P20
+stg-0040,srv-0017,block,40.6,1100,Ultra Disk
+stg-0041,srv-0018,block,128,500,Premium SSD P10
+stg-0042,srv-0018,block,175.1,2300,Standard SSD E20
+stg-0043,srv-0019,block,128,2300,Premium SSD P10
+stg-0044,srv-0020,block,128,500,Premium SSD P10
+stg-0045,srv-0020,block,405.9,500,Premium SSD v2
+stg-0046,srv-0020,block,359.0,5000,Premium SSD P20
+stg-0047,srv-0021,block,128,2300,Premium SSD P10
+stg-0048,srv-0021,block,705.2,2300,Ultra Disk
+stg-0049,srv-0021,db,667.3,5000,SQL Managed Instance
+stg-0050,srv-0022,block,128,1100,Premium SSD P10
+stg-0051,srv-0022,block,538.1,2300,Standard SSD E20
+stg-0052,srv-0022,db,338.4,12000,SQL Managed Instance
+stg-0053,srv-0023,block,64,2300,Premium SSD P10
+stg-0054,srv-0023,block,35.7,5000,Standard SSD E20
+stg-0055,srv-0023,block,38.8,500,Standard SSD E20
+stg-0056,srv-0024,block,64,500,Premium SSD P10
+stg-0057,srv-0024,block,107.3,1100,Premium SSD v2
+stg-0058,srv-0025,block,64,1100,Premium SSD P10
+stg-0059,srv-0025,block,46.6,500,Premium SSD v2
+stg-0060,srv-0025,block,56.9,500,Ultra Disk
+stg-0061,srv-0026,block,64,500,Premium SSD P10
+stg-0062,srv-0026,block,118.7,2300,Standard SSD E20
+stg-0063,srv-0026,block,100.0,1100,Standard SSD E20
+stg-0064,srv-0027,block,64,2300,Premium SSD P10
+stg-0065,srv-0027,block,187.0,16000,Ultra Disk
+stg-0066,srv-0027,block,200.4,7500,Standard SSD E20
+stg-0067,srv-0027,db,398.1,12000,Oracle DB@Azure
+stg-0068,srv-0028,block,64,500,Premium SSD P10
+stg-0069,srv-0028,block,900.7,16000,Premium SSD P30
+stg-0070,srv-0028,block,1120.5,7500,Standard SSD E20
+stg-0071,srv-0028,db,1572.6,20000,SQL Managed Instance
+stg-0072,srv-0029,block,64,2300,Premium SSD P10
+stg-0073,srv-0029,block,105.4,1100,Premium SSD v2
+stg-0074,srv-0030,block,64,500,Premium SSD P10
+stg-0075,srv-0030,block,49.7,500,Premium SSD P20
+stg-0076,srv-0030,block,39.7,500,Premium SSD v2
+stg-0077,srv-0031,block,64,500,Premium SSD P10
+stg-0078,srv-0031,block,106.3,5000,Premium SSD v2
+stg-0079,srv-0031,block,63.2,1100,Premium SSD P30
+stg-0080,srv-0032,block,64,500,Premium SSD P10
+stg-0081,srv-0033,block,64,2300,Premium SSD P10
+stg-0082,srv-0033,block,213.1,5000,Ultra Disk
+stg-0083,srv-0033,block,185.6,2300,Ultra Disk
+stg-0084,srv-0034,block,64,500,Premium SSD P10
+stg-0085,srv-0034,block,92.0,5000,Premium SSD v2
+stg-0086,srv-0035,block,64,500,Premium SSD P10
+stg-0087,srv-0035,block,357.1,5000,Ultra Disk
+stg-0088,srv-0035,block,350.6,2300,Premium SSD P30
+stg-0089,srv-0035,db,532.1,5000,Azure SQL DB Hyperscale
+stg-0090,srv-0036,block,64,500,Premium SSD P10
+stg-0091,srv-0036,block,1013.6,7500,Standard SSD E20
+stg-0092,srv-0036,block,822.0,5000,Ultra Disk
+stg-0093,srv-0036,db,834.9,20000,SQL Managed Instance
+stg-0094,srv-0037,block,128,500,Premium SSD P10
+stg-0095,srv-0037,block,192.6,2300,Premium SSD P30
+stg-0096,srv-0038,block,128,1100,Premium SSD P10
+stg-0097,srv-0038,block,1849.7,1100,Standard SSD E20
+stg-0098,srv-0039,block,128,1100,Premium SSD P10
+stg-0099,srv-0040,block,128,1100,Premium SSD P10
+stg-0100,srv-0040,block,642.9,500,Ultra Disk
+stg-0101,srv-0041,block,128,500,Premium SSD P10
+stg-0102,srv-0041,block,197.1,500,Ultra Disk
+stg-0103,srv-0042,block,128,1100,Premium SSD P10
+stg-0104,srv-0042,block,1939.7,16000,Ultra Disk
+stg-0105,srv-0042,block,1724.0,5000,Premium SSD P30
+stg-0106,srv-0042,db,3607.0,12000,Oracle DB@Azure
+stg-0107,srv-0043,block,128,2300,Premium SSD P10
+stg-0108,srv-0043,block,3444.7,7500,Premium SSD v2
+stg-0109,srv-0043,db,2422.1,5000,Azure SQL DB Hyperscale
+stg-0110,srv-0044,block,64,1100,Premium SSD P10
+stg-0111,srv-0044,block,275.9,500,Premium SSD P30
+stg-0112,srv-0044,block,185.4,500,Standard SSD E20
+stg-0113,srv-0045,block,64,2300,Premium SSD P10
+stg-0114,srv-0045,block,510.4,1100,Standard SSD E20
+stg-0115,srv-0046,block,64,1100,Premium SSD P10
+stg-0116,srv-0046,block,363.2,2300,Premium SSD P20
+stg-0117,srv-0047,block,64,2300,Premium SSD P10
+stg-0118,srv-0047,block,68.0,1100,Premium SSD P20
+stg-0119,srv-0048,block,64,2300,Premium SSD P10
+stg-0120,srv-0048,block,414.5,1100,Premium SSD P20
+stg-0121,srv-0049,block,64,500,Premium SSD P10
+stg-0122,srv-0049,block,521.3,7500,Premium SSD P20
+stg-0123,srv-0049,db,404.2,5000,SQL Managed Instance
+stg-0124,srv-0050,block,64,2300,Premium SSD P10
+stg-0125,srv-0050,block,619.1,2300,Standard SSD E20
+stg-0126,srv-0050,block,536.3,7500,Standard SSD E20
+stg-0127,srv-0050,block,716.2,7500,Standard SSD E20
+stg-0128,srv-0050,db,1006.5,20000,PostgreSQL Flexible Server
+stg-0129,srv-0051,block,64,1100,Premium SSD P10
+stg-0130,srv-0051,block,1997.0,5000,Premium SSD v2
+stg-0131,srv-0051,db,1357.6,12000,Oracle DB@Azure
+stg-0132,srv-0052,block,128,2300,Premium SSD P10
+stg-0133,srv-0053,block,128,2300,Premium SSD P10
+stg-0134,srv-0053,block,816.0,1100,Standard SSD E20
+stg-0135,srv-0054,block,128,500,Premium SSD P10
+stg-0136,srv-0054,block,303.1,500,Premium SSD v2
+stg-0137,srv-0054,block,374.8,5000,Ultra Disk
+stg-0138,srv-0055,block,128,500,Premium SSD P10
+stg-0139,srv-0055,block,799.5,7500,Premium SSD P20
+stg-0140,srv-0055,block,895.3,5000,Premium SSD P30
+stg-0141,srv-0055,db,1301.9,20000,PostgreSQL Flexible Server
+stg-0142,srv-0056,block,128,1100,Premium SSD P10
+stg-0143,srv-0056,block,1739.5,5000,Standard SSD E20
+stg-0144,srv-0056,db,1536.7,12000,PostgreSQL Flexible Server
+stg-0145,srv-0057,block,64,1100,Premium SSD P10
+stg-0146,srv-0057,block,66.0,1100,Ultra Disk
+stg-0147,srv-0058,block,64,2300,Premium SSD P10
+stg-0148,srv-0058,block,80.6,2300,Premium SSD P20
+stg-0149,srv-0059,block,64,2300,Premium SSD P10
+stg-0150,srv-0059,block,102.8,1100,Premium SSD P20
+stg-0151,srv-0059,block,100.0,1100,Standard SSD E20
+stg-0152,srv-0060,block,64,500,Premium SSD P10
+stg-0153,srv-0060,block,1660.4,1100,Ultra Disk
+stg-0154,srv-0061,block,64,2300,Premium SSD P10
+stg-0155,srv-0061,block,2033.0,7500,Premium SSD P30
+stg-0156,srv-0061,block,1804.4,2300,Standard SSD E20
+stg-0157,srv-0061,db,1841.1,5000,SQL Managed Instance
+stg-0158,srv-0062,block,64,500,Premium SSD P10
+stg-0159,srv-0062,block,429.2,2300,Standard SSD E20
+stg-0160,srv-0062,block,497.8,7500,Premium SSD P30
+stg-0161,srv-0062,db,594.1,20000,PostgreSQL Flexible Server
+stg-0162,srv-0063,block,128,1100,Premium SSD P10
+stg-0163,srv-0064,block,128,1100,Premium SSD P10
+stg-0164,srv-0065,block,128,1100,Premium SSD P10
+stg-0165,srv-0065,block,454.9,1100,Premium SSD P30
+stg-0166,srv-0066,block,128,1100,Premium SSD P10
+stg-0167,srv-0066,block,239.8,5000,Standard SSD E20
+stg-0168,srv-0067,block,128,500,Premium SSD P10
+stg-0169,srv-0067,block,1238.1,16000,Premium SSD P20
+stg-0170,srv-0067,block,1411.9,7500,Standard SSD E20
+stg-0171,srv-0067,block,1250.1,16000,Premium SSD v2
+stg-0172,srv-0067,db,1800.4,12000,Azure SQL DB Hyperscale
+stg-0173,srv-0068,block,128,1100,Premium SSD P10
+stg-0174,srv-0068,block,1897.5,2300,Ultra Disk
+stg-0175,srv-0069,block,128,2300,Premium SSD P10
+stg-0176,srv-0069,block,94.2,5000,Premium SSD P30
+stg-0177,srv-0069,block,124.7,5000,Standard SSD E20
+stg-0178,srv-0070,block,128,500,Premium SSD P10
+stg-0179,srv-0070,block,2103.5,5000,Premium SSD P20
+stg-0180,srv-0070,db,1497.1,20000,SQL Managed Instance
+stg-0181,srv-0071,block,128,500,Premium SSD P10
+stg-0182,srv-0071,block,1635.4,2300,Premium SSD v2
+stg-0183,srv-0071,db,1778.5,12000,SQL Managed Instance
+stg-0184,srv-0072,block,64,500,Premium SSD P10
+stg-0185,srv-0072,block,86.2,500,Premium SSD v2
+stg-0186,srv-0072,block,73.1,1100,Premium SSD v2
+stg-0187,srv-0073,block,64,2300,Premium SSD P10
+stg-0188,srv-0073,block,32,1100,Premium SSD P30
+stg-0189,srv-0073,block,32.9,1100,Premium SSD P20
+stg-0190,srv-0074,block,64,2300,Premium SSD P10
+stg-0191,srv-0074,block,157.3,2300,Premium SSD P30
+stg-0192,srv-0075,block,64,1100,Premium SSD P10
+stg-0193,srv-0075,block,185.6,7500,Ultra Disk
+stg-0194,srv-0075,block,140.4,5000,Ultra Disk
+stg-0195,srv-0075,block,153.4,16000,Ultra Disk
+stg-0196,srv-0075,db,368.6,20000,PostgreSQL Flexible Server
+stg-0197,srv-0076,block,64,1100,Premium SSD P10
+stg-0198,srv-0076,block,34.8,500,Standard SSD E20
+stg-0199,srv-0076,block,32,5000,Premium SSD P30
+stg-0200,srv-0077,block,64,500,Premium SSD P10
+stg-0201,srv-0077,block,121.1,1100,Premium SSD P30
+stg-0202,srv-0078,block,64,1100,Premium SSD P10
+stg-0203,srv-0078,block,173.5,5000,Standard SSD E20
+stg-0204,srv-0078,block,150.0,5000,Premium SSD P30
+stg-0205,srv-0079,block,128,2300,Premium SSD P10
+stg-0206,srv-0079,block,99.8,2300,Premium SSD P20
+stg-0207,srv-0080,block,128,1100,Premium SSD P10
+stg-0208,srv-0080,block,319.0,1100,Standard SSD E20
+stg-0209,srv-0080,block,405.7,1100,Premium SSD P30
+stg-0210,srv-0081,block,128,500,Premium SSD P10
+stg-0211,srv-0081,block,36.5,2300,Premium SSD P30
+stg-0212,srv-0081,block,37.0,2300,Standard SSD E20
+stg-0213,srv-0082,block,64,500,Premium SSD P10
+stg-0214,srv-0083,block,64,500,Premium SSD P10
+stg-0215,srv-0083,block,595.8,5000,Ultra Disk
+stg-0216,srv-0084,block,128,1100,Premium SSD P10
+stg-0217,srv-0084,block,973.0,5000,Premium SSD P20
+stg-0218,srv-0085,block,128,1100,Premium SSD P10
+stg-0219,srv-0086,block,128,500,Premium SSD P10
+stg-0220,srv-0087,block,128,2300,Premium SSD P10
+stg-0221,srv-0088,block,128,500,Premium SSD P10
+stg-0222,srv-0088,block,1517.7,5000,Standard SSD E20
+stg-0223,srv-0088,db,1563.8,5000,SQL Managed Instance
+stg-0224,srv-0089,block,128,500,Premium SSD P10
+stg-0225,srv-0089,block,867.1,7500,Standard SSD E20
+stg-0226,srv-0089,db,569.1,12000,PostgreSQL Flexible Server
+stg-0227,srv-0090,block,64,1100,Premium SSD P10
+stg-0228,srv-0091,block,64,1100,Premium SSD P10
+stg-0229,srv-0092,block,64,500,Premium SSD P10
+stg-0230,srv-0093,block,64,1100,Premium SSD P10
+stg-0231,srv-0093,block,254.3,5000,Premium SSD P20
+stg-0232,srv-0093,block,278.4,2300,Standard SSD E20
+stg-0233,srv-0094,block,64,500,Premium SSD P10
+stg-0234,srv-0095,block,64,2300,Premium SSD P10
+stg-0235,srv-0095,block,158.5,5000,Premium SSD P20
+stg-0236,srv-0096,block,64,2300,Premium SSD P10
+stg-0237,srv-0096,block,358.2,2300,Ultra Disk
+stg-0238,srv-0096,db,375.3,5000,Oracle DB@Azure
+stg-0239,srv-0097,block,64,1100,Premium SSD P10
+stg-0240,srv-0097,block,1093.7,5000,Premium SSD v2
+stg-0241,srv-0097,block,995.7,2300,Premium SSD P30
+stg-0242,srv-0097,db,1312.0,12000,Azure SQL DB Hyperscale
+stg-0243,srv-0098,block,64,1100,Premium SSD P10
+stg-0244,srv-0099,block,64,2300,Premium SSD P10
+stg-0245,srv-0099,block,434.7,1100,Standard SSD E20
+stg-0246,srv-0100,block,64,1100,Premium SSD P10
+stg-0247,srv-0101,block,64,500,Premium SSD P10
+stg-0248,srv-0101,block,1827.5,16000,Premium SSD P20
+stg-0249,srv-0101,block,1237.9,2300,Ultra Disk
+stg-0250,srv-0101,db,3243.0,12000,Azure SQL DB Hyperscale
+stg-0251,srv-0102,block,64,1100,Premium SSD P10
+stg-0252,srv-0103,block,64,500,Premium SSD P10
+stg-0253,srv-0103,block,68.0,2300,Premium SSD v2
+stg-0254,srv-0104,block,64,500,Premium SSD P10
+stg-0255,srv-0104,block,118.1,500,Premium SSD P20
+stg-0256,srv-0105,block,64,1100,Premium SSD P10
+stg-0257,srv-0105,block,1553.1,7500,Standard SSD E20
+stg-0258,srv-0105,db,1570.0,5000,Oracle DB@Azure
+stg-0259,srv-0106,block,64,1100,Premium SSD P10
+stg-0260,srv-0106,block,92.8,500,Standard SSD E20
+stg-0261,srv-0107,block,64,2300,Premium SSD P10
+stg-0262,srv-0107,block,900.6,5000,Premium SSD P20
+stg-0263,srv-0107,block,904.6,2300,Premium SSD P30
+stg-0264,srv-0108,block,64,2300,Premium SSD P10
+stg-0265,srv-0108,block,94.4,1100,Premium SSD v2
+stg-0266,srv-0108,block,110.8,5000,Premium SSD P30
+stg-0267,srv-0109,block,64,1100,Premium SSD P10
+stg-0268,srv-0109,block,846.9,5000,Premium SSD P20
+stg-0269,srv-0110,block,64,500,Premium SSD P10
+stg-0270,srv-0110,block,2023.4,5000,Premium SSD P30
+stg-0271,srv-0110,block,1967.1,16000,Premium SSD P20
+stg-0272,srv-0110,db,2711.7,12000,Azure SQL DB Hyperscale
+stg-0273,srv-0111,block,64,2300,Premium SSD P10
+stg-0274,srv-0111,block,1559.1,7500,Premium SSD v2
+stg-0275,srv-0111,block,1327.4,2300,Premium SSD v2
+stg-0276,srv-0111,db,3348.9,5000,Azure SQL DB Hyperscale
+stg-0277,srv-0112,block,64,500,Premium SSD P10
+stg-0278,srv-0112,block,1338.4,1100,Premium SSD v2
+stg-0279,srv-0113,block,64,500,Premium SSD P10
+stg-0280,srv-0113,block,185.8,2300,Premium SSD v2
+stg-0281,srv-0113,block,156.6,500,Premium SSD v2
+stg-0282,srv-0114,block,64,500,Premium SSD P10
+stg-0283,srv-0114,block,68.1,500,Standard SSD E20
+stg-0284,srv-0114,block,64.0,500,Premium SSD P30
+stg-0285,srv-0115,block,64,2300,Premium SSD P10
+stg-0286,srv-0115,block,1035.3,500,Ultra Disk
+stg-0287,srv-0115,block,750.5,500,Premium SSD v2
+stg-0288,srv-0116,block,64,1100,Premium SSD P10
+stg-0289,srv-0117,block,64,500,Premium SSD P10
+stg-0290,srv-0117,block,2664.9,5000,Ultra Disk
+stg-0291,srv-0117,db,2427.6,5000,Azure SQL DB Hyperscale
+stg-0292,srv-0118,block,128,2300,Premium SSD P10
+stg-0293,srv-0118,block,900.3,5000,Premium SSD v2
+stg-0294,srv-0119,block,128,2300,Premium SSD P10
+stg-0295,srv-0119,block,187.4,5000,Premium SSD v2
+stg-0296,srv-0120,block,128,500,Premium SSD P10
+stg-0297,srv-0120,block,1792.0,7500,Premium SSD P20
+stg-0298,srv-0120,db,1365.9,20000,Oracle DB@Azure
+stg-0299,srv-0121,block,128,1100,Premium SSD P10
+stg-0300,srv-0121,block,224.0,7500,Premium SSD P30
+stg-0301,srv-0121,block,206.4,16000,Premium SSD P30
+stg-0302,srv-0121,db,360.6,20000,Azure SQL DB Hyperscale
+stg-0303,srv-0122,block,64,1100,Premium SSD P10
+stg-0304,srv-0122,block,399.4,5000,Standard SSD E20
+stg-0305,srv-0123,block,64,1100,Premium SSD P10
+stg-0306,srv-0124,block,64,2300,Premium SSD P10
+stg-0307,srv-0125,block,64,1100,Premium SSD P10
+stg-0308,srv-0125,block,1758.8,7500,Premium SSD v2
+stg-0309,srv-0125,db,1126.7,5000,Azure SQL DB Hyperscale
+stg-0310,srv-0126,block,128,1100,Premium SSD P10
+stg-0311,srv-0127,block,128,2300,Premium SSD P10
+stg-0312,srv-0127,block,1085.0,1100,Premium SSD v2
+stg-0313,srv-0128,block,128,500,Premium SSD P10
+stg-0314,srv-0128,block,199.1,1100,Premium SSD P30
+stg-0315,srv-0128,block,200.6,1100,Premium SSD P20
+stg-0316,srv-0129,block,128,1100,Premium SSD P10
+stg-0317,srv-0129,block,165.4,16000,Ultra Disk
+stg-0318,srv-0129,block,271.1,2300,Premium SSD P30
+stg-0319,srv-0129,db,407.8,5000,Oracle DB@Azure
+stg-0320,srv-0130,block,64,2300,Premium SSD P10
+stg-0321,srv-0131,block,64,2300,Premium SSD P10
+stg-0322,srv-0131,block,79.2,5000,Premium SSD v2
+stg-0323,srv-0132,block,64,500,Premium SSD P10
+stg-0324,srv-0132,block,1585.1,5000,Standard SSD E20
+stg-0325,srv-0133,block,64,500,Premium SSD P10
+stg-0326,srv-0133,block,498.6,500,Standard SSD E20
+stg-0327,srv-0134,block,64,500,Premium SSD P10
+stg-0328,srv-0134,block,882.9,7500,Ultra Disk
+stg-0329,srv-0134,block,903.6,7500,Ultra Disk
+stg-0330,srv-0134,db,1533.7,5000,SQL Managed Instance
+stg-0331,srv-0135,block,64,2300,Premium SSD P10
+stg-0332,srv-0135,block,217.1,500,Premium SSD P20
+stg-0333,srv-0135,block,163.2,5000,Premium SSD P20
+stg-0334,srv-0136,block,64,500,Premium SSD P10
+stg-0335,srv-0136,block,64.1,500,Ultra Disk
+stg-0336,srv-0137,block,64,1100,Premium SSD P10
+stg-0337,srv-0137,block,1315.9,16000,Premium SSD P20
+stg-0338,srv-0137,block,2009.1,16000,Ultra Disk
+stg-0339,srv-0137,db,2044.1,12000,Azure SQL DB Hyperscale
+stg-0340,srv-0138,block,128,2300,Premium SSD P10
+stg-0341,srv-0138,block,92.3,2300,Standard SSD E20
+stg-0342,srv-0139,block,128,1100,Premium SSD P10
+stg-0343,srv-0140,block,128,500,Premium SSD P10
+stg-0344,srv-0140,block,554.2,7500,Premium SSD P20
+stg-0345,srv-0140,block,519.1,2300,Premium SSD P30
+stg-0346,srv-0140,block,467.4,7500,Ultra Disk
+stg-0347,srv-0140,db,1660.5,12000,Azure SQL DB Hyperscale
+stg-0348,srv-0141,block,64,1100,Premium SSD P10
+stg-0349,srv-0142,block,64,500,Premium SSD P10
+stg-0350,srv-0142,block,188.5,1100,Premium SSD v2
+stg-0351,srv-0143,block,64,500,Premium SSD P10
+stg-0352,srv-0144,block,128,500,Premium SSD P10
+stg-0353,srv-0144,block,529.6,2300,Premium SSD v2
+stg-0354,srv-0145,block,128,1100,Premium SSD P10
+stg-0355,srv-0146,block,64,1100,Premium SSD P10
+stg-0356,srv-0146,block,33.4,2300,Premium SSD P20
+stg-0357,srv-0146,block,38.8,1100,Premium SSD P20
+stg-0358,srv-0147,block,64,2300,Premium SSD P10
+stg-0359,srv-0147,block,87.4,1100,Premium SSD v2
+stg-0360,srv-0148,block,64,1100,Premium SSD P10
+stg-0361,srv-0149,block,128,1100,Premium SSD P10
+stg-0362,srv-0149,block,80.6,1100,Ultra Disk
+stg-0363,srv-0150,block,128,1100,Premium SSD P10
+stg-0364,srv-0151,block,128,1100,Premium SSD P10
+stg-0365,srv-0152,block,128,500,Premium SSD P10
+stg-0366,srv-0152,block,93.0,2300,Premium SSD v2
+stg-0367,srv-0152,block,61.0,5000,Premium SSD P20
+stg-0368,srv-0153,block,128,1100,Premium SSD P10
+stg-0369,srv-0154,block,128,1100,Premium SSD P10
+stg-0370,srv-0154,block,132.3,500,Premium SSD P20
+stg-0371,srv-0154,block,89.5,5000,Ultra Disk
+stg-0372,srv-0155,block,128,2300,Premium SSD P10
+stg-0373,srv-0156,block,128,500,Premium SSD P10
+stg-0374,srv-0156,block,135.8,2300,Premium SSD P30
+stg-0375,srv-0157,block,128,1100,Premium SSD P10
+stg-0376,srv-0157,block,497.8,500,Premium SSD P30
+stg-0377,srv-0157,block,482.4,2300,Premium SSD P30
+stg-0378,srv-0158,block,128,500,Premium SSD P10
+stg-0379,srv-0158,block,515.0,2300,Standard SSD E20
+stg-0380,srv-0159,block,128,500,Premium SSD P10
+stg-0381,srv-0159,block,142.6,2300,Standard SSD E20
+stg-0382,srv-0160,block,128,2300,Premium SSD P10
+stg-0383,srv-0160,block,51.5,5000,Ultra Disk
+stg-0384,srv-0161,block,128,2300,Premium SSD P10
+stg-0385,srv-0161,block,103.5,1100,Standard SSD E20
+stg-0386,srv-0162,block,128,1100,Premium SSD P10
+stg-0387,srv-0162,block,105.5,1100,Premium SSD P20
+stg-0388,srv-0163,block,128,2300,Premium SSD P10
+stg-0389,srv-0163,block,178.1,1100,Premium SSD P20
+stg-0390,srv-0164,block,128,1100,Premium SSD P10
+stg-0391,srv-0164,block,65.2,1100,Ultra Disk
+stg-0392,srv-0165,block,128,500,Premium SSD P10
+stg-0393,srv-0165,block,253.6,500,Premium SSD P20
+stg-0394,srv-0166,block,128,1100,Premium SSD P10
+stg-0395,srv-0166,block,246.7,2300,Standard SSD E20
+stg-0396,srv-0167,block,128,1100,Premium SSD P10
+stg-0397,srv-0167,block,841.2,2300,Premium SSD P20
+stg-0398,srv-0168,block,128,500,Premium SSD P10
+stg-0399,srv-0169,block,128,500,Premium SSD P10
+stg-0400,srv-0169,block,627.8,2300,Ultra Disk
+stg-0401,srv-0170,block,128,2300,Premium SSD P10
+stg-0402,srv-0170,block,459.9,1100,Premium SSD v2
+stg-0403,srv-0171,block,128,1100,Premium SSD P10
+stg-0404,srv-0172,block,128,2300,Premium SSD P10
+stg-0405,srv-0172,block,170.8,5000,Premium SSD P30
+stg-0406,srv-0172,block,177.1,5000,Standard SSD E20
+stg-0407,srv-0173,block,128,1100,Premium SSD P10
+stg-0408,srv-0173,block,54.6,1100,Premium SSD v2
+stg-0409,srv-0174,block,128,1100,Premium SSD P10
+stg-0410,srv-0175,block,128,1100,Premium SSD P10
+stg-0411,srv-0175,block,182.1,1100,Premium SSD P20
+stg-0412,srv-0175,block,162.1,5000,Ultra Disk
+stg-0413,srv-0176,block,128,1100,Premium SSD P10
+stg-0414,srv-0176,block,132.3,1100,Standard SSD E20
+stg-0415,srv-0177,block,128,1100,Premium SSD P10
+stg-0416,srv-0178,block,128,2300,Premium SSD P10
+stg-0417,srv-0178,block,61.4,5000,Ultra Disk
+stg-0418,srv-0178,block,68.5,500,Ultra Disk
+stg-0419,srv-0179,block,128,500,Premium SSD P10
+stg-0420,srv-0179,block,41.4,500,Premium SSD P20
+stg-0421,srv-0179,block,43.0,5000,Premium SSD v2
+stg-0422,srv-0180,block,128,2300,Premium SSD P10
+stg-0423,srv-0180,block,171.6,500,Premium SSD P20
+stg-0424,srv-0180,block,149.1,5000,Premium SSD P30
+stg-0425,srv-0181,block,128,1100,Premium SSD P10
+stg-0426,srv-0181,block,68.3,2300,Ultra Disk
+stg-0427,srv-0181,block,106.0,1100,Standard SSD E20
+stg-0428,srv-0182,block,64,2300,Premium SSD P10
+stg-0429,srv-0182,block,129.0,500,Premium SSD P20
+stg-0430,srv-0182,block,197.9,1100,Standard SSD E20
+stg-0431,srv-0183,block,64,1100,Premium SSD P10
+stg-0432,srv-0183,block,165.1,1100,Standard SSD E20
+stg-0433,srv-0184,block,128,2300,Premium SSD P10
+stg-0434,srv-0184,block,416.5,500,Premium SSD P30
+stg-0435,srv-0185,block,128,1100,Premium SSD P10
+stg-0436,srv-0185,block,491.1,500,Premium SSD v2
+stg-0437,srv-0186,block,128,500,Premium SSD P10
+stg-0438,srv-0186,block,36.7,500,Ultra Disk
+stg-0439,srv-0186,block,38.1,1100,Standard SSD E20
+stg-0440,srv-0187,block,128,2300,Premium SSD P10
+stg-0441,srv-0187,block,32,1100,Premium SSD P30
+stg-0442,srv-0187,block,44.1,1100,Premium SSD P20
+stg-0443,srv-0188,block,128,500,Premium SSD P10
+stg-0444,srv-0188,block,504.1,500,Standard SSD E20
+stg-0445,srv-0189,block,128,1100,Premium SSD P10
+stg-0446,srv-0189,block,494.1,5000,Premium SSD P30
+stg-0447,srv-0190,block,128,2300,Premium SSD P10
+stg-0448,srv-0190,block,52.7,1100,Premium SSD P20
+stg-0449,srv-0191,block,128,500,Premium SSD P10
+stg-0450,srv-0191,block,242.4,5000,Standard SSD E20
+stg-0451,srv-0192,block,128,2300,Premium SSD P10
+stg-0452,srv-0193,block,128,2300,Premium SSD P10
+stg-0453,srv-0193,block,184.0,5000,Standard SSD E20
+stg-0454,srv-0193,block,206.1,500,Ultra Disk
+stg-0455,srv-0194,block,128,2300,Premium SSD P10
+stg-0456,srv-0195,block,128,500,Premium SSD P10
+stg-0457,srv-0195,block,91.0,1100,Premium SSD v2
+stg-0458,srv-0196,block,128,500,Premium SSD P10
+stg-0459,srv-0196,block,160.6,2300,Premium SSD v2
+stg-0460,srv-0197,block,128,500,Premium SSD P10
+stg-0461,srv-0198,block,128,2300,Premium SSD P10
+stg-0462,srv-0198,block,98.0,500,Premium SSD v2
+stg-0463,srv-0199,block,128,500,Premium SSD P10
+stg-0464,srv-0199,block,438.7,1100,Premium SSD P30
+stg-0465,srv-0199,block,362.2,1100,Standard SSD E20
+stg-0466,srv-0200,block,128,2300,Premium SSD P10
+stg-0467,srv-0200,block,2182.6,500,Premium SSD P30
+stg-0468,srv-0201,block,128,1100,Premium SSD P10
+stg-0469,srv-0201,block,134.2,500,Standard SSD E20
+stg-0470,srv-0202,block,128,2300,Premium SSD P10
+stg-0471,srv-0203,block,128,1100,Premium SSD P10
+stg-0472,srv-0203,block,170.8,2300,Premium SSD P30
+stg-0473,srv-0203,block,221.1,1100,Premium SSD P20
+stg-0474,srv-0204,block,128,2300,Premium SSD P10
+stg-0475,srv-0205,block,128,500,Premium SSD P10
+stg-0476,srv-0206,block,128,1100,Premium SSD P10
+stg-0477,srv-0206,block,81.4,2300,Premium SSD P30
+stg-0478,srv-0207,block,128,2300,Premium SSD P10
+stg-0479,srv-0207,block,85.1,5000,Ultra Disk
+stg-0480,srv-0208,block,128,2300,Premium SSD P10
+stg-0481,srv-0208,block,338.5,1100,Ultra Disk
+stg-0482,srv-0208,block,286.5,2300,Premium SSD P20
+stg-0483,srv-0209,block,128,500,Premium SSD P10
+stg-0484,srv-0210,block,128,500,Premium SSD P10
+stg-0485,srv-0210,block,91.3,500,Premium SSD P20
+stg-0486,srv-0210,block,100.0,5000,Standard SSD E20
+stg-0487,srv-0211,block,128,500,Premium SSD P10
+stg-0488,srv-0211,block,155.0,1100,Premium SSD v2
+stg-0489,srv-0212,block,128,2300,Premium SSD P10
+stg-0490,srv-0212,block,378.0,2300,Premium SSD v2
+stg-0491,srv-0213,block,128,1100,Premium SSD P10
+stg-0492,srv-0213,block,341.3,2300,Premium SSD v2
+stg-0493,srv-0214,block,128,500,Premium SSD P10
+stg-0494,srv-0214,block,616.5,500,Premium SSD P20
+stg-0495,srv-0215,block,128,500,Premium SSD P10
+stg-0496,srv-0215,block,520.7,5000,Standard SSD E20
+stg-0497,srv-0216,block,128,500,Premium SSD P10
+stg-0498,srv-0216,block,215.2,5000,Ultra Disk
+stg-0499,srv-0217,block,128,1100,Premium SSD P10
+stg-0500,srv-0217,block,127.0,5000,Premium SSD v2
+stg-0501,srv-0217,block,130.2,2300,Ultra Disk
+stg-0502,srv-0218,block,128,2300,Premium SSD P10
+stg-0503,srv-0218,block,70.2,500,Premium SSD P20
+stg-0504,srv-0219,block,128,2300,Premium SSD P10
+stg-0505,srv-0219,block,2047.5,2300,Premium SSD v2
+stg-0506,srv-0220,block,128,500,Premium SSD P10
+stg-0507,srv-0220,block,2089.7,2300,Standard SSD E20
+stg-0508,srv-0221,block,128,2300,Premium SSD P10
+stg-0509,srv-0221,block,226.7,5000,Premium SSD P20
+stg-0510,srv-0222,block,128,2300,Premium SSD P10
+stg-0511,srv-0223,block,128,1100,Premium SSD P10
+stg-0512,srv-0223,block,763.9,2300,Standard SSD E20
+stg-0513,srv-0224,block,128,500,Premium SSD P10
+stg-0514,srv-0224,block,531.7,2300,Standard SSD E20
+stg-0515,srv-0224,block,519.5,2300,Premium SSD P20
+stg-0516,srv-0225,block,128,2300,Premium SSD P10
+stg-0517,srv-0225,block,55.0,2300,Premium SSD v2
+stg-0518,srv-0226,block,128,500,Premium SSD P10
+stg-0519,srv-0227,block,128,1100,Premium SSD P10
+stg-0520,srv-0228,block,128,1100,Premium SSD P10
+stg-0521,srv-0228,block,278.0,5000,Ultra Disk
+stg-0522,srv-0229,block,128,1100,Premium SSD P10
+stg-0523,srv-0229,block,86.0,500,Ultra Disk
+stg-0524,srv-0230,block,128,2300,Premium SSD P10
+stg-0525,srv-0230,block,562.1,500,Standard SSD E20
+stg-0526,srv-0231,block,128,1100,Premium SSD P10
+stg-0527,srv-0232,block,128,500,Premium SSD P10
+stg-0528,srv-0232,block,2183.5,500,Premium SSD P30
+stg-0529,srv-0233,block,128,1100,Premium SSD P10
+stg-0530,srv-0234,block,128,500,Premium SSD P10
+stg-0531,srv-0234,block,61.1,2300,Premium SSD P20
+stg-0532,srv-0235,block,128,1100,Premium SSD P10
+stg-0533,srv-0235,block,356.5,2300,Ultra Disk
+stg-0534,srv-0236,block,128,1100,Premium SSD P10
+stg-0535,srv-0236,block,46.8,2300,Premium SSD P20
+stg-0536,srv-0236,block,33.9,500,Premium SSD v2
+stg-0537,srv-0237,block,128,2300,Premium SSD P10
+stg-0538,srv-0238,block,128,500,Premium SSD P10
+stg-0539,srv-0238,block,223.9,2300,Premium SSD P20
+stg-0540,srv-0239,block,128,2300,Premium SSD P10
+stg-0541,srv-0239,block,1816.7,1100,Premium SSD v2
+stg-0542,srv-0240,block,128,1100,Premium SSD P10
+stg-0543,srv-0240,block,891.2,500,Premium SSD P20
+stg-0544,srv-0241,block,128,500,Premium SSD P10
+stg-0545,srv-0241,block,105.2,500,Premium SSD v2
+stg-0546,srv-0241,block,79.2,500,Standard SSD E20
+stg-0547,srv-0242,block,128,1100,Premium SSD P10
+stg-0548,srv-0242,block,95.2,5000,Ultra Disk
+stg-0549,srv-0243,block,128,1100,Premium SSD P10
+stg-0550,srv-0243,block,1569.1,1100,Ultra Disk
+stg-0551,srv-0244,block,128,500,Premium SSD P10
+stg-0552,srv-0244,block,35.4,500,Standard SSD E20
+stg-0553,srv-0244,block,32,2300,Standard SSD E20
+stg-0554,srv-0245,block,128,1100,Premium SSD P10
+stg-0555,srv-0245,block,85.9,1100,Ultra Disk
+stg-0556,srv-0246,block,128,1100,Premium SSD P10
+stg-0557,srv-0246,block,318.4,2300,Premium SSD P30
+stg-0558,srv-0247,block,128,1100,Premium SSD P10
+stg-0559,srv-0247,block,78.7,5000,Premium SSD v2
+stg-0560,srv-0247,block,99.3,5000,Premium SSD P20
+stg-0561,srv-0248,block,128,1100,Premium SSD P10
+stg-0562,srv-0248,block,115.5,1100,Ultra Disk
+stg-0563,srv-0249,block,128,500,Premium SSD P10
+stg-0564,srv-0249,block,1033.0,500,Premium SSD P30
+stg-0565,srv-0249,block,899.1,500,Premium SSD P30
+stg-0566,srv-0250,block,128,2300,Premium SSD P10
+stg-0567,srv-0250,block,204.9,5000,Premium SSD P20
+stg-0568,srv-0250,block,233.1,1100,Standard SSD E20
+stg-0569,srv-0149,file,16384,3000,Azure NetApp Files
+stg-0570,srv-0150,file,4096,5000,Azure NetApp Files
+stg-0571,srv-0151,file,8192,3000,Azure Files Premium
+stg-0572,srv-0152,file,2048,5000,Azure Files Premium
+stg-0573,srv-0153,file,16384,5000,Azure Files Premium

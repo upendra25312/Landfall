@@ -1,0 +1,251 @@
+server_id,hostname,env,os_name,os_version,os_eol_date,vcpu,ram_gb,provisioned_disk_gb,used_disk_gb,cpu_avg_pct,cpu_peak_pct,ram_avg_pct,cluster,datacenter,powerstate,app_id,notes
+srv-0001,webp0001,prod,Ubuntu,18.04 LTS,2023-05-31,2,16,128,90.5,40.5,52.2,50.3,ASH-PRD-CL02,DC-ASHBURN,poweredOn,app-01,VMware vSphere 7.0 VM
+srv-0002,webp0002,prod,Red Hat Enterprise Linux,8.8,2029-05-31,8,32,1024,535.9,14.7,59.2,70.5,DAL-PRD-CL01,DC-DALLAS,poweredOn,app-01,VMware vSphere 7.0 VM
+srv-0003,webp0003,prod,Red Hat Enterprise Linux,8.8,2029-05-31,2,8,512,172.1,28.4,70.3,68.8,ASH-PRD-CL02,DC-ASHBURN,poweredOn,app-01,VMware vSphere 7.0 VM
+srv-0004,webp0004,prod,Red Hat Enterprise Linux,7.9,2024-06-30,4,32,100,30.7,,,,ASH-PRD-CL02,DC-ASHBURN,poweredOn,app-01,VMware vSphere 7.0 VM; RHEL 7 past maintenance support; no performance history from vCenter (< 30 days)
+srv-0005,appp0005,prod,Ubuntu,22.04 LTS,2027-04-30,4,16,400,149.7,31.1,68.6,66.0,DAL-PRD-CL01,DC-DALLAS,poweredOn,app-01,VMware vSphere 7.0 VM
+srv-0006,appp0006,prod,Red Hat Enterprise Linux,7.9,2024-06-30,4,32,256,218.6,26.4,63.2,75.6,DAL-PRD-CL01,DC-DALLAS,poweredOn,app-01,VMware vSphere 7.0 VM; RHEL 7 past maintenance support
+srv-0007,appp0007,prod,Ubuntu,20.04 LTS,2025-04-30,4,16,200,161.9,33.2,50.1,55.0,DAL-PRD-CL01,DC-DALLAS,poweredOn,app-01,VMware vSphere 7.0 VM
+srv-0008,appp0008,prod,Red Hat Enterprise Linux,8.8,2029-05-31,8,32,1024,442.8,40.7,65.5,38.2,ASH-PRD-CL01,DC-ASHBURN,poweredOff,app-01,VMware vSphere 7.0 VM; powered off at discovery - confirm if decommissioned
+srv-0009,dbp0009,prod,Red Hat Enterprise Linux,9.3,2032-05-31,4,32,4096,2563.8,28.0,55.7,40.1,DAL-PRD-CL01,DC-DALLAS,poweredOn,app-01,VMware vSphere 7.0 VM
+srv-0010,dbp0010,prod,Ubuntu,18.04 LTS,2023-05-31,16,128,512,230.5,,,,ASH-PRD-CL02,DC-ASHBURN,poweredOn,app-01,VMware vSphere 7.0 VM; no performance history from vCenter (< 30 days)
+srv-0011,appp0011,prod,Red Hat Enterprise Linux,9.3,2032-05-31,16,64,1024,648.4,,,,ASH-PRD-CL02,DC-ASHBURN,poweredOn,app-02,VMware vSphere 7.0 VM; no performance history from vCenter (< 30 days)
+srv-0012,appp0012,prod,SUSE Linux Enterprise Server,15 SP4,2031-12-31,4,32,800,233.0,39.9,82.8,43.5,ASH-PRD-CL01,DC-ASHBURN,poweredOn,app-02,VMware vSphere 7.0 VM
+srv-0013,appp0013,prod,SUSE Linux Enterprise Server,15 SP4,2031-12-31,8,64,1024,741.6,,,,ASH-PRD-CL02,DC-ASHBURN,poweredOn,app-02,VMware vSphere 7.0 VM; no performance history from vCenter (< 30 days)
+srv-0014,dbp0014,prod,Red Hat Enterprise Linux,7.9,2024-06-30,64,256,1024,710.2,31.2,54.9,79.0,DAL-PRD-CL01,DC-DALLAS,poweredOn,app-02,VMware vSphere 7.0 VM; RHEL 7 past maintenance support
+srv-0015,dbp0015,prod,Red Hat Enterprise Linux,8.8,2029-05-31,8,64,512,353.6,,,,ASH-PRD-CL01,DC-ASHBURN,poweredOn,app-02,VMware vSphere 7.0 VM; no performance history from vCenter (< 30 days)
+srv-0016,webp0016,prod,Windows Server,2012 R2,2023-10-10,2,16,128,89.5,27.2,45.4,53.4,ASH-PRD-CL02,DC-ASHBURN,poweredOn,app-03,VMware vSphere 7.0 VM; OS past end-of-support - remediation or ESU required
+srv-0017,webp0017,prod,Windows Server,2012 R2,2023-10-10,4,16,80,53.6,7.1,32.0,45.4,ASH-PRD-CL02,DC-ASHBURN,poweredOn,app-03,VMware vSphere 7.0 VM; OS past end-of-support - remediation or ESU required
+srv-0018,appp0018,prod,Windows Server,2016,2027-01-12,4,16,256,140.4,6.2,48.1,76.4,DAL-PRD-CL01,DC-DALLAS,poweredOn,app-03,VMware vSphere 7.0 VM
+srv-0019,appp0019,prod,Windows Server,2022,2031-10-14,16,128,200,75.3,12.0,36.8,28.5,DAL-PRD-CL01,DC-DALLAS,poweredOn,app-03,VMware vSphere 7.0 VM
+srv-0020,appp0020,prod,Windows Server,2016,2027-01-12,4,16,1024,679.8,11.0,28.1,28.5,DAL-PRD-CL01,DC-DALLAS,poweredOn,app-03,VMware vSphere 7.0 VM
+srv-0021,dbp0021,prod,Windows Server,2019,2029-01-09,8,64,1024,320.5,38.8,49.7,29.1,ASH-PRD-CL02,DC-ASHBURN,poweredOn,app-03,VMware vSphere 7.0 VM
+srv-0022,dbp0022,prod,Windows Server,2012 R2,2023-10-10,8,64,512,267.9,25.0,72.3,37.3,DAL-PRD-CL01,DC-DALLAS,poweredOn,app-03,VMware vSphere 7.0 VM; OS past end-of-support - remediation or ESU required
+srv-0023,appp0023,prod,Red Hat Enterprise Linux,8.8,2029-05-31,4,16,100,28.5,26.6,38.8,57.3,DAL-PRD-CL01,DC-DALLAS,poweredOn,app-04,VMware vSphere 7.0 VM
+srv-0024,appp0024,prod,Ubuntu,22.04 LTS,2027-04-30,4,16,128,68.4,15.7,65.0,73.4,DAL-PRD-CL01,DC-DALLAS,poweredOn,app-04,VMware vSphere 7.0 VM
+srv-0025,appp0025,prod,Ubuntu,20.04 LTS,2025-04-30,16,128,128,55.5,34.2,48.7,41.9,ASH-PRD-CL01,DC-ASHBURN,poweredOn,app-04,VMware vSphere 7.0 VM
+srv-0026,appp0026,prod,Red Hat Enterprise Linux,7.9,2024-06-30,4,32,256,206.1,6.9,32.7,41.6,DAL-PRD-CL01,DC-DALLAS,poweredOn,app-04,VMware vSphere 7.0 VM; RHEL 7 past maintenance support
+srv-0027,dbp0027,prod,Ubuntu,18.04 LTS,2023-05-31,8,64,512,176.6,32.0,46.3,27.2,ASH-PRD-CL02,DC-ASHBURN,poweredOn,app-04,VMware vSphere 7.0 VM
+srv-0028,dbp0028,prod,Red Hat Enterprise Linux,8.8,2029-05-31,32,128,2048,823.0,,,,ASH-PRD-CL02,DC-ASHBURN,poweredOn,app-04,VMware vSphere 7.0 VM; no performance history from vCenter (< 30 days)
+srv-0029,webp0029,prod,Ubuntu,22.04 LTS,2027-04-30,32,128,128,101.3,,,,ASH-PRD-CL01,DC-ASHBURN,poweredOn,app-05,VMware vSphere 7.0 VM; no performance history from vCenter (< 30 days)
+srv-0030,webp0030,prod,Ubuntu,20.04 LTS,2025-04-30,4,16,100,50.2,,,,ASH-PRD-CL01,DC-ASHBURN,poweredOn,app-05,VMware vSphere 7.0 VM; no performance history from vCenter (< 30 days)
+srv-0031,webp0031,prod,Ubuntu,20.04 LTS,2025-04-30,8,64,200,81.9,19.7,39.4,29.2,ASH-PRD-CL02,DC-ASHBURN,poweredOn,app-05,VMware vSphere 7.0 VM
+srv-0032,appp0032,prod,Ubuntu,18.04 LTS,2023-05-31,16,128,100,78.9,,,,ASH-PRD-CL02,DC-ASHBURN,poweredOn,app-05,VMware vSphere 7.0 VM; no performance history from vCenter (< 30 days)
+srv-0033,appp0033,prod,Red Hat Enterprise Linux,7.9,2024-06-30,8,32,400,213.2,7.9,53.7,36.4,DAL-PRD-CL01,DC-DALLAS,poweredOn,app-05,VMware vSphere 7.0 VM; RHEL 7 past maintenance support
+srv-0034,appp0034,prod,Red Hat Enterprise Linux,7.9,2024-06-30,4,16,100,83.0,29.2,65.1,32.5,ASH-PRD-CL01,DC-ASHBURN,poweredOn,app-05,VMware vSphere 7.0 VM; RHEL 7 past maintenance support
+srv-0035,dbp0035,prod,Red Hat Enterprise Linux,8.8,2029-05-31,16,64,1024,400.7,18.9,58.3,35.4,ASH-PRD-CL02,DC-ASHBURN,poweredOn,app-05,VMware vSphere 7.0 VM
+srv-0036,dbp0036,prod,Red Hat Enterprise Linux,9.3,2032-05-31,4,32,2048,1125.8,12.0,39.9,79.1,ASH-PRD-CL02,DC-ASHBURN,poweredOn,app-05,VMware vSphere 7.0 VM
+srv-0037,webp0037,prod,Windows Server,2016,2027-01-12,2,8,200,134.0,,,,DAL-PRD-CL01,DC-DALLAS,poweredOn,app-06,VMware vSphere 7.0 VM; no performance history from vCenter (< 30 days)
+srv-0038,webp0038,prod,Windows Server,2012 R2,2023-10-10,4,16,2048,804.4,23.8,42.0,64.4,ASH-PRD-CL01,DC-ASHBURN,poweredOn,app-06,VMware vSphere 7.0 VM; OS past end-of-support - remediation or ESU required
+srv-0039,appp0039,prod,Windows Server,2019,2029-01-09,2,8,200,162.4,,,,ASH-PRD-CL02,DC-ASHBURN,poweredOn,app-06,VMware vSphere 7.0 VM; no performance history from vCenter (< 30 days)
+srv-0040,appp0040,prod,Windows Server,2019,2029-01-09,16,128,800,508.3,24.2,67.1,57.9,ASH-PRD-CL02,DC-ASHBURN,poweredOn,app-06,VMware vSphere 7.0 VM
+srv-0041,appp0041,prod,Windows Server,2022,2031-10-14,8,64,256,185.4,29.3,48.8,29.6,ASH-PRD-CL01,DC-ASHBURN,poweredOn,app-06,VMware vSphere 7.0 VM
+srv-0042,dbp0042,prod,Windows Server,2016,2027-01-12,4,16,4096,2795.5,5.7,30.8,57.6,DAL-PRD-CL01,DC-DALLAS,poweredOn,app-06,VMware vSphere 7.0 VM
+srv-0043,dbp0043,prod,Windows Server,2019,2029-01-09,32,128,4096,2280.0,15.5,39.9,78.5,ASH-PRD-CL01,DC-ASHBURN,poweredOn,app-06,VMware vSphere 7.0 VM
+srv-0044,appp0044,prod,Red Hat Enterprise Linux,7.9,2024-06-30,4,16,512,358.4,41.6,90.8,57.0,ASH-PRD-CL01,DC-ASHBURN,poweredOn,app-07,VMware vSphere 7.0 VM; RHEL 7 past maintenance support
+srv-0045,appp0045,prod,Red Hat Enterprise Linux,9.3,2032-05-31,2,8,800,308.3,,,,ASH-PRD-CL02,DC-ASHBURN,poweredOn,app-07,VMware vSphere 7.0 VM; no performance history from vCenter (< 30 days)
+srv-0046,appp0046,prod,Red Hat Enterprise Linux,8.8,2029-05-31,4,16,512,218.3,,,,DAL-PRD-CL01,DC-DALLAS,poweredOn,app-07,VMware vSphere 7.0 VM; no performance history from vCenter (< 30 days)
+srv-0047,appp0047,prod,Red Hat Enterprise Linux,7.9,2024-06-30,8,32,80,57.4,11.4,20.3,34.1,ASH-PRD-CL01,DC-ASHBURN,poweredOn,app-07,VMware vSphere 7.0 VM; RHEL 7 past maintenance support
+srv-0048,appp0048,prod,Red Hat Enterprise Linux,7.9,2024-06-30,8,32,400,150.9,34.4,47.2,74.2,ASH-PRD-CL02,DC-ASHBURN,poweredOff,app-07,VMware vSphere 7.0 VM; RHEL 7 past maintenance support; powered off at discovery - confirm if decommissioned
+srv-0049,dbp0049,prod,Red Hat Enterprise Linux,9.3,2032-05-31,8,32,512,319.2,13.2,50.5,43.1,ASH-PRD-CL02,DC-ASHBURN,poweredOn,app-07,VMware vSphere 7.0 VM
+srv-0050,dbp0050,prod,Ubuntu,20.04 LTS,2025-04-30,8,32,2048,655.3,3.5,29.1,54.4,DAL-PRD-CL01,DC-DALLAS,poweredOn,app-07,VMware vSphere 7.0 VM
+srv-0051,dbp0051,prod,Ubuntu,18.04 LTS,2023-05-31,8,32,2048,1305.0,35.5,63.0,74.5,DAL-PRD-CL01,DC-DALLAS,poweredOn,app-07,VMware vSphere 7.0 VM
+srv-0052,appp0052,prod,Windows Server,2019,2029-01-09,2,16,800,488.4,17.1,45.9,44.5,ASH-PRD-CL02,DC-ASHBURN,poweredOn,app-08,VMware vSphere 7.0 VM
+srv-0053,appp0053,prod,Windows Server,2019,2029-01-09,4,32,1024,849.8,,,,ASH-PRD-CL02,DC-ASHBURN,poweredOn,app-08,VMware vSphere 7.0 VM; no performance history from vCenter (< 30 days)
+srv-0054,appp0054,prod,Windows Server,2019,2029-01-09,8,32,800,432.0,,,,ASH-PRD-CL02,DC-ASHBURN,poweredOn,app-08,VMware vSphere 7.0 VM; no performance history from vCenter (< 30 days)
+srv-0055,dbp0055,prod,Windows Server,2019,2029-01-09,8,64,2048,1078.9,16.9,54.4,41.3,ASH-PRD-CL02,DC-ASHBURN,poweredOn,app-08,VMware vSphere 7.0 VM
+srv-0056,dbp0056,prod,Windows Server,2019,2029-01-09,4,32,2048,1434.1,25.0,44.9,31.0,ASH-PRD-CL01,DC-ASHBURN,poweredOn,app-08,VMware vSphere 7.0 VM
+srv-0057,appp0057,prod,Red Hat Enterprise Linux,7.9,2024-06-30,2,8,80,48.1,8.3,52.8,54.5,DAL-PRD-CL01,DC-DALLAS,poweredOn,app-09,VMware vSphere 7.0 VM; RHEL 7 past maintenance support
+srv-0058,appp0058,prod,Red Hat Enterprise Linux,8.8,2029-05-31,2,16,80,34.1,7.8,18.5,54.5,ASH-PRD-CL02,DC-ASHBURN,poweredOn,app-09,VMware vSphere 7.0 VM
+srv-0059,appp0059,prod,Red Hat Enterprise Linux,7.9,2024-06-30,2,8,200,69.7,28.5,69.7,38.5,ASH-PRD-CL02,DC-ASHBURN,poweredOn,app-09,VMware vSphere 7.0 VM; RHEL 7 past maintenance support
+srv-0060,appp0060,prod,Ubuntu,22.04 LTS,2027-04-30,4,16,2048,645.0,7.2,47.2,62.5,ASH-PRD-CL02,DC-ASHBURN,poweredOn,app-09,VMware vSphere 7.0 VM
+srv-0061,dbp0061,prod,Red Hat Enterprise Linux,7.9,2024-06-30,4,32,4096,2784.6,4.4,24.5,42.0,ASH-PRD-CL01,DC-ASHBURN,poweredOn,app-09,VMware vSphere 7.0 VM; RHEL 7 past maintenance support
+srv-0062,dbp0062,prod,Ubuntu,18.04 LTS,2023-05-31,8,32,1024,671.4,37.7,48.7,35.0,ASH-PRD-CL01,DC-ASHBURN,poweredOn,app-09,VMware vSphere 7.0 VM
+srv-0063,webp0063,prod,Windows Server,2012 R2,2023-10-10,16,128,1024,607.4,28.1,73.5,69.1,DAL-PRD-CL01,DC-DALLAS,poweredOn,app-10,VMware vSphere 7.0 VM; OS past end-of-support - remediation or ESU required
+srv-0064,webp0064,prod,Windows Server,2012 R2,2023-10-10,32,256,256,157.2,10.4,40.2,51.5,ASH-PRD-CL01,DC-ASHBURN,poweredOn,app-10,VMware vSphere 7.0 VM; OS past end-of-support - remediation or ESU required
+srv-0065,appp0065,prod,Windows Server,2016,2027-01-12,4,32,512,242.3,39.0,60.9,66.6,DAL-PRD-CL01,DC-DALLAS,poweredOn,app-10,VMware vSphere 7.0 VM
+srv-0066,appp0066,prod,Windows Server,2019,2029-01-09,2,8,256,119.7,20.0,49.6,84.3,DAL-PRD-CL01,DC-DALLAS,poweredOn,app-10,VMware vSphere 7.0 VM
+srv-0067,dbp0067,prod,Windows Server,2016,2027-01-12,16,64,4096,2952.4,,,,ASH-PRD-CL02,DC-ASHBURN,poweredOn,app-10,VMware vSphere 7.0 VM; no performance history from vCenter (< 30 days)
+srv-0068,appp0068,prod,Windows Server,2022,2031-10-14,32,128,2048,1522.9,16.1,24.7,49.5,ASH-PRD-CL01,DC-ASHBURN,poweredOn,app-11,VMware vSphere 7.0 VM
+srv-0069,appp0069,prod,Windows Server,2016,2027-01-12,4,32,256,147.2,,,,ASH-PRD-CL01,DC-ASHBURN,poweredOn,app-11,VMware vSphere 7.0 VM; no performance history from vCenter (< 30 days)
+srv-0070,dbp0070,prod,Windows Server,2016,2027-01-12,4,32,2048,1599.8,,,,DAL-PRD-CL01,DC-DALLAS,poweredOn,app-11,VMware vSphere 7.0 VM; no performance history from vCenter (< 30 days)
+srv-0071,dbp0071,prod,Windows Server,2016,2027-01-12,16,128,2048,1568.2,30.7,75.0,51.8,DAL-PRD-CL01,DC-DALLAS,poweredOn,app-11,VMware vSphere 7.0 VM
+srv-0072,webp0072,prod,Red Hat Enterprise Linux,8.8,2029-05-31,4,32,200,155.3,16.4,44.3,79.8,ASH-PRD-CL01,DC-ASHBURN,poweredOn,app-12,VMware vSphere 7.0 VM
+srv-0073,webp0073,prod,Ubuntu,20.04 LTS,2025-04-30,4,32,80,28.3,16.9,29.1,75.7,DAL-PRD-CL01,DC-DALLAS,poweredOn,app-12,VMware vSphere 7.0 VM
+srv-0074,webp0074,prod,Red Hat Enterprise Linux,7.9,2024-06-30,2,8,256,121.9,30.3,74.1,76.1,ASH-PRD-CL01,DC-ASHBURN,poweredOn,app-12,VMware vSphere 7.0 VM; RHEL 7 past maintenance support
+srv-0075,dbp0075,prod,SUSE Linux Enterprise Server,15 SP4,2031-12-31,32,128,512,213.1,15.1,32.7,30.4,DAL-PRD-CL01,DC-DALLAS,poweredOff,app-12,VMware vSphere 7.0 VM; powered off at discovery - confirm if decommissioned
+srv-0076,appp0076,prod,Red Hat Enterprise Linux,7.9,2024-06-30,2,8,80,36.0,9.1,39.4,59.0,ASH-PRD-CL01,DC-ASHBURN,poweredOn,app-13,VMware vSphere 7.0 VM; RHEL 7 past maintenance support
+srv-0077,appp0077,prod,Red Hat Enterprise Linux,7.9,2024-06-30,8,32,200,113.7,12.8,47.6,52.6,DAL-PRD-CL01,DC-DALLAS,poweredOn,app-13,VMware vSphere 7.0 VM; RHEL 7 past maintenance support
+srv-0078,appp0078,prod,Ubuntu,22.04 LTS,2027-04-30,2,8,400,341.1,,,,DAL-PRD-CL01,DC-DALLAS,poweredOff,app-13,VMware vSphere 7.0 VM; powered off at discovery - confirm if decommissioned; no performance history from vCenter (< 30 days)
+srv-0079,appp0079,prod,Windows Server,2016,2027-01-12,16,64,100,41.8,27.1,76.8,42.7,ASH-PRD-CL02,DC-ASHBURN,poweredOff,app-14,VMware vSphere 7.0 VM; powered off at discovery - confirm if decommissioned
+srv-0080,appp0080,prod,Windows Server,2016,2027-01-12,16,64,800,610.4,35.6,53.3,73.1,ASH-PRD-CL01,DC-ASHBURN,poweredOn,app-14,VMware vSphere 7.0 VM
+srv-0081,appp0081,prod,Windows Server,2019,2029-01-09,8,32,80,36.7,27.3,66.1,30.4,DAL-PRD-CL01,DC-DALLAS,poweredOn,app-14,VMware vSphere 7.0 VM
+srv-0082,appp0082,prod,Red Hat Enterprise Linux,7.9,2024-06-30,4,32,256,195.0,,,,ASH-PRD-CL02,DC-ASHBURN,poweredOn,app-15,VMware vSphere 7.0 VM; RHEL 7 past maintenance support; no performance history from vCenter (< 30 days)
+srv-0083,appp0083,prod,SUSE Linux Enterprise Server,15 SP4,2031-12-31,8,64,800,670.8,,,,ASH-PRD-CL02,DC-ASHBURN,poweredOff,app-15,VMware vSphere 7.0 VM; powered off at discovery - confirm if decommissioned; no performance history from vCenter (< 30 days)
+srv-0084,webn0084,nonprod,Windows Server,2019,2029-01-09,2,8,1024,360.1,34.5,53.5,47.9,ASH-NPD-CL01,DC-ASHBURN,poweredOn,app-16,VMware vSphere 7.0 VM
+srv-0085,webn0085,nonprod,Windows Server,2012 R2,2023-10-10,8,32,1024,481.5,30.2,64.9,52.9,ASH-NPD-CL01,DC-ASHBURN,poweredOn,app-16,VMware vSphere 7.0 VM; OS past end-of-support - remediation or ESU required
+srv-0086,appn0086,nonprod,Windows Server,2016,2027-01-12,4,16,800,277.9,,,,ASH-NPD-CL01,DC-ASHBURN,poweredOn,app-16,VMware vSphere 7.0 VM; no performance history from vCenter (< 30 days)
+srv-0087,appn0087,nonprod,Windows Server,2016,2027-01-12,4,32,128,101.6,38.0,71.9,81.3,DAL-NPD-CL01,DC-DALLAS,poweredOn,app-16,VMware vSphere 7.0 VM
+srv-0088,dbn0088,nonprod,Windows Server,2016,2027-01-12,32,128,2048,1220.2,18.1,42.8,36.4,ASH-NPD-CL01,DC-ASHBURN,poweredOn,app-16,VMware vSphere 7.0 VM
+srv-0089,dbn0089,nonprod,Windows Server,2012 R2,2023-10-10,4,16,1024,874.0,11.6,54.5,58.3,ASH-NPD-CL01,DC-ASHBURN,poweredOn,app-16,VMware vSphere 7.0 VM; OS past end-of-support - remediation or ESU required
+srv-0090,webp0090,prod,Ubuntu,20.04 LTS,2025-04-30,4,16,128,109.2,36.5,49.1,77.0,DAL-PRD-CL01,DC-DALLAS,poweredOn,app-17,VMware vSphere 7.0 VM
+srv-0091,webp0091,prod,Ubuntu,20.04 LTS,2025-04-30,2,8,256,79.5,25.1,64.4,53.6,ASH-PRD-CL02,DC-ASHBURN,poweredOn,app-17,VMware vSphere 7.0 VM
+srv-0092,appp0092,prod,Red Hat Enterprise Linux,9.3,2032-05-31,16,128,80,56.1,30.7,51.4,63.6,ASH-PRD-CL01,DC-ASHBURN,poweredOn,app-17,VMware vSphere 7.0 VM
+srv-0093,appp0093,prod,Ubuntu,22.04 LTS,2027-04-30,4,32,800,258.1,,,,ASH-PRD-CL01,DC-ASHBURN,poweredOn,app-17,VMware vSphere 7.0 VM; no performance history from vCenter (< 30 days)
+srv-0094,appp0094,prod,Red Hat Enterprise Linux,7.9,2024-06-30,4,16,2048,1203.7,28.4,40.6,67.1,DAL-PRD-CL01,DC-DALLAS,poweredOn,app-17,VMware vSphere 7.0 VM; RHEL 7 past maintenance support
+srv-0095,appp0095,prod,Ubuntu,22.04 LTS,2027-04-30,4,16,200,104.0,19.7,58.3,43.8,DAL-PRD-CL01,DC-DALLAS,poweredOn,app-17,VMware vSphere 7.0 VM
+srv-0096,dbp0096,prod,Red Hat Enterprise Linux,8.8,2029-05-31,4,16,512,271.6,18.7,32.2,28.6,ASH-PRD-CL02,DC-ASHBURN,poweredOff,app-17,VMware vSphere 7.0 VM; powered off at discovery - confirm if decommissioned
+srv-0097,dbp0097,prod,Ubuntu,18.04 LTS,2023-05-31,32,128,2048,1286.6,27.3,44.2,64.4,ASH-PRD-CL02,DC-ASHBURN,poweredOn,app-17,VMware vSphere 7.0 VM
+srv-0098,appn0098,nonprod,Red Hat Enterprise Linux,8.8,2029-05-31,8,64,1024,865.5,28.8,63.8,26.6,DAL-NPD-CL01,DC-DALLAS,poweredOn,app-18,VMware vSphere 7.0 VM
+srv-0099,appn0099,nonprod,Red Hat Enterprise Linux,8.8,2029-05-31,16,128,400,113.4,26.8,51.6,33.5,ASH-NPD-CL01,DC-ASHBURN,poweredOn,app-18,VMware vSphere 7.0 VM
+srv-0100,appn0100,nonprod,Red Hat Enterprise Linux,7.9,2024-06-30,4,16,400,148.5,16.6,64.1,60.8,DAL-NPD-CL01,DC-DALLAS,poweredOn,app-18,VMware vSphere 7.0 VM; RHEL 7 past maintenance support
+srv-0101,dbn0101,nonprod,Red Hat Enterprise Linux,7.9,2024-06-30,8,32,4096,2589.1,12.1,41.6,45.7,DAL-NPD-CL01,DC-DALLAS,poweredOn,app-18,VMware vSphere 7.0 VM; RHEL 7 past maintenance support
+srv-0102,appp0102,prod,Red Hat Enterprise Linux,8.8,2029-05-31,2,16,200,145.0,15.2,28.2,54.8,DAL-PRD-CL01,DC-DALLAS,poweredOn,app-19,VMware vSphere 7.0 VM
+srv-0103,appp0103,prod,Red Hat Enterprise Linux,8.8,2029-05-31,2,8,80,42.6,6.3,27.4,50.8,DAL-PRD-CL01,DC-DALLAS,poweredOn,app-19,VMware vSphere 7.0 VM
+srv-0104,appp0104,prod,Red Hat Enterprise Linux,8.8,2029-05-31,32,128,128,95.3,37.9,84.5,30.3,ASH-PRD-CL01,DC-ASHBURN,poweredOn,app-19,VMware vSphere 7.0 VM
+srv-0105,dbp0105,prod,Red Hat Enterprise Linux,8.8,2029-05-31,8,32,2048,836.6,6.2,40.8,56.8,ASH-PRD-CL01,DC-ASHBURN,poweredOn,app-19,VMware vSphere 7.0 VM
+srv-0106,appp0106,prod,Ubuntu,20.04 LTS,2025-04-30,2,16,128,54.8,,,,DAL-PRD-CL01,DC-DALLAS,poweredOn,app-20,VMware vSphere 7.0 VM; no performance history from vCenter (< 30 days)
+srv-0107,appp0107,prod,Red Hat Enterprise Linux,7.9,2024-06-30,4,32,2048,1476.1,41.8,73.5,63.1,ASH-PRD-CL02,DC-ASHBURN,poweredOn,app-20,VMware vSphere 7.0 VM; RHEL 7 past maintenance support
+srv-0108,appp0108,prod,Red Hat Enterprise Linux,8.8,2029-05-31,4,16,256,189.9,17.8,28.9,52.7,ASH-PRD-CL02,DC-ASHBURN,poweredOn,app-20,VMware vSphere 7.0 VM
+srv-0109,appp0109,prod,Ubuntu,20.04 LTS,2025-04-30,8,32,1024,515.1,43.1,82.1,27.5,ASH-PRD-CL01,DC-ASHBURN,poweredOn,app-20,VMware vSphere 7.0 VM
+srv-0110,dbp0110,prod,Ubuntu,18.04 LTS,2023-05-31,8,64,4096,1392.8,17.4,55.4,55.3,ASH-PRD-CL02,DC-ASHBURN,poweredOn,app-20,VMware vSphere 7.0 VM
+srv-0111,dbp0111,prod,Ubuntu,20.04 LTS,2025-04-30,8,32,4096,2118.0,28.1,69.2,63.8,ASH-PRD-CL01,DC-ASHBURN,poweredOn,app-20,VMware vSphere 7.0 VM
+srv-0112,webp0112,prod,Red Hat Enterprise Linux,8.8,2029-05-31,4,16,2048,1361.7,16.0,51.6,64.7,DAL-PRD-CL01,DC-DALLAS,poweredOn,app-21,VMware vSphere 7.0 VM
+srv-0113,webp0113,prod,Ubuntu,22.04 LTS,2027-04-30,8,32,400,300.7,37.8,76.8,66.1,ASH-PRD-CL02,DC-ASHBURN,poweredOn,app-21,VMware vSphere 7.0 VM
+srv-0114,appp0114,prod,Ubuntu,18.04 LTS,2023-05-31,4,16,128,106.5,35.2,51.3,85.0,DAL-PRD-CL01,DC-DALLAS,poweredOn,app-21,VMware vSphere 7.0 VM
+srv-0115,appp0115,prod,Ubuntu,22.04 LTS,2027-04-30,8,32,2048,729.1,9.8,52.7,71.3,ASH-PRD-CL01,DC-ASHBURN,poweredOn,app-21,VMware vSphere 7.0 VM
+srv-0116,appp0116,prod,Ubuntu,20.04 LTS,2025-04-30,8,32,200,168.5,34.6,75.5,39.0,ASH-PRD-CL02,DC-ASHBURN,poweredOn,app-21,VMware vSphere 7.0 VM
+srv-0117,dbp0117,prod,Ubuntu,22.04 LTS,2027-04-30,8,64,4096,2341.6,9.8,26.2,61.3,ASH-PRD-CL02,DC-ASHBURN,poweredOn,app-21,VMware vSphere 7.0 VM
+srv-0118,appp0118,prod,Windows Server,2022,2031-10-14,8,32,1024,792.2,,,,DAL-PRD-CL01,DC-DALLAS,poweredOn,app-22,VMware vSphere 7.0 VM; no performance history from vCenter (< 30 days)
+srv-0119,appp0119,prod,Windows Server,2016,2027-01-12,2,8,200,150.7,42.1,67.5,48.8,DAL-PRD-CL01,DC-DALLAS,poweredOn,app-22,VMware vSphere 7.0 VM
+srv-0120,dbp0120,prod,Windows Server,2022,2031-10-14,8,32,2048,1513.5,,,,ASH-PRD-CL01,DC-ASHBURN,poweredOn,app-22,VMware vSphere 7.0 VM; no performance history from vCenter (< 30 days)
+srv-0121,dbp0121,prod,Windows Server,2019,2029-01-09,8,32,512,149.0,,,,ASH-PRD-CL02,DC-ASHBURN,poweredOn,app-22,VMware vSphere 7.0 VM; no performance history from vCenter (< 30 days)
+srv-0122,appp0122,prod,Ubuntu,20.04 LTS,2025-04-30,2,8,512,333.1,5.6,48.7,55.0,ASH-PRD-CL01,DC-ASHBURN,poweredOn,app-23,VMware vSphere 7.0 VM
+srv-0123,appp0123,prod,Red Hat Enterprise Linux,9.3,2032-05-31,4,16,80,50.9,,,,ASH-PRD-CL01,DC-ASHBURN,poweredOn,app-23,VMware vSphere 7.0 VM; no performance history from vCenter (< 30 days)
+srv-0124,appp0124,prod,Ubuntu,18.04 LTS,2023-05-31,2,8,1024,609.9,24.3,33.2,77.4,DAL-PRD-CL01,DC-DALLAS,poweredOn,app-23,VMware vSphere 7.0 VM
+srv-0125,dbp0125,prod,SUSE Linux Enterprise Server,15 SP4,2031-12-31,8,32,2048,859.9,7.4,39.8,70.4,ASH-PRD-CL01,DC-ASHBURN,poweredOn,app-23,VMware vSphere 7.0 VM
+srv-0126,webn0126,nonprod,Windows Server,2012 R2,2023-10-10,32,128,800,517.1,5.7,46.3,52.5,DAL-NPD-CL01,DC-DALLAS,poweredOn,app-24,VMware vSphere 7.0 VM; OS past end-of-support - remediation or ESU required
+srv-0127,appn0127,nonprod,Windows Server,2019,2029-01-09,16,128,1024,523.2,22.9,32.4,63.8,DAL-NPD-CL01,DC-DALLAS,poweredOn,app-24,VMware vSphere 7.0 VM
+srv-0128,appn0128,nonprod,Windows Server,2022,2031-10-14,8,64,512,407.5,40.6,64.8,83.4,ASH-NPD-CL01,DC-ASHBURN,poweredOn,app-24,VMware vSphere 7.0 VM
+srv-0129,dbn0129,nonprod,Windows Server,2016,2027-01-12,16,128,512,271.2,10.6,30.9,31.2,DAL-NPD-CL01,DC-DALLAS,poweredOn,app-24,VMware vSphere 7.0 VM
+srv-0130,webp0130,prod,Ubuntu,20.04 LTS,2025-04-30,4,16,80,56.1,28.8,55.1,63.4,ASH-PRD-CL02,DC-ASHBURN,poweredOn,app-25,VMware vSphere 7.0 VM
+srv-0131,webp0131,prod,Red Hat Enterprise Linux,7.9,2024-06-30,4,32,128,106.6,,,,DAL-PRD-CL01,DC-DALLAS,poweredOn,app-25,VMware vSphere 7.0 VM; RHEL 7 past maintenance support; no performance history from vCenter (< 30 days)
+srv-0132,appp0132,prod,Red Hat Enterprise Linux,7.9,2024-06-30,4,16,2048,611.9,,,,ASH-PRD-CL02,DC-ASHBURN,poweredOn,app-25,VMware vSphere 7.0 VM; RHEL 7 past maintenance support; no performance history from vCenter (< 30 days)
+srv-0133,appp0133,prod,Red Hat Enterprise Linux,8.8,2029-05-31,4,32,512,236.7,,,,DAL-PRD-CL01,DC-DALLAS,poweredOff,app-25,VMware vSphere 7.0 VM; powered off at discovery - confirm if decommissioned; no performance history from vCenter (< 30 days)
+srv-0134,dbp0134,prod,Ubuntu,20.04 LTS,2025-04-30,32,128,2048,1494.0,12.0,45.7,66.6,ASH-PRD-CL02,DC-ASHBURN,poweredOff,app-25,VMware vSphere 7.0 VM; powered off at discovery - confirm if decommissioned
+srv-0135,appp0135,prod,Red Hat Enterprise Linux,7.9,2024-06-30,32,256,400,266.9,26.1,46.3,43.0,ASH-PRD-CL02,DC-ASHBURN,poweredOn,app-26,VMware vSphere 7.0 VM; RHEL 7 past maintenance support
+srv-0136,appp0136,prod,Ubuntu,22.04 LTS,2027-04-30,4,32,100,85.1,12.9,41.6,46.7,DAL-PRD-CL01,DC-DALLAS,poweredOn,app-26,VMware vSphere 7.0 VM
+srv-0137,dbp0137,prod,Ubuntu,20.04 LTS,2025-04-30,4,16,4096,2395.8,37.6,48.7,83.3,DAL-PRD-CL01,DC-DALLAS,poweredOn,app-26,VMware vSphere 7.0 VM
+srv-0138,appp0138,prod,Windows Server,2019,2029-01-09,8,64,128,68.0,5.3,18.5,34.2,ASH-PRD-CL01,DC-ASHBURN,poweredOn,app-27,VMware vSphere 7.0 VM
+srv-0139,appp0139,prod,Windows Server,2022,2031-10-14,16,64,256,100.8,14.5,48.8,61.9,ASH-PRD-CL02,DC-ASHBURN,poweredOn,app-27,VMware vSphere 7.0 VM
+srv-0140,dbp0140,prod,Windows Server,2012 R2,2023-10-10,4,32,2048,1574.2,37.7,46.9,27.7,ASH-PRD-CL01,DC-ASHBURN,poweredOn,app-27,VMware vSphere 7.0 VM; OS past end-of-support - remediation or ESU required
+srv-0141,appn0141,nonprod,Red Hat Enterprise Linux,8.8,2029-05-31,16,64,1024,458.8,23.3,65.1,66.1,DAL-NPD-CL01,DC-DALLAS,poweredOn,app-28,VMware vSphere 7.0 VM
+srv-0142,appn0142,nonprod,Ubuntu,18.04 LTS,2023-05-31,4,32,200,95.5,,,,ASH-NPD-CL01,DC-ASHBURN,poweredOn,app-28,VMware vSphere 7.0 VM; no performance history from vCenter (< 30 days)
+srv-0143,appn0143,nonprod,Ubuntu,20.04 LTS,2025-04-30,2,8,400,231.5,,,,DAL-NPD-CL01,DC-DALLAS,poweredOn,app-28,VMware vSphere 7.0 VM; no performance history from vCenter (< 30 days)
+srv-0144,appp0144,prod,Windows Server,2012 R2,2023-10-10,16,64,512,217.1,9.7,31.5,59.7,ASH-PRD-CL02,DC-ASHBURN,poweredOn,app-29,VMware vSphere 7.0 VM; OS past end-of-support - remediation or ESU required
+srv-0145,appp0145,prod,Windows Server,2019,2029-01-09,16,64,800,234.8,24.2,72.8,37.9,DAL-PRD-CL01,DC-DALLAS,poweredOn,app-29,VMware vSphere 7.0 VM
+srv-0146,appp0146,prod,Red Hat Enterprise Linux,9.3,2032-05-31,4,16,80,61.7,40.1,78.7,70.8,DAL-PRD-CL01,DC-DALLAS,poweredOn,app-30,VMware vSphere 7.0 VM
+srv-0147,appp0147,prod,Red Hat Enterprise Linux,7.9,2024-06-30,4,32,100,50.4,26.1,68.8,62.4,DAL-PRD-CL01,DC-DALLAS,poweredOn,app-30,VMware vSphere 7.0 VM; RHEL 7 past maintenance support
+srv-0148,appp0148,prod,SUSE Linux Enterprise Server,15 SP4,2031-12-31,4,32,400,287.2,,,,ASH-PRD-CL02,DC-ASHBURN,poweredOn,app-30,VMware vSphere 7.0 VM; no performance history from vCenter (< 30 days)
+srv-0149,infp0149,prod,Windows Server,2012 R2,2023-10-10,4,32,128,80.8,16.8,50.5,34.8,ASH-PRD-CL02,DC-ASHBURN,poweredOff,app-31,VMware vSphere 7.0 VM; OS past end-of-support - remediation or ESU required; powered off at discovery - confirm if decommissioned
+srv-0150,infp0150,prod,Windows Server,2016,2027-01-12,8,32,256,142.2,,,,ASH-PRD-CL02,DC-ASHBURN,poweredOn,app-31,VMware vSphere 7.0 VM; no performance history from vCenter (< 30 days)
+srv-0151,infp0151,prod,Windows Server,2016,2027-01-12,4,32,256,215.3,35.6,67.9,68.3,ASH-PRD-CL01,DC-ASHBURN,poweredOn,app-31,VMware vSphere 7.0 VM
+srv-0152,infp0152,prod,Windows Server,2019,2029-01-09,2,16,200,59.7,7.6,16.4,43.8,DAL-PRD-CL01,DC-DALLAS,poweredOn,app-31,VMware vSphere 7.0 VM
+srv-0153,infp0153,prod,Windows Server,2016,2027-01-12,16,64,80,55.1,26.6,76.5,53.7,DAL-PRD-CL01,DC-DALLAS,poweredOn,app-31,VMware vSphere 7.0 VM
+srv-0154,infd0154,dr,Windows Server,2016,2027-01-12,8,32,256,162.3,,,,RNO-DR-CL01,DC-DR-RENO,poweredOn,app-31,VMware vSphere 7.0 VM; no performance history from vCenter (< 30 days)
+srv-0155,infp0155,prod,Windows Server,2012 R2,2023-10-10,8,64,200,136.1,23.2,54.7,81.1,ASH-PRD-CL02,DC-ASHBURN,poweredOn,app-31,VMware vSphere 7.0 VM; OS past end-of-support - remediation or ESU required
+srv-0156,infp0156,prod,Windows Server,2012 R2,2023-10-10,8,64,128,57.4,,,,DAL-PRD-CL01,DC-DALLAS,poweredOn,app-31,VMware vSphere 7.0 VM; OS past end-of-support - remediation or ESU required; no performance history from vCenter (< 30 days)
+srv-0157,infp0157,prod,Windows Server,2019,2029-01-09,2,16,1024,447.8,14.4,27.0,69.5,ASH-PRD-CL02,DC-ASHBURN,poweredOn,app-31,VMware vSphere 7.0 VM
+srv-0158,infp0158,prod,Windows Server,2016,2027-01-12,2,8,512,241.4,31.6,45.4,82.9,ASH-PRD-CL01,DC-ASHBURN,poweredOff,app-31,VMware vSphere 7.0 VM; powered off at discovery - confirm if decommissioned
+srv-0159,infp0159,prod,Windows Server,2019,2029-01-09,4,32,200,143.7,,,,DAL-PRD-CL01,DC-DALLAS,poweredOn,app-31,VMware vSphere 7.0 VM; no performance history from vCenter (< 30 days)
+srv-0160,infp0160,prod,Windows Server,2019,2029-01-09,4,32,80,64.8,,,,DAL-PRD-CL01,DC-DALLAS,poweredOn,app-31,VMware vSphere 7.0 VM; no performance history from vCenter (< 30 days)
+srv-0161,infp0161,prod,Windows Server,2022,2031-10-14,8,64,128,105.4,41.9,86.7,25.6,ASH-PRD-CL02,DC-ASHBURN,poweredOn,app-31,VMware vSphere 7.0 VM
+srv-0162,infp0162,prod,Windows Server,2022,2031-10-14,16,64,128,99.0,11.1,23.8,34.7,ASH-PRD-CL02,DC-ASHBURN,poweredOn,app-31,VMware vSphere 7.0 VM
+srv-0163,infp0163,prod,Windows Server,2016,2027-01-12,4,32,200,76.4,40.7,83.4,55.9,DAL-PRD-CL01,DC-DALLAS,poweredOn,app-31,VMware vSphere 7.0 VM
+srv-0164,infp0164,prod,Windows Server,2016,2027-01-12,16,128,80,34.5,,,,ASH-PRD-CL02,DC-ASHBURN,poweredOn,app-31,VMware vSphere 7.0 VM; no performance history from vCenter (< 30 days)
+srv-0165,infd0165,dr,Windows Server,2016,2027-01-12,4,16,400,272.7,,,,RNO-DR-CL01,DC-DR-RENO,poweredOn,app-31,VMware vSphere 7.0 VM; no performance history from vCenter (< 30 days)
+srv-0166,infp0166,prod,Windows Server,2016,2027-01-12,8,32,256,126.3,,,,DAL-PRD-CL01,DC-DALLAS,poweredOff,app-31,VMware vSphere 7.0 VM; powered off at discovery - confirm if decommissioned; no performance history from vCenter (< 30 days)
+srv-0167,infp0167,prod,Windows Server,2016,2027-01-12,4,16,1024,828.8,36.7,79.4,70.7,ASH-PRD-CL02,DC-ASHBURN,poweredOn,app-31,VMware vSphere 7.0 VM
+srv-0168,infp0168,prod,Windows Server,2016,2027-01-12,2,8,2048,706.7,40.9,57.4,57.2,DAL-PRD-CL01,DC-DALLAS,poweredOn,app-31,VMware vSphere 7.0 VM
+srv-0169,infd0169,dr,Windows Server,2016,2027-01-12,2,8,1024,551.3,,,,RNO-DR-CL01,DC-DR-RENO,poweredOn,app-31,VMware vSphere 7.0 VM; no performance history from vCenter (< 30 days)
+srv-0170,infp0170,prod,Windows Server,2019,2029-01-09,8,32,512,218.9,,,,DAL-PRD-CL01,DC-DALLAS,poweredOn,app-31,VMware vSphere 7.0 VM; no performance history from vCenter (< 30 days)
+srv-0171,infp0171,prod,Windows Server,2022,2031-10-14,16,128,100,85.2,15.1,30.7,33.1,DAL-PRD-CL01,DC-DALLAS,poweredOn,app-31,VMware vSphere 7.0 VM
+srv-0172,infp0172,prod,Windows Server,2012 R2,2023-10-10,4,16,512,254.9,30.8,61.5,64.2,ASH-PRD-CL02,DC-ASHBURN,poweredOn,app-31,VMware vSphere 7.0 VM; OS past end-of-support - remediation or ESU required
+srv-0173,infp0173,prod,Windows Server,2019,2029-01-09,8,64,80,67.8,33.2,59.0,47.8,DAL-PRD-CL01,DC-DALLAS,poweredOn,app-31,VMware vSphere 7.0 VM
+srv-0174,infp0174,prod,Windows Server,2022,2031-10-14,2,8,512,326.0,40.3,58.4,29.0,ASH-PRD-CL01,DC-ASHBURN,poweredOn,app-31,VMware vSphere 7.0 VM
+srv-0175,infp0175,prod,Windows Server,2019,2029-01-09,8,32,512,273.7,34.7,75.3,33.4,DAL-PRD-CL01,DC-DALLAS,poweredOff,app-31,VMware vSphere 7.0 VM; powered off at discovery - confirm if decommissioned
+srv-0176,infp0176,prod,Windows Server,2022,2031-10-14,2,16,128,109.0,20.4,40.0,58.4,DAL-PRD-CL01,DC-DALLAS,poweredOn,app-31,VMware vSphere 7.0 VM
+srv-0177,infp0177,prod,Windows Server,2012 R2,2023-10-10,2,8,400,330.4,36.0,57.4,50.0,DAL-PRD-CL01,DC-DALLAS,poweredOn,app-31,VMware vSphere 7.0 VM; OS past end-of-support - remediation or ESU required
+srv-0178,infp0178,prod,Windows Server,2022,2031-10-14,4,16,128,95.7,26.6,75.2,58.4,ASH-PRD-CL01,DC-ASHBURN,poweredOn,app-31,VMware vSphere 7.0 VM
+srv-0179,infp0179,prod,Windows Server,2016,2027-01-12,16,64,100,59.1,5.2,29.0,61.3,DAL-PRD-CL01,DC-DALLAS,poweredOn,app-31,VMware vSphere 7.0 VM
+srv-0180,infp0180,prod,Windows Server,2019,2029-01-09,4,32,400,182.3,11.9,27.9,69.5,DAL-PRD-CL01,DC-DALLAS,poweredOn,app-31,VMware vSphere 7.0 VM
+srv-0181,infp0181,prod,Windows Server,2022,2031-10-14,4,16,200,120.0,19.0,49.4,46.6,DAL-PRD-CL01,DC-DALLAS,poweredOn,app-31,VMware vSphere 7.0 VM
+srv-0182,infp0182,prod,Red Hat Enterprise Linux,9.3,2032-05-31,8,64,400,324.1,20.4,52.0,38.3,ASH-PRD-CL02,DC-ASHBURN,poweredOn,app-31,VMware vSphere 7.0 VM
+srv-0183,infp0183,prod,Ubuntu,22.04 LTS,2027-04-30,4,16,200,94.3,38.0,67.0,64.3,DAL-PRD-CL01,DC-DALLAS,poweredOn,app-31,VMware vSphere 7.0 VM
+srv-0184,srvn0184,nonprod,Windows Server,2019,2029-01-09,4,32,400,151.3,23.5,70.0,57.5,ASH-NPD-CL01,DC-ASHBURN,poweredOn,,VMware vSphere 7.0 VM; standalone utility VM - owner unconfirmed
+srv-0185,srvn0185,nonprod,Windows Server,2012 R2,2023-10-10,8,64,512,184.2,5.9,20.2,38.1,DAL-NPD-CL01,DC-DALLAS,poweredOn,,VMware vSphere 7.0 VM; OS past end-of-support - remediation or ESU required; standalone utility VM - owner unconfirmed
+srv-0186,srvn0186,nonprod,Windows Server,2019,2029-01-09,8,32,80,22.7,3.5,33.7,41.5,ASH-NPD-CL01,DC-ASHBURN,poweredOff,,VMware vSphere 7.0 VM; powered off at discovery - confirm if decommissioned; standalone utility VM - owner unconfirmed
+srv-0187,srvn0187,nonprod,Windows Server,2019,2029-01-09,2,8,100,58.4,,,,DAL-NPD-CL01,DC-DALLAS,poweredOn,,VMware vSphere 7.0 VM; no performance history from vCenter (< 30 days); standalone utility VM - owner unconfirmed
+srv-0188,srvn0188,nonprod,Windows Server,2016,2027-01-12,4,16,512,279.7,,,,DAL-NPD-CL01,DC-DALLAS,poweredOn,,VMware vSphere 7.0 VM; no performance history from vCenter (< 30 days); standalone utility VM - owner unconfirmed
+srv-0189,srvn0189,nonprod,Windows Server,2019,2029-01-09,2,8,512,255.4,29.7,67.2,30.0,ASH-NPD-CL01,DC-ASHBURN,poweredOn,,VMware vSphere 7.0 VM; standalone utility VM - owner unconfirmed
+srv-0190,srvd0190,dev,Windows Server,2016,2027-01-12,16,64,80,33.1,32.1,63.9,41.3,ASH-NPD-CL01,DC-ASHBURN,poweredOn,,VMware vSphere 7.0 VM; standalone utility VM - owner unconfirmed
+srv-0191,srvd0191,dev,Windows Server,2016,2027-01-12,2,16,400,115.6,,,,DAL-DEV-CL01,DC-DALLAS,poweredOn,,VMware vSphere 7.0 VM; no performance history from vCenter (< 30 days); standalone utility VM - owner unconfirmed
+srv-0192,srvp0192,prod,Windows Server,2019,2029-01-09,2,16,200,121.7,31.4,62.1,48.0,ASH-PRD-CL02,DC-ASHBURN,poweredOn,,VMware vSphere 7.0 VM; standalone utility VM - owner unconfirmed
+srv-0193,srvd0193,dev,Windows Server,2019,2029-01-09,2,8,512,212.3,,,,ASH-NPD-CL01,DC-ASHBURN,poweredOn,,VMware vSphere 7.0 VM; no performance history from vCenter (< 30 days); standalone utility VM - owner unconfirmed
+srv-0194,srvd0194,dev,Windows Server,2019,2029-01-09,2,8,256,188.0,12.6,43.8,47.5,ASH-NPD-CL01,DC-ASHBURN,poweredOn,,VMware vSphere 7.0 VM; standalone utility VM - owner unconfirmed
+srv-0195,srvd0195,dev,Windows Server,2016,2027-01-12,8,64,100,32.8,,,,DAL-DEV-CL01,DC-DALLAS,poweredOn,,VMware vSphere 7.0 VM; no performance history from vCenter (< 30 days); standalone utility VM - owner unconfirmed
+srv-0196,srvd0196,dev,Windows Server,2019,2029-01-09,2,8,256,137.7,7.3,19.0,50.9,ASH-NPD-CL01,DC-ASHBURN,poweredOn,,VMware vSphere 7.0 VM; standalone utility VM - owner unconfirmed
+srv-0197,srvd0197,dev,Windows Server,2012 R2,2023-10-10,4,32,400,312.4,,,,ASH-NPD-CL01,DC-ASHBURN,poweredOn,,VMware vSphere 7.0 VM; OS past end-of-support - remediation or ESU required; no performance history from vCenter (< 30 days); standalone utility VM - owner unconfirmed
+srv-0198,srvd0198,dev,Windows Server,2019,2029-01-09,4,32,128,86.7,,,,DAL-DEV-CL01,DC-DALLAS,poweredOn,,VMware vSphere 7.0 VM; no performance history from vCenter (< 30 days); standalone utility VM - owner unconfirmed
+srv-0199,srvn0199,nonprod,Windows Server,2012 R2,2023-10-10,4,16,800,587.2,42.7,81.0,54.7,ASH-NPD-CL01,DC-ASHBURN,poweredOn,,VMware vSphere 7.0 VM; OS past end-of-support - remediation or ESU required; standalone utility VM - owner unconfirmed
+srv-0200,srvd0200,dev,Windows Server,2012 R2,2023-10-10,4,16,2048,1024.7,21.5,47.6,74.4,ASH-NPD-CL01,DC-ASHBURN,poweredOn,,VMware vSphere 7.0 VM; OS past end-of-support - remediation or ESU required; standalone utility VM - owner unconfirmed
+srv-0201,srvd0201,dev,Windows Server,2016,2027-01-12,4,32,128,107.5,15.2,52.4,54.5,DAL-DEV-CL01,DC-DALLAS,poweredOn,,VMware vSphere 7.0 VM; standalone utility VM - owner unconfirmed
+srv-0202,srvn0202,nonprod,Windows Server,2016,2027-01-12,4,16,2048,810.8,10.6,50.8,26.6,DAL-NPD-CL01,DC-DALLAS,poweredOn,,VMware vSphere 7.0 VM; standalone utility VM - owner unconfirmed
+srv-0203,srvp0203,prod,Windows Server,2016,2027-01-12,8,64,512,343.2,,,,DAL-PRD-CL01,DC-DALLAS,poweredOn,,VMware vSphere 7.0 VM; no performance history from vCenter (< 30 days); standalone utility VM - owner unconfirmed
+srv-0204,srvn0204,nonprod,Windows Server,2012 R2,2023-10-10,2,8,2048,1142.7,24.3,71.0,66.5,ASH-NPD-CL01,DC-ASHBURN,poweredOn,,VMware vSphere 7.0 VM; OS past end-of-support - remediation or ESU required; standalone utility VM - owner unconfirmed
+srv-0205,srvd0205,dev,Windows Server,2016,2027-01-12,2,8,200,132.3,30.2,40.1,84.0,DAL-DEV-CL01,DC-DALLAS,poweredOn,,VMware vSphere 7.0 VM; standalone utility VM - owner unconfirmed
+srv-0206,srvn0206,nonprod,Windows Server,2019,2029-01-09,2,8,100,43.0,24.8,57.2,59.5,ASH-NPD-CL01,DC-ASHBURN,poweredOn,,VMware vSphere 7.0 VM; standalone utility VM - owner unconfirmed
+srv-0207,srvn0207,nonprod,Windows Server,2019,2029-01-09,4,16,80,44.8,,,,DAL-NPD-CL01,DC-DALLAS,poweredOn,,VMware vSphere 7.0 VM; no performance history from vCenter (< 30 days); standalone utility VM - owner unconfirmed
+srv-0208,srvn0208,nonprod,Windows Server,2019,2029-01-09,4,16,800,587.9,17.6,29.7,68.3,DAL-NPD-CL01,DC-DALLAS,poweredOn,,VMware vSphere 7.0 VM; standalone utility VM - owner unconfirmed
+srv-0209,srvn0209,nonprod,Windows Server,2012 R2,2023-10-10,16,64,100,67.3,,,,DAL-NPD-CL01,DC-DALLAS,poweredOff,,VMware vSphere 7.0 VM; OS past end-of-support - remediation or ESU required; powered off at discovery - confirm if decommissioned; no performance history from vCenter (< 30 days); standalone utility VM - owner unconfirmed
+srv-0210,srvn0210,nonprod,Windows Server,2012 R2,2023-10-10,16,128,200,148.5,10.8,46.4,48.7,ASH-NPD-CL01,DC-ASHBURN,poweredOn,,VMware vSphere 7.0 VM; OS past end-of-support - remediation or ESU required; standalone utility VM - owner unconfirmed
+srv-0211,srvp0211,prod,Windows Server,2016,2027-01-12,8,32,200,88.3,36.4,68.6,73.0,ASH-PRD-CL01,DC-ASHBURN,poweredOn,,VMware vSphere 7.0 VM; standalone utility VM - owner unconfirmed
+srv-0212,srvn0212,nonprod,Windows Server,2016,2027-01-12,4,32,400,250.5,27.7,50.3,75.7,ASH-NPD-CL01,DC-ASHBURN,poweredOn,,VMware vSphere 7.0 VM; standalone utility VM - owner unconfirmed
+srv-0213,srvp0213,prod,Windows Server,2019,2029-01-09,8,32,400,139.3,10.7,47.8,55.6,ASH-PRD-CL01,DC-ASHBURN,poweredOn,,VMware vSphere 7.0 VM; standalone utility VM - owner unconfirmed
+srv-0214,srvn0214,nonprod,Windows Server,2016,2027-01-12,4,32,800,358.0,,,,ASH-NPD-CL01,DC-ASHBURN,poweredOn,,VMware vSphere 7.0 VM; no performance history from vCenter (< 30 days); standalone utility VM - owner unconfirmed
+srv-0215,srvd0215,dev,Windows Server,2022,2031-10-14,2,8,512,429.6,23.8,60.6,49.9,ASH-NPD-CL01,DC-ASHBURN,poweredOn,,VMware vSphere 7.0 VM; standalone utility VM - owner unconfirmed
+srv-0216,srvd0216,dev,Windows Server,2012 R2,2023-10-10,4,16,256,105.1,,,,ASH-NPD-CL01,DC-ASHBURN,poweredOn,,VMware vSphere 7.0 VM; OS past end-of-support - remediation or ESU required; no performance history from vCenter (< 30 days); standalone utility VM - owner unconfirmed
+srv-0217,srvd0217,dev,Windows Server,2019,2029-01-09,4,32,256,186.8,18.4,60.9,27.5,ASH-NPD-CL01,DC-ASHBURN,poweredOn,,VMware vSphere 7.0 VM; standalone utility VM - owner unconfirmed
+srv-0218,srvd0218,dev,Windows Server,2022,2031-10-14,4,16,80,43.3,37.3,63.7,84.6,ASH-NPD-CL01,DC-ASHBURN,poweredOn,,VMware vSphere 7.0 VM; standalone utility VM - owner unconfirmed
+srv-0219,srvn0219,nonprod,Windows Server,2019,2029-01-09,16,64,2048,1325.1,,,,DAL-NPD-CL01,DC-DALLAS,poweredOn,,VMware vSphere 7.0 VM; no performance history from vCenter (< 30 days); standalone utility VM - owner unconfirmed
+srv-0220,srvn0220,nonprod,Windows Server,2016,2027-01-12,4,32,2048,1213.4,32.6,52.8,41.0,ASH-NPD-CL01,DC-ASHBURN,poweredOn,,VMware vSphere 7.0 VM; standalone utility VM - owner unconfirmed
+srv-0221,srvp0221,prod,Windows Server,2019,2029-01-09,16,64,256,200.4,,,,ASH-PRD-CL02,DC-ASHBURN,poweredOn,,VMware vSphere 7.0 VM; no performance history from vCenter (< 30 days); standalone utility VM - owner unconfirmed
+srv-0222,srvn0222,nonprod,Windows Server,2019,2029-01-09,4,32,2048,1324.6,18.8,30.0,72.7,DAL-NPD-CL01,DC-DALLAS,poweredOn,,VMware vSphere 7.0 VM; standalone utility VM - owner unconfirmed
+srv-0223,srvd0223,dev,Windows Server,2019,2029-01-09,4,16,800,375.9,,,,DAL-DEV-CL01,DC-DALLAS,poweredOn,,VMware vSphere 7.0 VM; no performance history from vCenter (< 30 days); standalone utility VM - owner unconfirmed
+srv-0224,srvd0224,dev,Windows Server,2019,2029-01-09,16,64,1024,522.9,37.6,66.4,44.4,ASH-NPD-CL01,DC-ASHBURN,poweredOn,,VMware vSphere 7.0 VM; standalone utility VM - owner unconfirmed
+srv-0225,srvd0225,dev,Windows Server,2012 R2,2023-10-10,16,64,80,24.5,38.1,46.8,80.8,DAL-DEV-CL01,DC-DALLAS,poweredOn,,VMware vSphere 7.0 VM; OS past end-of-support - remediation or ESU required; standalone utility VM - owner unconfirmed
+srv-0226,srvd0226,dev,Windows Server,2022,2031-10-14,16,64,256,95.3,14.5,50.0,40.0,ASH-NPD-CL01,DC-ASHBURN,poweredOn,,VMware vSphere 7.0 VM; standalone utility VM - owner unconfirmed
+srv-0227,srvp0227,prod,Windows Server,2012 R2,2023-10-10,8,32,200,105.8,,,,ASH-PRD-CL02,DC-ASHBURN,poweredOn,,VMware vSphere 7.0 VM; OS past end-of-support - remediation or ESU required; no performance history from vCenter (< 30 days); standalone utility VM - owner unconfirmed
+srv-0228,srvn0228,nonprod,Windows Server,2012 R2,2023-10-10,2,8,400,301.6,20.7,34.3,29.2,DAL-NPD-CL01,DC-DALLAS,poweredOn,,VMware vSphere 7.0 VM; OS past end-of-support - remediation or ESU required; standalone utility VM - owner unconfirmed
+srv-0229,srvd0229,dev,Windows Server,2012 R2,2023-10-10,2,8,128,83.5,5.9,37.6,61.6,ASH-NPD-CL01,DC-ASHBURN,poweredOn,,VMware vSphere 7.0 VM; OS past end-of-support - remediation or ESU required; standalone utility VM - owner unconfirmed
+srv-0230,srvn0230,nonprod,Windows Server,2016,2027-01-12,8,32,800,623.0,,,,DAL-NPD-CL01,DC-DALLAS,poweredOn,,VMware vSphere 7.0 VM; no performance history from vCenter (< 30 days); standalone utility VM - owner unconfirmed
+srv-0231,srvd0231,dev,Windows Server,2019,2029-01-09,4,16,128,54.2,13.4,46.6,68.3,ASH-NPD-CL01,DC-ASHBURN,poweredOn,,VMware vSphere 7.0 VM; standalone utility VM - owner unconfirmed
+srv-0232,srvp0232,prod,Windows Server,2012 R2,2023-10-10,2,16,2048,1178.7,15.4,25.7,78.9,DAL-PRD-CL01,DC-DALLAS,poweredOff,,VMware vSphere 7.0 VM; OS past end-of-support - remediation or ESU required; powered off at discovery - confirm if decommissioned; standalone utility VM - owner unconfirmed
+srv-0233,srvd0233,dev,Windows Server,2012 R2,2023-10-10,4,32,80,68.2,8.5,52.7,59.1,ASH-NPD-CL01,DC-ASHBURN,poweredOn,,VMware vSphere 7.0 VM; OS past end-of-support - remediation or ESU required; standalone utility VM - owner unconfirmed
+srv-0234,srvd0234,dev,Windows Server,2019,2029-01-09,2,8,100,28.8,,,,ASH-NPD-CL01,DC-ASHBURN,poweredOn,,VMware vSphere 7.0 VM; no performance history from vCenter (< 30 days); standalone utility VM - owner unconfirmed
+srv-0235,srvp0235,prod,Windows Server,2016,2027-01-12,4,16,512,167.8,28.9,48.6,43.6,ASH-PRD-CL02,DC-ASHBURN,poweredOn,,VMware vSphere 7.0 VM; standalone utility VM - owner unconfirmed
+srv-0236,srvn0236,nonprod,Windows Server,2019,2029-01-09,4,32,100,46.0,43.0,61.0,39.7,DAL-NPD-CL01,DC-DALLAS,poweredOn,,VMware vSphere 7.0 VM; standalone utility VM - owner unconfirmed
+srv-0237,srvn0237,nonprod,Windows Server,2019,2029-01-09,2,8,128,87.9,,,,ASH-NPD-CL01,DC-ASHBURN,poweredOff,,VMware vSphere 7.0 VM; powered off at discovery - confirm if decommissioned; no performance history from vCenter (< 30 days); standalone utility VM - owner unconfirmed
+srv-0238,srvd0238,dev,Windows Server,2019,2029-01-09,4,16,256,180.5,,,,DAL-DEV-CL01,DC-DALLAS,poweredOn,,VMware vSphere 7.0 VM; no performance history from vCenter (< 30 days); standalone utility VM - owner unconfirmed
+srv-0239,srvn0239,nonprod,Windows Server,2016,2027-01-12,8,32,2048,1318.8,24.5,34.8,76.6,DAL-NPD-CL01,DC-DALLAS,poweredOn,,VMware vSphere 7.0 VM; standalone utility VM - owner unconfirmed
+srv-0240,srvn0240,nonprod,Windows Server,2019,2029-01-09,2,16,1024,288.2,3.5,13.4,46.8,DAL-NPD-CL01,DC-DALLAS,poweredOn,,VMware vSphere 7.0 VM; standalone utility VM - owner unconfirmed
+srv-0241,srvn0241,nonprod,Windows Server,2022,2031-10-14,2,16,200,104.3,14.4,25.7,47.4,ASH-NPD-CL01,DC-ASHBURN,poweredOn,,VMware vSphere 7.0 VM; standalone utility VM - owner unconfirmed
+srv-0242,srvp0242,prod,Windows Server,2012 R2,2023-10-10,16,128,100,78.9,35.5,56.5,30.2,DAL-PRD-CL01,DC-DALLAS,poweredOn,,VMware vSphere 7.0 VM; OS past end-of-support - remediation or ESU required; standalone utility VM - owner unconfirmed
+srv-0243,srvn0243,nonprod,Windows Server,2016,2027-01-12,4,32,2048,1727.9,35.6,74.4,57.8,DAL-NPD-CL01,DC-DALLAS,poweredOn,,VMware vSphere 7.0 VM; standalone utility VM - owner unconfirmed
+srv-0244,srvn0244,nonprod,Windows Server,2022,2031-10-14,8,32,80,66.5,,,,ASH-NPD-CL01,DC-ASHBURN,poweredOn,,VMware vSphere 7.0 VM; no performance history from vCenter (< 30 days); standalone utility VM - owner unconfirmed
+srv-0245,srvp0245,prod,Windows Server,2019,2029-01-09,4,16,80,67.5,,,,ASH-PRD-CL01,DC-ASHBURN,poweredOn,,VMware vSphere 7.0 VM; no performance history from vCenter (< 30 days); standalone utility VM - owner unconfirmed
+srv-0246,srvn0246,nonprod,Windows Server,2016,2027-01-12,8,32,400,218.4,27.4,56.6,63.2,DAL-NPD-CL01,DC-DALLAS,poweredOn,,VMware vSphere 7.0 VM; standalone utility VM - owner unconfirmed
+srv-0247,srvd0247,dev,Windows Server,2012 R2,2023-10-10,2,16,256,198.0,19.5,62.4,44.6,DAL-DEV-CL01,DC-DALLAS,poweredOn,,VMware vSphere 7.0 VM; OS past end-of-support - remediation or ESU required; standalone utility VM - owner unconfirmed
+srv-0248,srvn0248,nonprod,Windows Server,2022,2031-10-14,2,16,128,69.2,8.1,31.1,71.2,ASH-NPD-CL01,DC-ASHBURN,poweredOn,,VMware vSphere 7.0 VM; standalone utility VM - owner unconfirmed
+srv-0249,srvd0249,dev,Windows Server,2022,2031-10-14,8,64,2048,621.3,16.8,28.6,39.9,ASH-NPD-CL01,DC-ASHBURN,poweredOn,,VMware vSphere 7.0 VM; standalone utility VM - owner unconfirmed
+srv-0250,srvd0250,dev,Windows Server,2019,2029-01-09,2,8,512,397.1,26.1,38.1,31.1,ASH-NPD-CL01,DC-ASHBURN,poweredOn,,VMware vSphere 7.0 VM; standalone utility VM - owner unconfirmed

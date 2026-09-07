@@ -63,6 +63,10 @@ index = SearchIndex(
                 resource_url=aoai, deployment_name=embed_deploy, model_name="text-embedding-3-small"),
         )],
     ),
+    # No semantic configuration: the Free AI Search tier has no semantic ranker, so the
+    # agent's search tool uses vector_simple_hybrid (vector + keyword). Add a
+    # SemanticSearch(...) here and switch create_agent.py to vector_semantic_hybrid if you
+    # move to Basic or above.
 )
 ix_client.create_or_update_index(index)
 print(f"index: {NAME}")

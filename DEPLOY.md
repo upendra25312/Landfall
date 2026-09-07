@@ -88,9 +88,25 @@ At the end `azd` prints the **`SERVICE_WEB_URI`** — the chat UI.
 
 These need the portal or a couple of CLI calls once, after the first `azd up`:
 
-1. **Lock down the chat UI.** Container App → *Authentication* → add Microsoft (Entra ID)
-   as identity provider, set *Restrict access: Require authentication*. Until you do
-   this the UI is reachable by anyone with the URL.
+1. **Lock down the chat UI.** The Container App ingress is public until you add auth.
+   ```bash
+   RG=$(azd env get-value AZURE_RESOURCE_GROUP); WEB=$(azd env get-value SERVICE_WEB_NAME)
+   TENANT=$(az account show --query tenantId -o tsv)
+   FQDN=$(az containerapp show -g "$RG" -n "$WEB" --query properties.configuration.ingress.fqdn -o tsv)
+   APPID=$(az ad app create --display-name "landfall-web ($WEB)" --sign-in-audience AzureADMyOrg \
+     --web-redirect-uris "https://$FQDN/.auth/login/aad/callback" --enable-id-token-issuance true \
+     --query appId -o tsv)
+   az ad sp create --id "$APPID"
+   SECRET=$(az ad app credential reset --id "$APPID" --years 2 --query password -o tsv)
+   az containerapp secret set -g "$RG" -n "$WEB" --secrets "microsoft-provider-authentication-secret=$SECRET"
+   az containerapp auth microsoft update -g "$RG" -n "$WEB" --client-id "$APPID" \
+     --client-secret-name microsoft-provider-authentication-secret \
+     --issuer "https://login.microsoftonline.com/$TENANT/v2.0" --yes
+   az containerapp auth update -g "$RG" -n "$WEB" --enabled true --action RedirectToLoginPage \
+     --redirect-provider azureactivedirectory --require-https true
+   ```
+   `--sign-in-audience AzureADMyOrg` restricts sign-in to your tenant. Unauthenticated
+   requests then get a 302 to Microsoft login (browsers) or 401 (API clients).
 
 2. **Foundry connection for AI Search.** If `create_agent.py` warned that no connection
    was found: Foundry portal → *Management center* → *Connected resources* → add your
@@ -116,10 +132,17 @@ These need the portal or a couple of CLI calls once, after the first `azd up`:
    endpoints reachable. Skip this only if the agent must call `query_inventory` and you
    accept the public endpoint for the life of the engagement.
 
-4. **Load client data.** Upload inventory to `raw/inventory/` and narrative docs to
-   `raw/docs/` in the storage account. The indexer picks up `raw/docs/` on its 6-hour
-   schedule (or run it now from the Search portal). Load the inventory tables into SQL
-   with your own import (Azure Data Studio, `bcp`, or a small load Function).
+4. **Load client data.** Upload narrative docs to `raw/docs/` (the indexer picks them up
+   on its 6-hour schedule, or run it now). Load the four inventory tables in SQL with
+   your own import (Azure Data Studio, `bcp`, or a script). **To demo without client
+   data**, `sample-estate/` has a synthetic 250-server / 31-app estate plus a completed
+   discovery questionnaire and effort model:
+   ```bash
+   python sample-estate/load_estate.py            # -> SQL (Entra auth)
+   ACC=$(azd env get-value AZURE_STORAGE_ACCOUNT)
+   az storage blob upload-batch --account-name "$ACC" --auth-mode login \
+     -d raw/docs -s sample-estate --pattern "*.md"
+   ```
 
 5. **Budget alert.** Cost Management → Budgets → $25 with alerts at 50 / 80 / 100%.
 

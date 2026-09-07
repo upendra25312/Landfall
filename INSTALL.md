@@ -346,6 +346,15 @@ Use Azure Data Studio's flat-file import, `bcp`, or a small load script — what
 your data. Column names in `schema.sql` are what the agent's `query_inventory` tool
 expects.
 
+**No client data yet?** `sample-estate/` ships a synthetic 250-server / 31-application
+estate (plus a completed discovery questionnaire and effort model as narrative docs):
+
+```bash
+python sample-estate/load_estate.py                         # -> SQL, Entra auth
+az storage blob upload-batch --account-name "$(azd env get-value AZURE_STORAGE_ACCOUNT)" \
+  --auth-mode login -d raw/docs -s sample-estate --pattern "*.md"   # -> search index
+```
+
 ### 7.3 Ask questions
 
 - **Chat:** open `SERVICE_WEB_URI`, sign in, ask (e.g. *"How many prod Windows Server 2012
