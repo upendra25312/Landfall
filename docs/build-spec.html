@@ -117,11 +117,11 @@
 
 <div class="wrap">
 
-  <p class="eyebrow">Build Specification · Migration-Estimate Edition · v3</p>
+  <p class="eyebrow">Build Specification · Migration-Estimate Edition · v4</p>
   <h1>Project Sounding</h1>
   <p class="lede">A low-code Azure agent that reads a client's on-premises server and application inventory from Data Lake and drafts the landing-zone and migration numbers you need for an RFP proposal &mdash; no discovery tools installed on the client estate.</p>
   <div class="meta">
-    <span>Prepared <b>2026-09-06</b></span><span class="sep">/</span>
+    <span>Prepared <b>2026-09-07</b></span><span class="sep">/</span>
     <span>Owner <b>upendra25312@gmail.com</b></span><span class="sep">/</span>
     <span>Budget <b>&lt; $30 / month</b></span><span class="sep">/</span>
     <span>Usage <b>5&ndash;20 runs / month, bursty</b></span><span class="sep">/</span>
@@ -183,17 +183,17 @@ storage_id · server_id (FK) · type (block/file/object/db) · size_gb · iops �
       <div class="flow-row three">
         <div class="node"><span class="k">Client</span><span class="v">inventory exports</span><span class="d">RVTools · CMDB · app portfolio · docs</span></div>
         <div class="node hero"><span class="k">Store</span><span class="v">ADLS Gen2</span><span class="d">raw/inventory · raw/docs · questions · answers</span></div>
-        <div class="node"><span class="k">Normalize</span><span class="v">Durable Function</span><span class="d">blob trigger &rarr; parse CSV/XLSX &rarr; load SQL tables</span></div>
+        <div class="node"><span class="k">Normalize</span><span class="v">Durable Function</span><span class="d">Event Grid blob trigger &rarr; parse CSV/XLSX &rarr; load SQL tables</span></div>
       </div>
       <div class="arrow">&darr;</div>
       <div class="flow-row three">
         <div class="node"><span class="k">Structured</span><span class="v">Azure SQL &mdash; Free</span><span class="d">servers · applications · dependencies · storage</span></div>
         <div class="node"><span class="k">Narrative</span><span class="v">AI Search &mdash; Free</span><span class="d">docs index · hybrid · 512-dim vectors</span></div>
-        <div class="node"><span class="k">Models</span><span class="v">Azure OpenAI</span><span class="d">gpt-4o-mini · text-embedding-3-small</span></div>
+        <div class="node"><span class="k">Models</span><span class="v">Azure OpenAI</span><span class="d">gpt-4o · text-embedding-3-small</span></div>
       </div>
       <div class="arrow">&darr;</div>
       <div class="flow-row">
-        <div class="node hero"><span class="k">Agent &mdash; Azure AI Foundry</span><span class="v">Migration Estimator</span><span class="d">query_inventory (SQL) · search_documents · azure_retail_prices · vm_rightsize · microsoft_docs (Learn MCP)</span></div>
+        <div class="node hero"><span class="k">Agent &mdash; Microsoft Foundry prompt agent (Responses API)</span><span class="v">Migration Estimator</span><span class="d">query_inventory (SQL) · search_documents · azure_retail_prices · vm_rightsize · microsoft_docs (Learn MCP)</span></div>
       </div>
       <div class="arrow">&darr;</div>
       <div class="flow-row two">
@@ -201,6 +201,8 @@ storage_id · server_id (FK) · type (block/file/object/db) · size_gb · iops �
         <div class="node"><span class="k">Front end B</span><span class="v">RFP question sheet &mdash; Durable Functions</span><span class="d">questions.xlsx &rarr; fan-out &rarr; answers.xlsx + email</span></div>
       </div>
     </div>
+    <div class="callout"><b>Agent runtime.</b> The Migration Estimator is a <strong>Microsoft Foundry prompt agent</strong> &mdash; versioned, addressed by <em>name</em> (<code>landfall-migration-estimator</code>), not an <code>asst_</code> id. Both front ends call it through the <strong>Responses API</strong> (<code>responses.create(&hellip;, agent_reference)</code>): the chat UI threads context with <code>previous_response_id</code>; the batch runner is stateless per question. Re-running <code>create_agent.py</code> publishes a new version and the front ends pick it up with no redeploy.</div>
+    <div class="callout"><b>Event Grid, not polling.</b> Both blob triggers (normalize on <code>raw/inventory/</code>, batch runner on <code>questions/</code>) run on the Functions <strong>Flex Consumption</strong> plan, which requires an Event Grid source. An Event Grid system topic sits on the storage account; the <code>questions/</code> subscription is created by a post-deploy hook because its webhook needs the function's <code>blobs_extension</code> key, which exists only after first deploy.</div>
   </section>
 
   <hr class="rule">
@@ -210,7 +212,7 @@ storage_id · server_id (FK) · type (block/file/object/db) · size_gb · iops �
     <div class="tools">
       <div class="tool"><div class="ico">01</div><div>
         <p class="t"><code>query_inventory</code> &mdash; Azure SQL</p>
-        <p>OpenAPI tool over a small Function: <code>POST /query {question}</code> &rarr; <code>gpt-4o-mini</code> writes a read-only <code>SELECT</code> constrained to the schema above &rarr; runs it against the Free SQL database &rarr; returns rows <em>and</em> the SQL used. Answers &ldquo;how many prod Windows Server 2012 VMs&rdquo;, &ldquo;total provisioned vCPU&rdquo;, &ldquo;apps with no owner&rdquo;.</p>
+        <p>OpenAPI tool over a small Function: <code>POST /query {question}</code> &rarr; <code>gpt-4o</code> writes a read-only <code>SELECT</code> constrained to the schema above &rarr; runs it against the Free SQL database &rarr; returns rows <em>and</em> the SQL used. Answers &ldquo;how many prod Windows Server 2012 VMs&rdquo;, &ldquo;total provisioned vCPU&rdquo;, &ldquo;apps with no owner&rdquo;.</p>
       </div></div>
       <div class="tool"><div class="ico">02</div><div>
         <p class="t"><code>vm_rightsize</code> &mdash; Function with documented heuristic</p>
@@ -251,7 +253,7 @@ storage_id · server_id (FK) · type (block/file/object/db) · size_gb · iops �
         </tbody>
       </table>
     </div>
-    <div class="callout warn"><b>You own the bands.</b> The S/M/L/XL effort-hour bands, the RI term assumption, the non-prod uplift %, and the PM overhead % are <em>your firm's</em> numbers &mdash; put them in a <code>estimation_config.json</code> the agent reads as a tool or system-prompt block, so the model applies your rates, not invented ones.</p></div>
+    <div class="callout warn"><b>You own the bands.</b> The S/M/L/XL effort-hour bands, the RI term assumption, the non-prod uplift %, and the PM overhead % are <em>your firm's</em> numbers &mdash; put them in a <code>estimation_config.json</code> the agent reads as a tool or system-prompt block, so the model applies your rates, not invented ones.</div>
   </section>
 
   <hr class="rule">
@@ -267,18 +269,19 @@ storage_id · server_id (FK) · type (block/file/object/db) · size_gb · iops �
           <tr><td><b>Azure AI Search</b></td><td class="mono">Free</td><td>Narrative docs only &mdash; comfortably under 50 MB now</td><td class="cost">$0</td></tr>
           <tr><td><b>Azure SQL Database</b></td><td class="mono">Free offer (serverless, auto-pause)</td><td>100k vCore-s + 32 GB/mo free. Inventory is tiny.</td><td class="cost">$0</td></tr>
           <tr><td><b>Azure OpenAI &mdash; embeddings</b></td><td class="mono">text-embedding-3-small (512-dim)</td><td>Only the docs; a few $ one-time</td><td class="cost">~$0&ndash;1</td></tr>
-          <tr><td><b>Azure OpenAI &mdash; chat</b></td><td class="mono">gpt-4o-mini</td><td>Agent reasoning + text-to-SQL. Estimate runs are bursty, not constant.</td><td class="cost">~$3&ndash;15</td></tr>
-          <tr><td><b>Azure AI Foundry</b></td><td class="mono">Hub + project</td><td>Free control plane</td><td class="cost">$0</td></tr>
+          <tr><td><b>Azure OpenAI &mdash; chat</b></td><td class="mono">gpt-4o</td><td>Agent reasoning + text-to-SQL. Estimate runs are bursty, not constant.</td><td class="cost">~$5&ndash;15</td></tr>
+          <tr><td><b>Microsoft Foundry</b></td><td class="mono">Account + project</td><td>Free control plane; prompt agents + Responses API</td><td class="cost">$0</td></tr>
           <tr><td><b>Azure Container Apps</b></td><td class="mono">Consumption, min replicas 0</td><td>Free grant covers a low-traffic internal UI</td><td class="cost">~$0</td></tr>
-          <tr><td><b>Azure Durable Functions</b></td><td class="mono">Consumption (Y1)</td><td>Normalize job + RFP batch; 1M free executions/mo</td><td class="cost">~$0</td></tr>
+          <tr><td><b>Azure Functions</b></td><td class="mono">Flex Consumption</td><td>Normalize job + RFP batch (Durable); free grant covers this volume</td><td class="cost">~$0</td></tr>
+          <tr><td><b>Event Grid</b></td><td class="mono">System topic + subscriptions</td><td>Blob-created events for the two triggers; first 100k ops/mo free</td><td class="cost">$0</td></tr>
           <tr><td><b>Azure Retail Prices API</b></td><td class="mono">Public</td><td>No key, no cost, rate-limited</td><td class="cost">$0</td></tr>
           <tr><td><b>Microsoft Learn MCP</b></td><td class="mono">Hosted, public</td><td>No key, no cost, no SLA</td><td class="cost">$0</td></tr>
           <tr><td><b>Key Vault + App Insights</b></td><td class="mono">Standard / free grant</td><td>Secrets + tracing</td><td class="cost">~$0.10</td></tr>
         </tbody>
-        <tfoot><tr><td colspan="3">Typical monthly total</td><td class="cost">$3&ndash;10</td></tr></tfoot>
+        <tfoot><tr><td colspan="3">Typical monthly total</td><td class="cost">$5&ndash;15</td></tr></tfoot>
       </table>
     </div>
-    <div class="callout"><b>Bursty usage works in your favour.</b> At 5&ndash;20 estimate runs a month, every compute tier here sits idle most of the time and bills near zero: Container Apps and Functions scale to zero, Azure SQL Free auto-pauses after 1 hour, and <code>gpt-4o-mini</code> only bills while a run is active &mdash; a full estimate pass (20&ndash;40 agent turns) costs cents. Expect real months to land at the <strong>low end, $3&ndash;10</strong>, most of which is the Azure OpenAI tokens for the runs you actually do.</div>
+    <div class="callout"><b>Bursty usage works in your favour.</b> At 5&ndash;20 estimate runs a month, every compute tier here sits idle most of the time and bills near zero: Container Apps and Functions scale to zero, Azure SQL Free auto-pauses after 1 hour, and <code>gpt-4o</code> only bills while a run is active &mdash; a full estimate pass (20&ndash;40 agent turns) costs a few tens of cents. Expect real months to land around <strong>$5&ndash;15</strong>, most of which is the Azure OpenAI tokens for the runs you actually do.</div>
     <div class="callout"><b>Between engagements, park it.</b> Nothing here needs to run continuously. When no estimate is in flight you can: leave it as-is (idle cost is already ~$0), or fully stop spend by deleting the resource group and redeploying from an <strong>infra-as-code template (Bicep)</strong> plus a SQL <code>schema.sql</code> next time &mdash; a 10-minute redeploy. Keep the ADLS account and Key Vault if you want to retain past clients' data; delete them too if contracts require it.</div>
   </section>
 
@@ -293,12 +296,12 @@ storage_id · server_id (FK) · type (block/file/object/db) · size_gb · iops �
     </div></div>
     <div class="phase"><div class="step">02</div><div>
       <h3>Models</h3>
-      <p>Foundry: deploy <code>gpt-4o-mini</code> and <code>text-embedding-3-small</code>, ~30K TPM cap each.</p>
+      <p>Foundry: deploy <code>gpt-4o</code> and <code>text-embedding-3-small</code> (both GlobalStandard), ~30K TPM cap each.</p>
       <p class="out">out: two capped model endpoints</p>
     </div></div>
     <div class="phase"><div class="step">03</div><div>
       <h3>Normalize function</h3>
-      <p>Durable Function, blob trigger on <code>raw/inventory/</code>: detect file type (RVTools vs CMDB vs app portfolio by header signature), map columns to the schema, upsert into SQL. Log unmapped columns to <code>answers/_ingest_log.txt</code> so you can see what was dropped.</p>
+      <p>Durable Function, Event Grid blob trigger on <code>raw/inventory/</code> (<code>source=BlobSource.EVENT_GRID</code> &mdash; Flex Consumption): detect file type (RVTools vs CMDB vs app portfolio by header signature), map columns to the schema, upsert into SQL. Log unmapped columns to <code>answers/_ingest_log.txt</code> so you can see what was dropped.</p>
       <p class="out">out: client files &rarr; populated SQL tables, with a gap log</p>
     </div></div>
     <div class="phase"><div class="step">04</div><div>
@@ -313,8 +316,8 @@ storage_id · server_id (FK) · type (block/file/object/db) · size_gb · iops �
     </div></div>
     <div class="phase"><div class="step">06</div><div>
       <h3>Agent</h3>
-      <p>Foundry agent, <code>gpt-4o-mini</code>, system prompt from above. Attach all five tools (three OpenAPI, one AI Search, one MCP &rarr; <code>learn.microsoft.com/api/mcp</code>). Test with 20 real estimate questions; verify tool routing and that every answer carries assumptions + confidence.</p>
-      <p class="out">out: working Migration Estimator agent</p>
+      <p>Foundry prompt agent, <code>gpt-4o</code>, system prompt from above, created / versioned by <code>scripts/create_agent.py</code> (<code>PromptAgentDefinition</code> + <code>agents.create_version</code>). Attach all five tools (three OpenAPI, one AI Search, one MCP &rarr; <code>learn.microsoft.com/api/mcp</code>). Test with 20 real estimate questions via the Responses API; verify tool routing and that every answer carries assumptions + confidence.</p>
+      <p class="out">out: working Migration Estimator agent, addressed by name</p>
     </div></div>
     <div class="phase"><div class="step">07</div><div>
       <h3>Chat UI &mdash; Container Apps</h3>
@@ -339,7 +342,7 @@ storage_id · server_id (FK) · type (block/file/object/db) · size_gb · iops �
     <h2>RFP question sheet &mdash; Durable Functions</h2>
     <p class="sub">Python v2 model. Fan-out / fan-in: parse the sheet, answer each question as a throttled parallel activity, write a structured workbook. <code>host.json</code>: <code>maxConcurrentActivityFunctions: 3</code>.</p>
     <pre><code><span class="c"># function_app.py — azure-functions, azure-functions-durable, azure-identity,</span>
-<span class="c">#   azure-ai-projects, azure-storage-blob, pandas, openpyxl</span>
+<span class="c">#   azure-ai-projects (2.6), azure-storage-blob, pandas, openpyxl</span>
 <span class="c">import</span> io, os, logging
 <span class="c">import</span> pandas <span class="c">as</span> pd
 <span class="c">import</span> azure.functions <span class="c">as</span> func
@@ -348,31 +351,38 @@ storage_id · server_id (FK) · type (block/file/object/db) · size_gb · iops �
 <span class="c">from</span> azure.ai.projects <span class="c">import</span> AIProjectClient
 <span class="c">from</span> azure.storage.blob <span class="c">import</span> BlobServiceClient
 
-app  = func.FunctionApp()
+app  = df.DFApp()
 cred = DefaultAzureCredential()
-proj = AIProjectClient(endpoint=os.environ[<span class="s">"FOUNDRY_PROJECT_ENDPOINT"</span>], credential=cred)
-blob = BlobServiceClient(os.environ[<span class="s">"STORAGE_URL"</span>], credential=cred)
-AGENT_ID = os.environ[<span class="s">"AGENT_ID"</span>]
-MAX_ROWS = <span class="s">300</span>
+_c   = {}  <span class="c"># clients built lazily — keep worker function-indexing fast</span>
 
-@app.blob_trigger(arg_name=<span class="s">"src"</span>, path=<span class="s">"questions/{name}.xlsx"</span>, connection=<span class="s">"STORAGE_CONN"</span>)
+<span class="c">def</span> _blob():    <span class="c">return</span> _c.setdefault(<span class="s">"b"</span>, BlobServiceClient(os.environ[<span class="s">"STORAGE_URL"</span>], credential=cred))
+<span class="c">def</span> _openai():  <span class="c">return</span> _c.setdefault(<span class="s">"o"</span>,
+    AIProjectClient(endpoint=os.environ[<span class="s">"FOUNDRY_PROJECT_ENDPOINT"</span>], credential=cred).get_openai_client())
+
+AGENT_NAME = os.environ.get(<span class="s">"AGENT_ID"</span>, <span class="s">""</span>)  <span class="c"># Foundry prompt agent, addressed by name</span>
+MAX_ROWS   = <span class="s">300</span>
+FMT = <span class="s">"\n\nReturn: Answer, Basis, Assumptions, Confidence, Sources."</span>
+
+<span class="c"># Flex Consumption: blob triggers must be driven by Event Grid</span>
+@app.blob_trigger(arg_name=<span class="s">"src"</span>, path=<span class="s">"questions/{name}.xlsx"</span>, connection=<span class="s">"STORAGE_CONN"</span>,
+                  source=func.BlobSource.EVENT_GRID)
 @app.durable_client_input(client_name=<span class="s">"client"</span>)
 <span class="c">async def</span> start(src: func.InputStream, client):
     name = os.path.basename(src.name)
-    blob.get_blob_client(<span class="s">"_work"</span>, name).upload_blob(src.read(), overwrite=<span class="c">True</span>)
+    _blob().get_blob_client(<span class="s">"work"</span>, name).upload_blob(src.read(), overwrite=<span class="c">True</span>)
     <span class="c">await</span> client.start_new(<span class="s">"orchestrator"</span>, client_input=name)
 
-@app.orchestration_trigger(context_name=<span class="s">"ctx"</span>)
-<span class="c">def</span> orchestrator(ctx: df.DurableOrchestrationContext):
-    name = ctx.get_input()
-    qs   = <span class="c">yield</span> ctx.call_activity(<span class="s">"parse_sheet"</span>, name)
+@app.orchestration_trigger(context_name=<span class="s">"context"</span>)
+<span class="c">def</span> orchestrator(context: df.DurableOrchestrationContext):
+    name = context.get_input()
+    qs   = <span class="c">yield</span> context.call_activity(<span class="s">"parse_sheet"</span>, name)
     <span class="c">if</span> qs == <span class="s">"TOO_MANY_ROWS"</span>: <span class="c">return</span>
-    rows = <span class="c">yield</span> ctx.task_all([ctx.call_activity(<span class="s">"ask"</span>, q) <span class="c">for</span> q <span class="c">in</span> qs])
-    <span class="c">yield</span> ctx.call_activity(<span class="s">"write_results"</span>, {<span class="s">"name"</span>: name, <span class="s">"rows"</span>: rows})
+    rows = <span class="c">yield</span> context.task_all([context.call_activity(<span class="s">"ask"</span>, q) <span class="c">for</span> q <span class="c">in</span> qs])
+    <span class="c">yield</span> context.call_activity(<span class="s">"write_results"</span>, {<span class="s">"name"</span>: name, <span class="s">"rows"</span>: rows})
 
 @app.activity_trigger(input_name=<span class="s">"name"</span>)
 <span class="c">def</span> parse_sheet(name):
-    data = blob.get_blob_client(<span class="s">"_work"</span>, name).download_blob().readall()
+    data = _blob().get_blob_client(<span class="s">"work"</span>, name).download_blob().readall()
     d = pd.read_excel(io.BytesIO(data))
     <span class="c">if</span> len(d) &gt; MAX_ROWS: <span class="c">return</span> <span class="s">"TOO_MANY_ROWS"</span>
     <span class="c">return</span> d[<span class="s">"Question"</span>].fillna(<span class="s">""</span>).tolist()
@@ -380,19 +390,24 @@ MAX_ROWS = <span class="s">300</span>
 @app.activity_trigger(input_name=<span class="s">"q"</span>)
 <span class="c">def</span> ask(q):
     <span class="c">try</span>:
-        t = proj.agents.threads.create()
-        proj.agents.messages.create(t.id, role=<span class="s">"user"</span>,
-            content=q + <span class="s">"\n\nReturn: Answer, Basis, Assumptions, Confidence, Sources."</span>)
-        r = proj.agents.runs.create_and_process(t.id, agent_id=AGENT_ID)
-        <span class="c">if</span> r.status != <span class="s">"completed"</span>:
-            <span class="c">return</span> {<span class="s">"q"</span>: q, <span class="s">"answer"</span>: <span class="s">""</span>, <span class="s">"status"</span>: <span class="s">f"run_{r.status}"</span>}
-        m = proj.agents.messages.get_last_message_by_role(t.id, <span class="s">"assistant"</span>)
-        text  = <span class="s">"\n"</span>.join(x.text.value <span class="c">for</span> x <span class="c">in</span> m.text_messages)
-        cites = <span class="s">"; "</span>.join(sorted({a.file_name <span class="c">for</span> a <span class="c">in</span> m.file_citation_annotations}))
-        <span class="c">return</span> {<span class="s">"q"</span>: q, <span class="s">"answer"</span>: text, <span class="s">"cites"</span>: cites, <span class="s">"status"</span>: <span class="s">"ok"</span>}
+        resp = _openai().responses.create(input=q + FMT,
+            extra_body={<span class="s">"agent_reference"</span>: {<span class="s">"type"</span>: <span class="s">"agent_reference"</span>, <span class="s">"name"</span>: AGENT_NAME}})
+        text = (resp.output_text <span class="c">or</span> <span class="s">""</span>).strip()
+        <span class="c">if not</span> text:
+            <span class="c">return</span> {<span class="s">"q"</span>: q, <span class="s">"answer"</span>: <span class="s">""</span>, <span class="s">"cites"</span>: <span class="s">""</span>, <span class="s">"status"</span>: <span class="s">f"run_{resp.status}"</span>}
+        <span class="c">return</span> {<span class="s">"q"</span>: q, <span class="s">"answer"</span>: text, <span class="s">"cites"</span>: _citations(resp), <span class="s">"status"</span>: <span class="s">"ok"</span>}
     <span class="c">except</span> Exception <span class="c">as</span> e:
         logging.exception(<span class="s">"ask failed"</span>)
         <span class="c">return</span> {<span class="s">"q"</span>: q, <span class="s">"answer"</span>: <span class="s">""</span>, <span class="s">"cites"</span>: <span class="s">""</span>, <span class="s">"status"</span>: <span class="s">f"error: {e}"</span>}
+
+<span class="c">def</span> _citations(resp):  <span class="c"># walk resp.output[*].content[*].annotations for filename/title/url</span>
+    seen = []
+    <span class="c">for</span> item <span class="c">in</span> getattr(resp, <span class="s">"output"</span>, <span class="c">None</span>) <span class="c">or</span> []:
+        <span class="c">for</span> content <span class="c">in</span> getattr(item, <span class="s">"content"</span>, <span class="c">None</span>) <span class="c">or</span> []:
+            <span class="c">for</span> a <span class="c">in</span> getattr(content, <span class="s">"annotations"</span>, <span class="c">None</span>) <span class="c">or</span> []:
+                lbl = getattr(a, <span class="s">"filename"</span>, <span class="c">None</span>) <span class="c">or</span> getattr(a, <span class="s">"title"</span>, <span class="c">None</span>) <span class="c">or</span> getattr(a, <span class="s">"url"</span>, <span class="c">None</span>)
+                <span class="c">if</span> lbl <span class="c">and</span> lbl <span class="c">not in</span> seen: seen.append(lbl)
+    <span class="c">return</span> <span class="s">"; "</span>.join(sorted(seen))
 
 @app.activity_trigger(input_name=<span class="s">"p"</span>)
 <span class="c">def</span> write_results(p):
@@ -400,9 +415,10 @@ MAX_ROWS = <span class="s">300</span>
                          <span class="s">"Sources"</span>: r.get(<span class="s">"cites"</span>, <span class="s">""</span>), <span class="s">"Status"</span>: r[<span class="s">"status"</span>]} <span class="c">for</span> r <span class="c">in</span> p[<span class="s">"rows"</span>]])
     buf = io.BytesIO(); out.to_excel(buf, index=<span class="c">False</span>); buf.seek(<span class="s">0</span>)
     nm = p[<span class="s">"name"</span>].replace(<span class="s">".xlsx"</span>, <span class="s">"_answered.xlsx"</span>)
-    blob.get_blob_client(<span class="s">"answers"</span>, nm).upload_blob(buf, overwrite=<span class="c">True</span>)
+    _blob().get_blob_client(<span class="s">"answers"</span>, nm).upload_blob(buf, overwrite=<span class="c">True</span>)
     logging.info(<span class="s">"wrote answers/%s"</span>, nm)
 </code></pre>
+    <div class="callout"><b>Post-deploy wiring.</b> The <code>questions/</code> &rarr; <code>start</code> Event Grid subscription is created by <code>scripts/eventgrid.{ps1,sh}</code> (an <code>azd</code> <code>postdeploy</code> hook), because its webhook URL carries the function's <code>blobs_extension</code> system key, which only exists once <code>azd deploy</code> has published the function. Idempotent; re-run with <code>azd hooks run postdeploy</code>.</div>
   </section>
 
   <hr class="rule">
@@ -444,6 +460,6 @@ MAX_ROWS = <span class="s">300</span>
     </div>
   </section>
 
-  <footer>Project Sounding · Migration-Estimate Edition v3 · 2026-09-06 · prepared with Claude Code · DRAFT estimates require architect review</footer>
+  <footer>Project Sounding · Migration-Estimate Edition v4 · 2026-09-07 · prepared with Claude Code · DRAFT estimates require architect review</footer>
 
 </div>
