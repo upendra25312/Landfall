@@ -137,11 +137,15 @@ cutover-weekend overtime and the PCI sign-off gates.
 
 Separate proposal line items (not above):
 
-- **Azure run-rate** — from the Landfall `azure_retail_prices` tool. Indicative: ~220
-  rehosted VMs right-sized down ~40%, Sweden Central, **Azure Hybrid Benefit** on Windows,
-  1-year RI/Savings Plan on steady-state prod → **~$28–38k/month** compute + storage +
-  ExpressRoute + backup + LZ fixed services (~$400k/year), retiring against the **$3.0M
-  MACC**. The agent should produce the priced version with region + term + price date.
+- **Azure run-rate** — now produced by the `estimate_compute_cost` tool (deterministic,
+  right-sizes + prices in one call). For this estate, Sweden Central, 1-year RI at 80%
+  coverage, AHB on Windows: **compute ~$56k/mo effective, managed disk ~$30k/mo**, total
+  **~$86k/mo (~$1.04M/yr)**, range ~$70k–$139k/mo. That is *before* storage right-sizing,
+  dev/test pricing on non-prod, and the file-share / DB / PaaS storage lines (E2.3). Tune
+  `estimation_config.json` and re-run. (The earlier "~$28–38k/month" figure was a
+  hand estimate against a more aggressive 40% right-sizing assumption — superseded.)
+  ExpressRoute + backup + LZ fixed services are separate lines; retire against the **$3.0M
+  MACC**.
 - **Microsoft funding** — **Azure Migrate and Modernize (AMM)** partner-led engagement is
   pre-approved (discovery-answers C3); nets down a meaningful share of eligible delivery
   cost. Cloud Accelerate Factory / FastTrack for the landing zone reduces LZ build PD.

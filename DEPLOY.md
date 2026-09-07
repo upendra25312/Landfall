@@ -67,11 +67,11 @@ What `azd up` does:
      workload identity read-only access (`grant_api_sql.sql`, for `query_inventory`),
    - builds the AI Search data source / skillset / index / indexer (`setup_search.py`),
    - creates (versions) the **Migration Estimator** prompt agent (`create_agent.py`) with
-     the Microsoft Learn MCP tool, the AI Search tool, and the three OpenAPI tools
-     (`query_inventory`, `vm_rightsize`, `azure_retail_prices`) pointed at the Function
-     app. The agent is addressed by **name** (`landfall-migration-estimator`), not an
-     `asst_` id; that name is written to `AGENT_ID` in the azd env and pushed to both
-     running services.
+     the Microsoft Learn MCP tool, the AI Search tool, and the OpenAPI tools
+     (`query_inventory`, `vm_rightsize`, `estimate_compute_cost`, `azure_retail_prices`)
+     pointed at the Function app. The agent is addressed by **name**
+     (`landfall-migration-estimator`), not an `asst_` id; that name is written to
+     `AGENT_ID` in the azd env and pushed to both running services.
 3. **deploy** — zip-deploys `src/api` to the Function app and builds + pushes the
    `src/web` image to the registry, then updates the Container App.
 4. **postdeploy** (`scripts/eventgrid.*`) — creates two Event Grid subscriptions:
@@ -164,7 +164,18 @@ These need the portal or a couple of CLI calls once, after the first `azd up`:
    python sample-estate/load_estate.py
    ```
 
-5. **Budget alert.** Cost Management → Budgets → $25 with alerts at 50 / 80 / 100%.
+5. **Estimation config (optional).** The cost tools (`vm_rightsize`,
+   `estimate_compute_cost`) apply `estimation_config.json`. The deployed Function uses the
+   built-in defaults (`src/api/cost/config.py`) unless you set an **`ESTIMATION_CONFIG`**
+   app setting — a path inside the package, or the JSON inline:
+   ```bash
+   RG=$(azd env get-value AZURE_RESOURCE_GROUP); FUNC=$(azd env get-value SERVICE_API_NAME)
+   az functionapp config appsettings set -g "$RG" -n "$FUNC" \
+     --settings "ESTIMATION_CONFIG=$(python -c 'import json;print(json.dumps(json.load(open("estimation_config.json"))))')"
+   ```
+   Or pass per-run overrides in the tool call body (`{"config": {...}}`) — no redeploy.
+
+6. **Budget alert.** Cost Management → Budgets → $25 with alerts at 50 / 80 / 100%.
 
 ---
 

@@ -28,8 +28,9 @@
   },
 
   "uplift": {
-    "nonprod_compute_pct": 0,
-    "dr_compute_pct": 100
+    "nonprod_of_prod_pct": 100,
+    "dr_of_prod_pct": 100,
+    "dev_test_discount_pct": 55
   },
 
   "effort": {

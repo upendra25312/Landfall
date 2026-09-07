@@ -5,6 +5,82 @@ Operating model: [`landfall-5x5-prd.md` §7](landfall-5x5-prd.md). Tracker:
 
 ---
 
+## Cycle 4 — estimate_compute_cost (compute BoM)
+
+**Date:** 2026-09-07 · **Owner:** FinOps + SWE · **Tracker:** E2.2 (done), E6.1 (advances) ·
+**Closes audit** FIN-3 (nothing aggregated the SKU mix into a costed bill).
+
+### Plan
+
+**Objective.** Turn the right-size output into a monthly Azure compute cost — a
+line-item bill of materials with PAYG / reserved / AHB, per-environment scaling, and a
+low/expected/high range — deterministic for a given price date.
+
+**Acceptance this cycle**
+
+| # | Criterion | Check |
+|---|---|---|
+| C1 | AHB prices a Windows server at the Linux (no-licence) rate; flagged per line | unit test (injected prices) |
+| C2 | Reserved blend = coverage·RI + (1−coverage)·PAYG at the configured term | unit test |
+| C3 | Per-environment factor scales dr / non-prod compute | unit test |
+| C4 | A SKU with no price is flagged in `missing_prices`, never fatal; line falls back to disk-only | unit test |
+| C5 | `range.low ≤ expected ≤ high`; totals reconcile; `annual == monthly·12` | unit test |
+| C6 | Deterministic | unit test |
+| C7 | Real retail prices parse correctly (RI = amortised term total, Windows vs Linux) | live fetch spot-check |
+
+**Design.** `cost/compute_cost.py` — pure math on an injected **PriceBook**
+(`{sku: {linux|windows: {payg, ri1y, ri3y}}}`) + **DiskBook** (`{tier: monthly}`).
+`cost/pricing.py` — builds those from prices.azure.com (VM + Premium SSD meters, chunked
+OData, paging). `cost/functions.py` — `POST /api/estimate_compute_cost` (right-size →
+collect SKUs → fetch prices, 6 h cache → cost). New OpenAPI spec + agent tool + prompt
+("pass env + os_name too; never cost servers yourself"). Config `uplift` block reworked
+to `nonprod_of_prod_pct` / `dr_of_prod_pct` / `dev_test_discount_pct`.
+
+**Deferred.** Storage-table cost (file shares / DB / object) = E2.3. Run-rate extras
+(backup, egress, monitoring, support) + one-time migration cost = E2.4. `ESTIMATION_CONFIG`
+now supports an inline-JSON app setting; a package-baked default file is still TODO.
+
+### Do
+
+- `src/api/cost/{compute_cost,pricing}.py` — new. `functions.py` — 2nd route + price cache.
+  `__init__.py` exports. `config.py` — `uplift` rework + inline-JSON `ESTIMATION_CONFIG`.
+- `src/api/openapi/estimate_compute_cost.json` — new. `scripts/create_agent.py` — tool +
+  prompt.
+- `tests/test_compute_cost.py` — 8 cases. `estimation_config.json`, `DEPLOY.md`,
+  `sample-estate/effort-inputs.md` updated.
+
+### Check
+
+`pytest tests -q` → **40 passed**. C1–C6 pass (see test names).
+
+C7 — live fetch (`swedencentral`, price_date `2026-06-01`):
+`Standard_D4s_v5` linux `{payg 0.204, ri1y 0.12591, ri3y 0.08059}`, windows payg `0.388`
+(the ~$0.184/hr delta is the Windows licence). First fetch returned RI as a **term lump
+sum** (1103.0 / 2118.0) — fixed: reservations are always amortised `price/(years·8760)`.
+
+Full 250-server estate, 1yr RI @ 80%, AHB on Windows:
+```
+compute PAYG        $ 81,106 /mo
+compute RI          $ 50,315 /mo
+compute effective   $ 56,473 /mo
+managed disk        $ 29,884 /mo
+TOTAL               $ 86,358 /mo   ($1,036,292 /yr)
+range               $ 69,915 .. $138,840 /mo
+missing_prices []   by_env prod 173 / nonprod 47 / dr 3 / dev 27
+```
+All 250 SKUs priced. Higher than `effort-inputs.md`'s old hand estimate (~$28–38k/mo) —
+that assumed a 40% right-sizing cut and omitted managed-disk cost; the doc note is
+updated. Every line is now traceable and ranged.
+
+### Act
+
+- E2.2 → `in-review` (unit + live-fetch verified; end-to-end via the agent with E1.6).
+- **Next — Cycle 5:** E2.3 `estimate_storage_cost` over the `storage` table (file shares
+  → Files/ANF, DB volumes → PaaS tiers, object), keeping it disjoint from the per-VM
+  managed disk in `estimate_compute_cost`.
+
+---
+
 ## Cycle 3 — deterministic right-sizer + firm config
 
 **Date:** 2026-09-07 · **Owner:** FinOps + SWE · **Tracker:** E2.1 (done), E6.1 (partial) ·

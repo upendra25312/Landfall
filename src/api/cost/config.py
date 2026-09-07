@@ -39,8 +39,12 @@ DEFAULTS: dict = {
         },
     },
     "uplift": {
-        "nonprod_compute_pct": 0,
-        "dr_compute_pct": 100,
+        # each server's compute cost is scaled by these for its environment.
+        # 100 = same as its listed size. Set nonprod < 100 if non-prod is scaled
+        # down in Azure; set dr < 100 for cold / pilot-light DR.
+        "nonprod_of_prod_pct": 100,
+        "dr_of_prod_pct": 100,
+        "dev_test_discount_pct": 55,     # applied to dev/nonprod when dev_test_pricing_nonprod=true
     },
     "effort": {
         "bands_pd": {"S": 8, "M": 14, "L": 22, "XL": 40},
@@ -70,26 +74,36 @@ def _deep_merge(base: dict, over: dict) -> dict:
 
 
 def _repo_config() -> str | None:
-    here = os.path.dirname(os.path.abspath(__file__))
-    for up in range(5):
-        cand = os.path.join(here, *([".."] * up), "estimation_config.json")
-        if os.path.exists(cand):
-            return cand
+    roots = [os.getcwd(), os.path.dirname(os.path.abspath(__file__))]
+    for root in roots:
+        for up in range(5):
+            cand = os.path.join(root, *([".."] * up), "estimation_config.json")
+            if os.path.exists(cand):
+                return os.path.abspath(cand)
     return None
 
 
 def load_config(path: str | None = None, overrides: dict | None = None) -> dict:
     cfg = copy.deepcopy(DEFAULTS)
-    p = path or os.environ.get("ESTIMATION_CONFIG") or _repo_config()
-    if p and os.path.exists(p):
+    env = os.environ.get("ESTIMATION_CONFIG")
+    if not path and env and env.lstrip().startswith("{"):
+        # ESTIMATION_CONFIG may hold the JSON inline (handy as a Function app setting)
         try:
-            with open(p, encoding="utf-8") as fh:
-                _deep_merge(cfg, json.load(fh))
-            cfg["_source"] = p
-        except (OSError, json.JSONDecodeError) as exc:
-            cfg["_source"] = f"defaults (could not read {p}: {exc})"
+            _deep_merge(cfg, json.loads(env))
+            cfg["_source"] = "ESTIMATION_CONFIG (inline)"
+        except json.JSONDecodeError as exc:
+            cfg["_source"] = f"defaults (bad inline ESTIMATION_CONFIG: {exc})"
     else:
-        cfg["_source"] = "defaults (no estimation_config.json found)"
+        p = path or env or _repo_config()
+        if p and os.path.exists(p):
+            try:
+                with open(p, encoding="utf-8") as fh:
+                    _deep_merge(cfg, json.load(fh))
+                cfg["_source"] = p
+            except (OSError, json.JSONDecodeError) as exc:
+                cfg["_source"] = f"defaults (could not read {p}: {exc})"
+        else:
+            cfg["_source"] = "defaults (no estimation_config.json found)"
     if overrides:
         _deep_merge(cfg, overrides)
     return cfg

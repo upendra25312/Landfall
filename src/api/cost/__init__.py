@@ -10,5 +10,10 @@ in context — it calls a tool, and re-running the tool gives the same answer.
 """
 from .config import load_config, DEFAULTS
 from .rightsize import rightsize_one, rightsize_many
+from .compute_cost import estimate_compute_cost, HOURS_PER_MONTH
 
-__all__ = ["load_config", "DEFAULTS", "rightsize_one", "rightsize_many"]
+__all__ = [
+    "load_config", "DEFAULTS",
+    "rightsize_one", "rightsize_many",
+    "estimate_compute_cost", "HOURS_PER_MONTH",
+]

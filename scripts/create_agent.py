@@ -42,19 +42,22 @@ _OPENAPI_DIR = os.path.join(
 )
 _OPENAPI_TOOLS = {
     "query_inventory": "Count / sizing / aggregation questions over the client inventory (Azure SQL).",
-    "vm_rightsize": "Deterministic Azure VM SKU + disk tier per server - sizes vCPU and RAM independently, uses utilisation data when present, driven by estimation_config.json. Feed recommended.sku to azure_retail_prices.",
-    "azure_retail_prices": "Live Azure pay-as-you-go and reserved prices (cached proxy over prices.azure.com).",
+    "vm_rightsize": "Deterministic Azure VM SKU + disk tier per server - sizes vCPU and RAM independently, uses utilisation data when present, driven by estimation_config.json.",
+    "estimate_compute_cost": "Monthly Azure compute + managed-disk cost (bill of materials, PAYG/reserved/AHB, per-environment, low/expected/high) for a set of servers. Right-sizes and prices in one call.",
+    "azure_retail_prices": "Live Azure pay-as-you-go and reserved prices (cached proxy over prices.azure.com) - for ad-hoc price lookups outside the compute BoM.",
 }
 
 SYSTEM_PROMPT = """You help a migration architect estimate an Azure landing zone and a
 server/application migration from client-supplied on-premises inventory.
 
 - Use `query_inventory` for any count, sizing, or aggregation question and show the SQL you ran.
-- For compute sizing pull each server's vcpu, ram_gb and its utilisation columns
-  (cpu_p95_pct / cpu_peak_pct / cpu_avg_pct, ram_avg_pct or the performance table's
-  mem_*_pct, used_disk_gb, disk_iops_peak) and pass them ALL to `vm_rightsize` - never
-  size servers yourself. Then price `recommended.sku` with `azure_retail_prices`, always
-  naming region + term + price date. Quote each server's confidence and what bound it.
+- For compute cost pull each server's vcpu, ram_gb, env, os_name and its utilisation
+  columns (cpu_p95_pct / cpu_peak_pct / cpu_avg_pct, ram_avg_pct or the performance
+  table's mem_*_pct, provisioned_disk_gb, disk_iops_peak) and pass them ALL to
+  `estimate_compute_cost` - never size or cost servers yourself. Quote its totals, the
+  low/expected/high range, region + reserved term + price_date, and any missing_prices.
+  Use `vm_rightsize` alone when only the SKU mapping is wanted, `azure_retail_prices` for
+  ad-hoc price lookups.
 - Use `microsoft_docs` for landing-zone, Cloud Adoption Framework, and target-service guidance.
 - Use `search_documents` for client constraints (compliance, network, DR, non-functional).
 

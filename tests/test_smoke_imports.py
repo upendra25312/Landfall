@@ -16,8 +16,15 @@ def test_ingest_and_cost_modules_parse():
     for rel in ("ingest/__init__.py", "ingest/core.py", "ingest/dq.py",
                 "ingest/loader.py", "ingest/functions.py",
                 "cost/__init__.py", "cost/config.py", "cost/skus.py",
-                "cost/rightsize.py", "cost/functions.py"):
+                "cost/rightsize.py", "cost/compute_cost.py", "cost/pricing.py",
+                "cost/functions.py"):
         ast.parse(open(os.path.join(API, rel), encoding="utf-8").read())
+
+
+def test_cost_blueprint_exposes_both_routes():
+    src = open(os.path.join(API, "cost/functions.py"), encoding="utf-8").read()
+    assert 'route="vm_rightsize"' in src
+    assert 'route="estimate_compute_cost"' in src
 
 
 def test_vm_rightsize_route_lives_in_cost_not_tools():

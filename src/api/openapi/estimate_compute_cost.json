@@ -1,0 +1,79 @@
+{
+  "openapi": "3.0.1",
+  "info": {
+    "title": "estimate_compute_cost",
+    "description": "Monthly Azure compute + managed-disk cost for a set of servers. Right-sizes each server, prices the recommended SKU (PAYG, 1yr/3yr reserved, Azure Hybrid Benefit, per-environment factor) from live retail prices and the firm's estimation_config.json, and returns a line-item bill of materials with a low/expected/high range. Deterministic for a given price date.",
+    "version": "1.0.0"
+  },
+  "servers": [{ "url": "https://REPLACE/api" }],
+  "paths": {
+    "/estimate_compute_cost": {
+      "post": {
+        "operationId": "estimate_compute_cost",
+        "summary": "Monthly Azure compute cost (BoM) for a set of servers",
+        "description": "Pass the servers with their sizing and utilisation columns (vcpu, ram_gb, cpu_p95_pct/cpu_peak_pct/cpu_avg_pct, ram_avg_pct or mem_*_pct, provisioned_disk_gb, disk_iops_peak, env, os_name). Returns totals (PAYG, reserved, effective, storage, monthly, annual), a low/expected/high range, a per-environment breakdown, and every SKU it could not price. Always quote region + reserved term + price_date from the response.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["servers"],
+                "properties": {
+                  "servers": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "required": ["server_id", "vcpu", "ram_gb"],
+                      "properties": {
+                        "server_id": { "type": "string" },
+                        "vcpu": { "type": "number" },
+                        "ram_gb": { "type": "number" },
+                        "env": { "type": "string", "nullable": true },
+                        "os_name": { "type": "string", "nullable": true },
+                        "cpu_p95_pct": { "type": "number", "nullable": true },
+                        "cpu_peak_pct": { "type": "number", "nullable": true },
+                        "cpu_avg_pct": { "type": "number", "nullable": true },
+                        "ram_avg_pct": { "type": "number", "nullable": true },
+                        "provisioned_disk_gb": { "type": "number", "nullable": true },
+                        "disk_iops_peak": { "type": "number", "nullable": true }
+                      }
+                    }
+                  },
+                  "config": {
+                    "type": "object",
+                    "nullable": true,
+                    "description": "Overrides merged over estimation_config.json (e.g. {\"pricing\":{\"reserved_term\":\"3yr\",\"reservation_coverage_pct\":100}})"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Line-item cost with totals and a low/expected/high range",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "currency": { "type": "string" },
+                    "region": { "type": "string" },
+                    "price_date": { "type": "string", "nullable": true },
+                    "reserved_term": { "type": "string" },
+                    "assumptions": { "type": "array", "items": { "type": "string" } },
+                    "line_items": { "type": "array", "items": { "type": "object" } },
+                    "by_environment": { "type": "object" },
+                    "totals": { "type": "object" },
+                    "missing_prices": { "type": "array", "items": { "type": "string" } }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
