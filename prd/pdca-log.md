@@ -5,6 +5,91 @@ Operating model: [`landfall-5x5-prd.md` §7](landfall-5x5-prd.md). Tracker:
 
 ---
 
+## Cycle 5 — estimate_storage_cost (file / DB / object BoM)
+
+**Date:** 2026-09-07 · **Owner:** FinOps + SWE · **Tracker:** E2.3 (done) ·
+**Closes audit** FIN-3 remainder (compute BoM landed in Cycle 4; storage was deferred).
+
+### Plan
+
+**Objective.** Cost the `dbo.storage` table — file shares (Files Premium / NetApp),
+managed/PaaS DB volumes (SQL MI, Hyperscale, PostgreSQL/MySQL Flexible, Oracle), object
+(Blob). Line-item bill + by-type totals + low/expected/high, deterministic on injected
+rates. **Disjoint** from `estimate_compute_cost`: that tool prices one managed disk per
+VM (`type='block'`), so block volumes are excluded here and only reported — unless
+`storage.price_block_from_storage_table` is set (then the caller suppresses disk in the
+compute tool).
+
+**Acceptance this cycle**
+
+| # | Criterion | Check |
+|---|---|---|
+| C1 | `classify()` maps type + target_service → the right rate category | unit test |
+| C2 | Block volumes excluded by default, counted in `excluded`; switch includes them | unit test |
+| C3 | Files-premium / ANF min-provision floor billed even when the share is smaller | unit test |
+| C4 | DB lines get the growth-headroom % and carry the "storage only" caveat | unit test |
+| C5 | Injected rate overrides the config rate; `range.low ≤ expected ≤ high`; totals reconcile | unit test |
+| C6 | Missing / zero size flagged in `not_costed`, never fatal | unit test |
+| C7 | Deterministic over the full sample `storage.csv` | unit test |
+| C8 | Live retail rates parse and are sanity-clamped to the config baseline | live fetch spot-check |
+
+**Design.** `cost/storage_cost.py` — pure rate math on a `{category: usd_gb_month}`
+book. `cost/pricing.py` gains `fetch_storagebook(region)` (best-effort per-service
+queries, `_cheapest_stored` after a backup/redundancy exclude list, `_sane()` clamp to
+0.4×–2.5× of the documented baseline so a mis-matched meter can't silently replace a
+defensible rate). `cost/functions.py` — `POST /api/estimate_storage_cost` (6 h rate
+cache). New `storage` block in `config.py` DEFAULTS + `estimation_config.json`. New
+OpenAPI spec + agent tool #5 + prompt line.
+
+**Deferred.** E2.4 — run-rate extras (backup, egress, monitoring, support) + one-time
+migration cost. Object-tier lifecycle rules. Per-DB compute sizing (that's a replatform
+concern, E4).
+
+### Do
+
+- `src/api/cost/storage_cost.py` — new. `pricing.py` — `fetch_storagebook` + helpers.
+  `functions.py` — 3rd route + `_storage_rates` cache. `config.py` — `storage` block.
+  `__init__.py` exports `estimate_storage_cost`, `classify`.
+- `src/api/openapi/estimate_storage_cost.json` — new. `scripts/create_agent.py` —
+  `_OPENAPI_TOOLS` (now 5) + `SYSTEM_PROMPT` storage line.
+- `tests/test_storage_cost.py` — 10 cases. `estimation_config.json`, `DEPLOY.md`,
+  `sample-estate/effort-inputs.md` updated.
+
+### Check
+
+`pytest tests -q` → **49 passed**. C1–C7 pass (see test names).
+
+C8 — live fetch (`swedencentral`, price_date `2026-09-01`): kept
+`anf_standard 0.147`, `anf_premium 0.294`, `db_sql_mi 0.137` (GP LRS),
+`db_sql_hyperscale 0.119`, `db_flex_postgresql 0.115`, `blob_hot 0.017`. Rejected by the
+sanity clamp and fell back to config: `files_premium` (live 0.06 vs baseline 0.164 — a
+Provisioned-v2 PAYG meter), `anf_ultra` (no match), `db_oracle` (no public meter).
+
+Full sample estate (566 storage rows), Sweden Central:
+```
+file shares (5, 30 TB)     $  8,235 /mo
+PaaS-DB volumes (39, 53 TB) $  8,301 /mo   (storage only — DB compute is a replatform line)
+object                     $      0 /mo
+TOTAL                       $ 16,536 /mo   ($198,430 /yr)
+range                       $ 12,402 .. $ 20,670 /mo
+excluded: 522 block volumes (~161 TB) — in the compute BoM's per-VM managed disk
+```
+
+### Act
+
+- **E2.3 done.** Compute + storage now give a full infra run-rate: ~$86k/mo compute +
+  disk, ~$16.5k/mo file/DB/object → **~$103k/mo (~$1.24M/yr)** for the sample estate,
+  before dev/test pricing and E2.4 extras.
+- **Watch:** the live storage-rate fetcher is heuristic (meter names vary by
+  service). The `_sane()` clamp is the safety net; anything it rejects uses the
+  documented `estimation_config.json` rate. Oracle DB@Azure has no retail meter — config
+  rate only.
+- **Next — Cycle 6:** E2.4 (`estimate_run_rate_extras` — backup GB, egress from
+  `net_out_gb_30d`, monitoring, support tier + one-time migration/egress cost), then E3
+  landing-zone deliverable (`azure-enterprise-infra-planner`).
+
+---
+
 ## Cycle 4 — estimate_compute_cost (compute BoM)
 
 **Date:** 2026-09-07 · **Owner:** FinOps + SWE · **Tracker:** E2.2 (done), E6.1 (advances) ·

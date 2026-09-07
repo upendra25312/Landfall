@@ -146,6 +146,12 @@ Separate proposal line items (not above):
   hand estimate against a more aggressive 40% right-sizing assumption — superseded.)
   ExpressRoute + backup + LZ fixed services are separate lines; retire against the **$3.0M
   MACC**.
+- **Storage run-rate (file / DB / object)** — the `estimate_storage_cost` tool over the
+  `storage` table. For this estate, Sweden Central: **file shares ~$8.2k/mo** (5 shares,
+  30 TB on Files Premium / NetApp), **PaaS-DB volumes ~$8.3k/mo** (39 volumes, ~53 TB —
+  *storage only*; DB compute/licensing is a separate replatform line), **object $0**
+  (none). Total **~$16.5k/mo (~$0.2M/yr)**, range ~$12.4k–$20.7k. The 522 block volumes
+  (~161 TB) are already in the compute BoM's per-VM managed disk, not double-counted here.
 - **Microsoft funding** — **Azure Migrate and Modernize (AMM)** partner-led engagement is
   pre-approved (discovery-answers C3); nets down a meaningful share of eligible delivery
   cost. Cloud Accelerate Factory / FastTrack for the landing zone reduces LZ build PD.

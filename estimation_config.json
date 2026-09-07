@@ -33,6 +33,34 @@
     "dev_test_discount_pct": 55
   },
 
+  "storage": {
+    "$comment": "estimate_storage_cost — file shares, DB volumes, object storage. Block volumes are priced by estimate_compute_cost; set price_block_from_storage_table true only if you also disable disk pricing there. Rates are refreshed from prices.azure.com at call time; the values below are the fallback / your negotiated rates.",
+    "price_block_from_storage_table": false,
+    "db_growth_headroom_pct": 20,
+    "rate_band_pct": 25,
+    "min_provision_gb": {
+      "files_premium": 100,
+      "anf_standard": 4096,
+      "anf_premium": 4096,
+      "anf_ultra": 4096
+    },
+    "rates_usd_gb_month": {
+      "files_premium": 0.1636,
+      "files_standard_hot": 0.06,
+      "anf_standard": 0.1466,
+      "anf_premium": 0.2932,
+      "anf_ultra": 0.3908,
+      "db_sql_mi": 0.115,
+      "db_sql_hyperscale": 0.10,
+      "db_flex_postgresql": 0.115,
+      "db_flex_mysql": 0.115,
+      "db_oracle": 0.161,
+      "blob_hot_lrs": 0.0196,
+      "blob_cool_lrs": 0.0115,
+      "managed_premium_ssd_v2": 0.075
+    }
+  },
+
   "effort": {
     "bands_pd": { "S": 8, "M": 14, "L": 22, "XL": 40 },
     "assessment_pd_per_server": 0.15,

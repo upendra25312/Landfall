@@ -36,7 +36,7 @@ from azure.ai.projects.models import (
 
 AGENT_NAME = "landfall-migration-estimator"
 
-# OpenAPI specs for the three Function tools live next to src/api
+# OpenAPI specs for the Function tools live next to src/api
 _OPENAPI_DIR = os.path.join(
     os.path.dirname(__file__), "..", "src", "api", "openapi"
 )
@@ -44,6 +44,7 @@ _OPENAPI_TOOLS = {
     "query_inventory": "Count / sizing / aggregation questions over the client inventory (Azure SQL).",
     "vm_rightsize": "Deterministic Azure VM SKU + disk tier per server - sizes vCPU and RAM independently, uses utilisation data when present, driven by estimation_config.json.",
     "estimate_compute_cost": "Monthly Azure compute + managed-disk cost (bill of materials, PAYG/reserved/AHB, per-environment, low/expected/high) for a set of servers. Right-sizes and prices in one call.",
+    "estimate_storage_cost": "Monthly Azure cost for the storage inventory (dbo.storage) - file shares (Files Premium / NetApp), DB volumes (SQL MI / Hyperscale / Flexible Server / Oracle), object (Blob). Block/managed-disk volumes are covered by estimate_compute_cost and excluded here.",
     "azure_retail_prices": "Live Azure pay-as-you-go and reserved prices (cached proxy over prices.azure.com) - for ad-hoc price lookups outside the compute BoM.",
 }
 
@@ -58,6 +59,10 @@ server/application migration from client-supplied on-premises inventory.
   low/expected/high range, region + reserved term + price_date, and any missing_prices.
   Use `vm_rightsize` alone when only the SKU mapping is wanted, `azure_retail_prices` for
   ad-hoc price lookups.
+- For storage cost pass every dbo.storage row (type, size_gb, target_service) to
+  `estimate_storage_cost`. It costs file shares, DB volumes and object storage; block
+  volumes are already in `estimate_compute_cost`. Quote its by_type totals and the
+  DB-storage caveat (DB compute/licensing is a separate replatform line).
 - Use `microsoft_docs` for landing-zone, Cloud Adoption Framework, and target-service guidance.
 - Use `search_documents` for client constraints (compliance, network, DR, non-functional).
 

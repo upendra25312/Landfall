@@ -11,11 +11,11 @@ Companion to [`prd/landfall-5x5-prd.md`](landfall-5x5-prd.md). Delivery log:
 
 | Phase | Items | Done | In review | In progress | Backlog |
 |---|---|---|---|---|---|
-| 1 — Engine | 24 | 1 | 8 | 1 | 14 |
+| 1 — Engine | 24 | 1 | 9 | 1 | 13 |
 | 2 — Evidence | 11 | 0 | 0 | 0 | 11 |
 | 3 — Sustain | 3 | 0 | 0 | 0 | 3 |
 
-_Last updated: 2026-09-07 (PDCA cycles 1–4; D1 done; E2.1/E2.2/E6.1 in review; live checks pending E1.6). Sample estate compute cost now ~$86k/mo / $1.04M/yr, fully traceable._
+_Last updated: 2026-09-07 (PDCA cycles 1–5; D1 done; E2.1/E2.2/E2.3/E6.1 in review; live checks pending E1.6). Sample estate infra run-rate now ~$103k/mo / $1.24M/yr (compute+disk ~$86k, file/PaaS-DB storage ~$16.5k), fully traceable._
 
 ---
 
@@ -39,7 +39,7 @@ _Last updated: 2026-09-07 (PDCA cycles 1–4; D1 done; E2.1/E2.2/E6.1 in review;
 |---|---|---|---|---|---|---|
 | E2.1 | `vm_rightsize` — bind on both vcpu & ram; config-driven; p95 sizing; confidence band; low/expected/high range | P0 | in-review | FinOps + SWE | 3 | A 128 GB box never maps to a 32 GB SKU; binding dimension reported. _Done — `src/api/cost/`, 9 tests; -17% fleet vCPU on the sample. Live check with E1.6._ |
 | E2.2 | `estimate_compute_cost` — BoM, PAYG + 1yr/3yr RI + AHB, per-env, region + term + price date, low/expected/high | P0 | in-review | FinOps + SWE | 4 | Re-running gives identical figures; independent hand-calc matches within band. _Done — `src/api/cost/compute_cost.py` + `pricing.py`, 8 tests; live retail prices parse; $86k/mo on the sample. Agent end-to-end with E1.6._ |
-| E2.3 | Storage cost from the `storage` table (file/DB/object; disjoint from per-VM disk) | P0 | backlog | FinOps | 5 | Disk GB → tier → price; file/DB priced to the right service. |
+| E2.3 | Storage cost from the `storage` table (file/DB/object; disjoint from per-VM disk) | P0 | in-review | FinOps | 5 | Disk GB → tier → price; file/DB priced to the right service. _Done — `src/api/cost/storage_cost.py` + `fetch_storagebook`, 10 tests; live rates sanity-clamped; $16.5k/mo (file + PaaS-DB) on the sample, 522 block volumes excluded (in the compute BoM)._ |
 | E2.4 | Run-rate extras + one-time migration cost modules | P1 | backlog | FinOps | — | Backup/monitoring/egress/support + replication egress/dual-run are line items. |
 | E2.5 | low/expected/high + top-3 drivers on every cost result | P1 | backlog | FinOps | — | Every cost answer carries a range and a sensitivity. |
 
@@ -141,4 +141,5 @@ _Last updated: 2026-09-07 (PDCA cycles 1–4; D1 done; E2.1/E2.2/E6.1 in review;
 | 2 | E1.6 — deploy wiring + DEPLOY/INSTALL docs (D1 done); live end-to-end check still deferred | [pdca-log.md](pdca-log.md) · partial |
 | 3 | E2.1 deterministic `vm_rightsize` + E6.1 `estimation_config.json` (partial); closes audit FIN-1/FIN-2 | [pdca-log.md](pdca-log.md) · **done** |
 | 4 | E2.2 `estimate_compute_cost` (compute BoM + PAYG/RI/AHB + per-VM disk, low/expected/high); closes audit FIN-3 | [pdca-log.md](pdca-log.md) · **done** |
-| 5 | E2.3 — `estimate_storage_cost` over the `storage` table (file / DB / object) | planned |
+| 5 | E2.3 — `estimate_storage_cost` over the `storage` table (file / DB / object); block volumes stay in the compute BoM | [pdca-log.md](pdca-log.md) · **done** |
+| 6 | E2.4 — run-rate extras (backup / egress / monitoring / support) + one-time migration cost | planned |

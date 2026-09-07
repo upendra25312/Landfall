@@ -46,6 +46,34 @@ DEFAULTS: dict = {
         "dr_of_prod_pct": 100,
         "dev_test_discount_pct": 55,     # applied to dev/nonprod when dev_test_pricing_nonprod=true
     },
+    "storage": {
+        # estimate_storage_cost (E2.3) — the dbo.storage table (file shares, DB
+        # volumes, object storage). Block / managed-disk volumes are priced by
+        # estimate_compute_cost (one disk per VM) and excluded here unless
+        # price_block_from_storage_table is set (then set that tool to skip disk).
+        "price_block_from_storage_table": False,
+        "db_growth_headroom_pct": 20,        # PaaS DB storage is provisioned above data size
+        "rate_band_pct": 25,                 # +/- for the low / high range on list rates
+        "min_provision_gb": {               # provisioned-capacity floors that bill anyway
+            "files_premium": 100,
+            "anf_standard": 4096, "anf_premium": 4096, "anf_ultra": 4096,
+        },
+        # USD / GB-month list rates. Approximate swedencentral list prices — refresh
+        # with cost.pricing.fetch_storagebook or pin your negotiated rates here.
+        "rates_usd_gb_month": {
+            "files_premium": 0.1636,
+            "files_standard_hot": 0.06,
+            "anf_standard": 0.1466, "anf_premium": 0.2932, "anf_ultra": 0.3908,
+            "db_sql_mi": 0.115,
+            "db_sql_hyperscale": 0.10,
+            "db_flex_postgresql": 0.115,
+            "db_flex_mysql": 0.115,
+            "db_oracle": 0.161,
+            "blob_hot_lrs": 0.0196,
+            "blob_cool_lrs": 0.0115,
+            "managed_premium_ssd_v2": 0.075,   # per GiB, capacity only (excl. IOPS/throughput)
+        },
+    },
     "effort": {
         "bands_pd": {"S": 8, "M": 14, "L": 22, "XL": 40},
         "assessment_pd_per_server": 0.15,

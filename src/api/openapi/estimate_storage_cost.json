@@ -1,0 +1,74 @@
+{
+  "openapi": "3.0.1",
+  "info": {
+    "title": "estimate_storage_cost",
+    "description": "Monthly Azure cost for the client's storage inventory (dbo.storage): file shares (Azure Files Premium / Azure NetApp Files), managed/PaaS database volumes (SQL MI, Hyperscale, PostgreSQL/MySQL Flexible Server, Oracle), and object storage (Blob). Classifies each volume from its type + target_service, applies a USD/GB-month rate from live retail prices and the firm's estimation_config.json, and returns a line-item bill with a low/expected/high range. Block / managed-disk volumes are EXCLUDED here (priced by estimate_compute_cost) unless config.storage.price_block_from_storage_table is set.",
+    "version": "1.0.0"
+  },
+  "servers": [{ "url": "https://REPLACE/api" }],
+  "paths": {
+    "/estimate_storage_cost": {
+      "post": {
+        "operationId": "estimate_storage_cost",
+        "summary": "Monthly Azure storage cost for the dbo.storage inventory",
+        "description": "Pass every row from dbo.storage (storage_id, server_id, type, size_gb, iops, target_service). Returns per-volume line items, a by_type breakdown (file / db / object), totals with a low/expected/high range, the block volumes it excluded (to avoid double-counting the per-VM managed disk in estimate_compute_cost), and caveats. Quote region + price_date and the DB-storage caveat.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["storage"],
+                "properties": {
+                  "storage": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "required": ["storage_id", "type", "size_gb"],
+                      "properties": {
+                        "storage_id": { "type": "string" },
+                        "server_id": { "type": "string", "nullable": true },
+                        "type": { "type": "string", "description": "block | file | db | object" },
+                        "size_gb": { "type": "number" },
+                        "iops": { "type": "number", "nullable": true },
+                        "target_service": { "type": "string", "nullable": true }
+                      }
+                    }
+                  },
+                  "config": {
+                    "type": "object",
+                    "nullable": true,
+                    "description": "Overrides merged over estimation_config.json (e.g. {\"storage\":{\"price_block_from_storage_table\":true,\"rates_usd_gb_month\":{\"anf_premium\":0.30}}})"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Line-item storage cost with totals and a low/expected/high range",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "currency": { "type": "string" },
+                    "region": { "type": "string" },
+                    "price_date": { "type": "string", "nullable": true },
+                    "line_items": { "type": "array", "items": { "type": "object" } },
+                    "by_type": { "type": "object" },
+                    "excluded": { "type": "object" },
+                    "totals": { "type": "object" },
+                    "not_costed": { "type": "array", "items": { "type": "string" } },
+                    "caveats": { "type": "array", "items": { "type": "string" } }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

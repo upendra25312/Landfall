@@ -68,8 +68,9 @@ What `azd up` does:
    - builds the AI Search data source / skillset / index / indexer (`setup_search.py`),
    - creates (versions) the **Migration Estimator** prompt agent (`create_agent.py`) with
      the Microsoft Learn MCP tool, the AI Search tool, and the OpenAPI tools
-     (`query_inventory`, `vm_rightsize`, `estimate_compute_cost`, `azure_retail_prices`)
-     pointed at the Function app. The agent is addressed by **name**
+     (`query_inventory`, `vm_rightsize`, `estimate_compute_cost`,
+     `estimate_storage_cost`, `azure_retail_prices`) pointed at the Function app.
+     The agent is addressed by **name**
      (`landfall-migration-estimator`), not an `asst_` id; that name is written to
      `AGENT_ID` in the azd env and pushed to both running services.
 3. **deploy** — zip-deploys `src/api` to the Function app and builds + pushes the
@@ -116,9 +117,10 @@ These need the portal or a couple of CLI calls once, after the first `azd up`:
    `azd env get-values`). This publishes a new agent version; the services reference the
    agent by name, so they pick it up with no redeploy.
 
-3. **Harden `query_inventory`** *(strongly recommended)*. The three OpenAPI tools ship as
+3. **Harden `query_inventory`** *(strongly recommended)*. The OpenAPI tools ship as
    **anonymous** HTTP functions on the Function app so the first deploy works.
-   `vm_rightsize` and `azure_retail_prices` hold no client data. `query_inventory` returns
+   `vm_rightsize`, `estimate_compute_cost`, `estimate_storage_cost` and
+   `azure_retail_prices` hold no client data. `query_inventory` returns
    inventory rows (SELECT-only, read-only DB user, 200-row cap), so put Entra auth in
    front of it:
    ```bash
@@ -165,7 +167,9 @@ These need the portal or a couple of CLI calls once, after the first `azd up`:
    ```
 
 5. **Estimation config (optional).** The cost tools (`vm_rightsize`,
-   `estimate_compute_cost`) apply `estimation_config.json`. The deployed Function uses the
+   `estimate_compute_cost`, `estimate_storage_cost`) apply `estimation_config.json`
+   (the `storage` block holds file / DB / object $/GB-month rates and the
+   `price_block_from_storage_table` switch). The deployed Function uses the
    built-in defaults (`src/api/cost/config.py`) unless you set an **`ESTIMATION_CONFIG`**
    app setting — a path inside the package, or the JSON inline:
    ```bash

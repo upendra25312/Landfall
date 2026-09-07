@@ -20,6 +20,7 @@ import azure.functions as func
 from .compute_cost import estimate_compute_cost
 from .config import load_config
 from .rightsize import rightsize_many
+from .storage_cost import estimate_storage_cost
 
 cost_bp = func.Blueprint()
 _price_cache: dict = {}
@@ -68,6 +69,41 @@ def estimate_compute_cost_route(req: func.HttpRequest) -> func.HttpResponse:
         logging.exception("estimate_compute_cost failed")
         return _json({"error": f"cost estimate failed: {exc}"}, 502)
     return _json(result)
+
+
+@cost_bp.route(route="estimate_storage_cost", methods=["POST"], auth_level=func.AuthLevel.ANONYMOUS)
+def estimate_storage_cost_route(req: func.HttpRequest) -> func.HttpResponse:
+    try:
+        body = req.get_json() or {}
+    except ValueError:
+        body = {}
+    rows = body.get("storage") or []
+    if not isinstance(rows, list) or not rows:
+        return _json({"error": 'body must be {"storage": [ {storage_id, type, size_gb, target_service, ...} ]}'}, 400)
+
+    try:
+        cfg = load_config(overrides=body.get("config"))
+        rates, price_date = _storage_rates(cfg["pricing"]["region"])
+        result = estimate_storage_cost(rows[:5000], rates, cfg, price_date)
+    except Exception as exc:                       # noqa: BLE001
+        logging.exception("estimate_storage_cost failed")
+        return _json({"error": f"storage estimate failed: {exc}"}, 502)
+    return _json(result)
+
+
+def _storage_rates(region: str):
+    from . import pricing
+
+    key = ("storage", region)
+    hit = _price_cache.get(key)
+    if hit and time.time() - hit[0] < _PRICE_TTL:
+        return hit[1]
+    book = pricing.fetch_storagebook(region)
+    meta = book.pop("_meta", {})
+    dates = meta.get("dates") or set()
+    value = (book, max(dates) if dates else None)
+    _price_cache[key] = (time.time(), value)
+    return value
 
 
 def _prices(region: str, skus: list, tiers: list):
