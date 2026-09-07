@@ -28,7 +28,7 @@ if [ -z "$KEY" ]; then
   exit 1
 fi
 
-URL="https://${FUNC}.azurewebsites.net/runtime/webhooks/blobs?functionName=Host.Functions.start&code=${KEY}"
+BASE="https://${FUNC}.azurewebsites.net/runtime/webhooks/blobs"
 
 echo "==> Creating/updating the 'landfall-questions' event subscription"
 az eventgrid system-topic event-subscription create \
@@ -36,7 +36,7 @@ az eventgrid system-topic event-subscription create \
   --system-topic-name "$TOPIC" \
   --resource-group "$RG" \
   --endpoint-type webhook \
-  --endpoint "$URL" \
+  --endpoint "${BASE}?functionName=Host.Functions.start&code=${KEY}" \
   --included-event-types Microsoft.Storage.BlobCreated \
   --subject-begins-with "/blobServices/default/containers/questions/blobs/" \
   --max-delivery-attempts 30 \
@@ -44,4 +44,19 @@ az eventgrid system-topic event-subscription create \
   --only-show-errors \
   --output none
 
-echo "==> postdeploy complete - drops in questions/*.xlsx now trigger the batch runner"
+echo "==> Creating/updating the 'landfall-inventory' event subscription"
+az eventgrid system-topic event-subscription create \
+  --name landfall-inventory \
+  --system-topic-name "$TOPIC" \
+  --resource-group "$RG" \
+  --endpoint-type webhook \
+  --endpoint "${BASE}?functionName=Host.Functions.ingest_blob&code=${KEY}" \
+  --included-event-types Microsoft.Storage.BlobCreated \
+  --subject-begins-with "/blobServices/default/containers/raw/blobs/inventory/" \
+  --max-delivery-attempts 30 \
+  --event-ttl 1440 \
+  --only-show-errors \
+  --output none
+
+echo "==> postdeploy complete - questions/*.xlsx triggers the batch runner;"
+echo "    raw/inventory/* triggers the ingestion pipeline"

@@ -29,7 +29,7 @@ if ([string]::IsNullOrWhiteSpace($key)) {
   exit 1
 }
 
-$url = "https://$func.azurewebsites.net/runtime/webhooks/blobs?functionName=Host.Functions.start&code=$key"
+$base = "https://$func.azurewebsites.net/runtime/webhooks/blobs"
 
 Write-Host "==> Creating/updating the 'landfall-questions' event subscription"
 az eventgrid system-topic event-subscription create `
@@ -37,7 +37,7 @@ az eventgrid system-topic event-subscription create `
   --system-topic-name $topic `
   --resource-group $rg `
   --endpoint-type webhook `
-  --endpoint $url `
+  --endpoint "$base`?functionName=Host.Functions.start&code=$key" `
   --included-event-types Microsoft.Storage.BlobCreated `
   --subject-begins-with "/blobServices/default/containers/questions/blobs/" `
   --max-delivery-attempts 30 `
@@ -45,4 +45,19 @@ az eventgrid system-topic event-subscription create `
   --only-show-errors `
   --output none
 
-Write-Host "==> postdeploy complete - drops in questions/*.xlsx now trigger the batch runner"
+Write-Host "==> Creating/updating the 'landfall-inventory' event subscription"
+az eventgrid system-topic event-subscription create `
+  --name landfall-inventory `
+  --system-topic-name $topic `
+  --resource-group $rg `
+  --endpoint-type webhook `
+  --endpoint "$base`?functionName=Host.Functions.ingest_blob&code=$key" `
+  --included-event-types Microsoft.Storage.BlobCreated `
+  --subject-begins-with "/blobServices/default/containers/raw/blobs/inventory/" `
+  --max-delivery-attempts 30 `
+  --event-ttl 1440 `
+  --only-show-errors `
+  --output none
+
+Write-Host "==> postdeploy complete - questions/*.xlsx triggers the batch runner;"
+Write-Host "    raw/inventory/* triggers the ingestion pipeline"

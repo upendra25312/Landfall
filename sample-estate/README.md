@@ -53,6 +53,18 @@ Edit `APP_DEFS` / `INFRA_ROLES` / the OS weight tables at the top to reshape it.
 
 ## Load into Azure SQL
 
+**Option A — the ingestion pipeline (same path a real client dump takes):** upload the
+CSVs to `raw/inventory/` and the Normalize function detects, maps, and loads them, then
+writes a data-quality report to `answers/_ingest/`.
+
+```bash
+ACC=$(azd env get-value AZURE_STORAGE_ACCOUNT)
+az storage blob upload-batch --account-name "$ACC" --auth-mode login \
+  -d raw/inventory -s sample-estate --pattern "*.csv"
+```
+
+**Option B — the direct loader (no deploy needed, for local iteration):**
+
 ```bash
 # env-driven (AZURE_SQL_SERVER_FQDN / AZURE_SQL_DATABASE from .azure/<env>/.env)
 python sample-estate/load_estate.py                 # truncate + load

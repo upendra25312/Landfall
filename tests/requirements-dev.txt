@@ -1,0 +1,4 @@
+# Test-only dependencies. The ingestion logic under test also needs `openpyxl`
+# (already in src/api/requirements.txt).
+pytest>=8,<9
+openpyxl>=3.1

@@ -1,0 +1,5 @@
+VM,Powerstate,CPUs,Memory,Provisioned MiB,In Use MiB,OS according to the configuration file,Cluster,Datacenter,Annotation
+web01,poweredOn,4,16384,204800,102400,Microsoft Windows Server 2019 (64-bit),ASH-PRD-CL01,DC-ASHBURN,tier: web
+db01,poweredOn,8,65536,1048576,524288,Red Hat Enterprise Linux 8 (64-bit),ASH-PRD-CL01,DC-ASHBURN,
+app01,poweredOff,2,8192,102400,40960,Ubuntu Linux (64-bit),DAL-NPD-CL01,DC-DALLAS,decommission candidate
+legacy02,poweredOn,2,4096,81920,60000,Microsoft Windows Server 2012 R2 (64-bit),ASH-PRD-CL02,DC-ASHBURN,ESU required

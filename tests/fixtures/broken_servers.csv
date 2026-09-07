@@ -1,0 +1,6 @@
+server_id,hostname,vcpu,ram_gb,os_name,rack_location
+srv-0001,alpha,4,16,Windows Server,R12
+srv-0002,bravo,,32,Windows Server,R12
+srv-0001,alpha-dup,8,64,Windows Server,R14
+srv-0003,charlie,2,,,R09
+srv-0004,delta,8,32,Red Hat Enterprise Linux,R21

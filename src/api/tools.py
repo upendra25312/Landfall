@@ -63,16 +63,18 @@ def _sql_connect():
 # query_inventory
 # ==========================================================================
 SCHEMA_HINT = """Tables (Azure SQL, schema dbo). All columns nullable - client data has gaps.
+app_id / server_id are soft links (not FK-enforced); rows may reference missing keys.
+Every table also has source_file and ingested_at (ignore unless asked about provenance).
 
 servers(server_id, hostname, env /* prod|nonprod|dev|dr */, os_name, os_version,
         os_eol_date, vcpu, ram_gb, provisioned_disk_gb, used_disk_gb,
         cpu_avg_pct, cpu_peak_pct, ram_avg_pct, cluster, datacenter, powerstate,
-        app_id -> applications.app_id, notes)
+        app_id /* -> applications.app_id */, notes)
 applications(app_id, app_name, business_owner, criticality /* 1 high..4 */, users,
         tech_stack, db_engine, internet_facing /* bit */, compliance_scope,
         disposition, complexity /* S|M|L|XL */, wave)
 dependencies(dep_id, src_id, dst_id, port, protocol, direction, confidence)
-storage(storage_id, server_id -> servers.server_id, type /* block|file|object|db */,
+storage(storage_id, server_id /* -> servers.server_id */, type /* block|file|object|db */,
         size_gb, iops, target_service)
 """
 

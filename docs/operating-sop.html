@@ -180,11 +180,16 @@
         <p class="detail">Get every section answered — "unknown" is a valid answer, it tells you where to place an assumption. Save the answers as a document you will upload in step 4.</p></div>
       </li>
       <li>
-        <div><p class="do">Map the inventory into the four SQL tables</p>
-        <p class="detail">Load the client spreadsheets into <code>servers</code>, <code>applications</code>, <code>dependencies</code>, <code>storage</code>. The column names in <code>scripts/schema.sql</code> are the contract — the <code>query_inventory</code> tool expects them exactly (e.g. RVTools <code>CPUs</code> → <code>vcpu</code>, <code>Memory</code> → <code>ram_gb</code>). Use Azure Data Studio's flat-file import, <code>bcp</code>, or a load script.</p>
-        <pre><code><span class="c"># pattern — adapt sample-estate/load_estate.py to the client's columns</span>
-python load_estate.py --server &lt;sql&gt;.database.windows.net --database sqldb-landfall</code></pre>
-        <p class="expect">in chat, <span style="color:var(--code-accent)">"how many servers are loaded?"</span> returns the right count</p></div>
+        <div><p class="do">Drop the inventory files in <code>raw/inventory/</code></p>
+        <p class="detail">Upload the client's exports — RVTools workbook, CMDB extract, application portfolio, dependency list — to the <code>raw/inventory/</code> path of the storage account. Each file triggers the ingestion pipeline, which detects the format (RVTools vInfo, generic CMDB, or Landfall-native CSV), maps the columns to <code>scripts/schema.sql</code>, normalises units (MiB→GiB, OS strings), and loads Azure SQL. Re-uploading a corrected file replaces only its rows.</p>
+        <pre><code>az storage blob upload-batch --account-name &lt;acct&gt; --auth-mode login \
+  -d raw/inventory -s ./client-inventory</code></pre>
+        <p class="detail">If a column is mis-detected, adjust the profile in <code>src/api/ingest/core.py</code> or (per engagement) supply overrides — see <code>prd/tracker.md</code> item E1.7.</p>
+        <p class="expect">a <code>&lt;file&gt;.dq.md</code> data-quality report appears in <code>answers/_ingest/</code>; in chat, <span style="color:var(--code-accent)">"how many servers are loaded?"</span> returns the right count</p></div>
+      </li>
+      <li>
+        <div><p class="do">Read the data-quality report</p>
+        <p class="detail">Open <code>answers/_ingest/&lt;file&gt;.dq.md</code>. It gives an overall confidence (High / Medium / Low) and a plain-English list of what is missing that the estimate needs — no performance data, unmapped servers, missing OS, orphan references. Send the client that list as the discovery follow-up.</p></div>
       </li>
       <li>
         <div><p class="do">Upload the narrative documents</p>

@@ -15,8 +15,9 @@ Built to run under **$30/month**, for **bursty use** (5–20 estimate runs per m
 ## How it works
 
 ```
-Client inventory exports ──► ADLS Gen2 ──► Normalize (Durable Function) ──► Azure SQL (Free)
-   (RVTools, CMDB, app portfolio, docs)          │                              servers / applications
+Client inventory exports ──► ADLS Gen2 ──► Normalize (Event Grid ingest) ──► Azure SQL (Free)
+   (RVTools, CMDB, app portfolio, docs)   raw/inventory/  │  detect → map → load    servers / applications
+                                                 │        └─► data-quality report ──► answers/_ingest/
                                                  └─► AI Search (Free)  ◄─ narrative docs
                                                           │
                         Azure AI Foundry Agent ("Migration Estimator")
@@ -74,6 +75,7 @@ blob events.
 | `scripts/create_agent.py` | creates the **Migration Estimator** agent — Learn MCP + AI Search + the three OpenAPI tools |
 | `scripts/grant_api_sql.sql` | read-only (`db_datareader`) SQL user for the workload identity (`query_inventory`) |
 | `src/api/function_app.py` | Durable Functions RFP-question-sheet batch runner (fan-out / fan-in) |
+| `src/api/ingest/` | inventory ingestion — `raw/inventory/*` → detect source (RVTools / CMDB / native) → map to the schema → load Azure SQL → data-quality report in `answers/_ingest/` |
 | `src/api/tools.py` | the three agent HTTP tools — `query_inventory` (text-to-SQL), `vm_rightsize`, `azure_retail_prices` |
 | `src/api/openapi/` | OpenAPI 3.0 specs for those tools; `create_agent.py` points them at the deployed Function app |
 | `src/web/` | FastAPI chat UI container |
@@ -83,7 +85,9 @@ blob events.
 | `docs/effort-and-resource-loading.html` | pre-sales parametric effort model + 6-month resource loading |
 | `docs/discovery-questionnaire.html` | client questionnaire + assumptions register (AS-01…14) + risk register (RK-01…12) |
 | `prompts/production-readiness-audit.md` | reusable expert-panel audit prompt — "toy → production" review against the pre-sales scenario |
-| `audits/` | recorded runs of that audit — observations, prioritized backlog, rubric scores |
+| `audits/` | recorded runs of that audit — observations, prioritized backlog, rubric scores, the path to 5/5 |
+| `prd/` | the "Landfall to 5/5" PRD, work tracker, and PDCA delivery log |
+| `tests/` | unit tests (`pytest`) — starts with the ingestion pipeline |
 
 Read them online at **[upendra25312.github.io/Landfall](https://upendra25312.github.io/Landfall/)**
 (GitHub Pages, served from `docs/`), or open the `docs/*.html` files locally — each is a
