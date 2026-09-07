@@ -201,8 +201,8 @@ _NATIVE_SERVERS = {
         "server_id": _txt, "hostname": _txt, "env": _txt, "os_name": _txt,
         "os_version": _txt, "os_eol_date": _iso_date, "vcpu": _int, "ram_gb": _num,
         "provisioned_disk_gb": _num, "used_disk_gb": _num, "cpu_avg_pct": _num,
-        "cpu_peak_pct": _num, "ram_avg_pct": _num, "disk_iops_avg": _num,
-        "disk_iops_peak": _num, "net_in_gb_30d": _num, "net_out_gb_30d": _num,
+        "cpu_peak_pct": _num, "cpu_p95_pct": _num, "ram_avg_pct": _num, "ram_p95_pct": _num,
+        "disk_iops_avg": _num, "disk_iops_peak": _num, "net_in_gb_30d": _num, "net_out_gb_30d": _num,
         "cluster": _txt, "datacenter": _txt,
         "powerstate": _powerstate, "app_id": _txt, "notes": _txt,
     }.items()

@@ -42,7 +42,7 @@ _OPENAPI_DIR = os.path.join(
 )
 _OPENAPI_TOOLS = {
     "query_inventory": "Count / sizing / aggregation questions over the client inventory (Azure SQL).",
-    "vm_rightsize": "Map on-prem servers to Azure VM SKUs + disk tiers with a documented heuristic.",
+    "vm_rightsize": "Deterministic Azure VM SKU + disk tier per server - sizes vCPU and RAM independently, uses utilisation data when present, driven by estimation_config.json. Feed recommended.sku to azure_retail_prices.",
     "azure_retail_prices": "Live Azure pay-as-you-go and reserved prices (cached proxy over prices.azure.com).",
 }
 
@@ -50,7 +50,11 @@ SYSTEM_PROMPT = """You help a migration architect estimate an Azure landing zone
 server/application migration from client-supplied on-premises inventory.
 
 - Use `query_inventory` for any count, sizing, or aggregation question and show the SQL you ran.
-- Use `vm_rightsize` then `azure_retail_prices` for compute cost, always naming region + term + price date.
+- For compute sizing pull each server's vcpu, ram_gb and its utilisation columns
+  (cpu_p95_pct / cpu_peak_pct / cpu_avg_pct, ram_avg_pct or the performance table's
+  mem_*_pct, used_disk_gb, disk_iops_peak) and pass them ALL to `vm_rightsize` - never
+  size servers yourself. Then price `recommended.sku` with `azure_retail_prices`, always
+  naming region + term + price date. Quote each server's confidence and what bound it.
 - Use `microsoft_docs` for landing-zone, Cloud Adoption Framework, and target-service guidance.
 - Use `search_documents` for client constraints (compliance, network, DR, non-functional).
 

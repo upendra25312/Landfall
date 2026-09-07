@@ -38,7 +38,7 @@ Client inventory exports ──► ADLS Gen2 ──► Normalize (Event Grid ing
 | Retrieval index | Azure AI Search — Free (narrative docs only, 512-dim vectors) |
 | Models | `gpt-4o` + `text-embedding-3-small` |
 | Agent host | Microsoft Foundry — prompt agent, driven through the Responses API |
-| Agent tools | AI Search · Azure SQL text-to-SQL · Azure Retail Prices API · VM right-size heuristic · Microsoft Learn MCP |
+| Agent tools | AI Search · Azure SQL text-to-SQL · Azure Retail Prices API · deterministic VM right-sizer · Microsoft Learn MCP |
 | Chat UI | Azure Container Apps (scale-to-zero) |
 | Batch runner | Azure Durable Functions (Consumption) |
 
@@ -76,7 +76,9 @@ blob events.
 | `scripts/grant_api_sql.sql` | read-only (`db_datareader`) SQL user for the workload identity (`query_inventory`) |
 | `src/api/function_app.py` | Durable Functions RFP-question-sheet batch runner (fan-out / fan-in) |
 | `src/api/ingest/` | inventory ingestion — `raw/inventory/*` → detect source (RVTools / CMDB / native) → map to the schema → load Azure SQL → data-quality report in `answers/_ingest/` |
-| `src/api/tools.py` | the three agent HTTP tools — `query_inventory` (text-to-SQL), `vm_rightsize`, `azure_retail_prices` |
+| `src/api/tools.py` | agent HTTP tools — `query_inventory` (text-to-SQL), `azure_retail_prices` |
+| `src/api/cost/` | deterministic cost engine — `vm_rightsize` (RAM-aware, config-driven), SKU catalogue, `estimation_config.json` loader |
+| `estimation_config.json` | your firm's estimation inputs (rates, right-sizing targets, uplifts) |
 | `src/api/openapi/` | OpenAPI 3.0 specs for those tools; `create_agent.py` points them at the deployed Function app |
 | `src/web/` | FastAPI chat UI container |
 | `samples/smoke-questions.xlsx` | two-question sheet for a first end-to-end test of the batch runner |
@@ -95,13 +97,16 @@ self-contained, theme-aware page.
 
 ## Before you run a real estimate
 
-Create an `estimation_config.json` with **your firm's** numbers — the agent applies these
-rather than inventing rates:
+Edit **[`estimation_config.json`](estimation_config.json)** with your firm's numbers — the
+cost tools apply these rather than inventing rates. Anything you omit falls back to the
+documented defaults in `src/api/cost/config.py`. Currently consumed by `vm_rightsize`
+(target utilisation, retain floors, no-perf-data policy); the pricing / effort blocks are
+wired as the cost engine lands (see `prd/tracker.md`).
 
-- S / M / L / XL migration effort-hour bands
-- reserved-instance term assumption (1yr / 3yr / none)
+- right-sizing targets and retain floors, how to treat servers with no perf data
+- pricing: region, reserved-instance term, Azure Hybrid Benefit, dev/test pricing
 - non-prod + DR compute uplift %
-- PM / testing / cutover overhead %
+- S / M / L / XL effort bands, PM / governance overhead %, blended day rate
 
 ## Between engagements
 

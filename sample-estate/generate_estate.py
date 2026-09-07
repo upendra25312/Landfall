@@ -211,7 +211,8 @@ def new_server(role_hint, os_kind, env_hint=None, app_id=None):
         "os_name": os_name, "os_version": os_ver, "os_eol_date": eol,
         "vcpu": vcpu, "ram_gb": ram,
         "provisioned_disk_gb": prov_disk, "used_disk_gb": used_disk,
-        "cpu_avg_pct": cpu_avg, "cpu_peak_pct": cpu_peak, "ram_avg_pct": ram_avg,
+        "cpu_avg_pct": cpu_avg, "cpu_peak_pct": cpu_peak, "cpu_p95_pct": "",
+        "ram_avg_pct": ram_avg, "ram_p95_pct": "",
         # 30-day rollups - filled by build_performance() for monitored servers
         "disk_iops_avg": "", "disk_iops_peak": "",
         "net_in_gb_30d": "", "net_out_gb_30d": "",
@@ -427,10 +428,18 @@ def build_performance():
                 "net_in_peak_mbps": round(nin_mbps, 1), "net_out_peak_mbps": round(nout_mbps, 1),
             })
 
-        # roll up into servers.csv (keep it the single source for summary figures)
+        # roll up into servers.csv (keep it the single source for summary figures).
+        # p95 = 95th percentile of the daily averages -> the "sustained busy" signal
+        # right-sizing should use (not the absolute 30-day peak).
+        def _p95(xs):
+            xs = sorted(xs)
+            return xs[min(len(xs) - 1, int(round(0.95 * (len(xs) - 1))))]
+
         s["cpu_avg_pct"] = round(sum(cpu_avgs) / len(cpu_avgs), 1)
         s["cpu_peak_pct"] = round(max(cpu_peaks), 1)
+        s["cpu_p95_pct"] = round(_p95(cpu_avgs), 1)
         s["ram_avg_pct"] = round(sum(mem_avgs) / len(mem_avgs), 1)
+        s["ram_p95_pct"] = round(_p95(mem_avgs), 1)
         s["disk_iops_avg"] = round(sum(iops_avgs) / len(iops_avgs), 1)
         s["disk_iops_peak"] = round(max(iops_peaks), 1)
         s["net_in_gb_30d"] = round(nin_sum, 1)
@@ -593,7 +602,8 @@ for s in servers:
 write_csv("servers.csv", servers, [
     "server_id", "hostname", "env", "os_name", "os_version", "os_eol_date", "vcpu",
     "ram_gb", "provisioned_disk_gb", "used_disk_gb", "cpu_avg_pct", "cpu_peak_pct",
-    "ram_avg_pct", "disk_iops_avg", "disk_iops_peak", "net_in_gb_30d", "net_out_gb_30d",
+    "cpu_p95_pct", "ram_avg_pct", "ram_p95_pct", "disk_iops_avg", "disk_iops_peak",
+    "net_in_gb_30d", "net_out_gb_30d",
     "cluster", "datacenter", "powerstate", "app_id", "notes",
 ])
 write_csv("applications.csv", apps, [

@@ -11,11 +11,11 @@ Companion to [`prd/landfall-5x5-prd.md`](landfall-5x5-prd.md). Delivery log:
 
 | Phase | Items | Done | In review | In progress | Backlog |
 |---|---|---|---|---|---|
-| 1 — Engine | 24 | 0 | 5 | 1 | 18 |
+| 1 — Engine | 24 | 1 | 7 | 1 | 15 |
 | 2 — Evidence | 11 | 0 | 0 | 0 | 11 |
 | 3 — Sustain | 3 | 0 | 0 | 0 | 3 |
 
-_Last updated: 2026-09-07 (PDCA cycle 1 complete — E1.1–E1.5 in review, deploy check pending E1.6)._
+_Last updated: 2026-09-07 (PDCA cycles 1–3; D1 done, E2.1 + E6.1 in review, live checks pending E1.6)._
 
 ---
 
@@ -37,8 +37,8 @@ _Last updated: 2026-09-07 (PDCA cycle 1 complete — E1.1–E1.5 in review, depl
 
 | ID | Item | Pri | Status | Owner | Cycle | Acceptance |
 |---|---|---|---|---|---|---|
-| E2.1 | `rightsize` — bind on `max(vcpu, ram)`; config haircut; confidence band | P0 | backlog | FinOps + SWE | 3 | A 128 GB box never maps to a 32 GB SKU; the binding dimension is reported. |
-| E2.2 | `estimate_compute_cost` — BoM, PAYG + 1yr/3yr RI + AHB, region + term + price date | P0 | backlog | FinOps + SWE | 4 | Re-running gives identical figures; independent hand-calc matches within band. |
+| E2.1 | `vm_rightsize` — bind on both vcpu & ram; config-driven; p95 sizing; confidence band; low/expected/high range | P0 | in-review | FinOps + SWE | 3 | A 128 GB box never maps to a 32 GB SKU; binding dimension reported. _Done — `src/api/cost/`, 9 tests; -17% fleet vCPU on the sample. Live check with E1.6._ |
+| E2.2 | `estimate_compute_cost` — BoM, PAYG + 1yr/3yr RI + AHB, region + term + price date, low/expected/high | P0 | backlog | FinOps + SWE | 4 | Re-running gives identical figures; independent hand-calc matches within band. |
 | E2.3 | Storage cost from the `storage` table | P0 | backlog | FinOps | 5 | Disk GB → tier → price; file/DB priced to the right service. |
 | E2.4 | Run-rate extras + one-time migration cost modules | P1 | backlog | FinOps | — | Backup/monitoring/egress/support + replication egress/dual-run are line items. |
 | E2.5 | low/expected/high + top-3 drivers on every cost result | P1 | backlog | FinOps | — | Every cost answer carries a range and a sensitivity. |
@@ -71,7 +71,7 @@ _Last updated: 2026-09-07 (PDCA cycle 1 complete — E1.1–E1.5 in review, depl
 
 | ID | Item | Pri | Status | Owner | Cycle | Acceptance |
 |---|---|---|---|---|---|---|
-| E6.1 | Implement `estimation_config.json` (rates, bands, uplifts, overheads) | P0 | backlog | PM + SWE | 9 | Changing the config visibly changes cost + effort output. |
+| E6.1 | Implement `estimation_config.json` (rates, bands, uplifts, overheads) | P0 | in-review | PM + SWE | 3 | Changing the config visibly changes cost + effort output. _File + `cost/config.py` loader done + consumed by `vm_rightsize`; pricing/effort blocks wired in E2.2/E6.2; `ESTIMATION_CONFIG` app setting still to add._ |
 | E6.2 | Parametric effort model as a deterministic step | P0 | backlog | PMO | 9 | Client counts + disposition mix → PD / PM / peak FTE / loading curve. |
 | E6.3 | Contingency tied to the DQ score | P1 | backlog | PMO | — | Poorer data quality → higher contingency, automatically. |
 
@@ -138,4 +138,6 @@ _Last updated: 2026-09-07 (PDCA cycle 1 complete — E1.1–E1.5 in review, depl
 |---|---|---|
 | 1 | E1.1–E1.5 — ingestion & data-quality core (normalize + profiles + DQ + loader + tests); D1 partial | [pdca-log.md](pdca-log.md) · **done** |
 | 1a | sample-estate 30-day performance + flow data (user request) — `performance.csv`, servers/deps rollups, `landfall_performance` profile, schema `dbo.performance` | [pdca-log.md](pdca-log.md) · **done** |
-| 2 | E1.6 — wire ingestion into `azd` deploy, end-to-end check on live `rg-landfall`, finish D1 (DEPLOY/INSTALL) | planned |
+| 2 | E1.6 — deploy wiring + DEPLOY/INSTALL docs (D1 done); live end-to-end check still deferred | [pdca-log.md](pdca-log.md) · partial |
+| 3 | E2.1 deterministic `vm_rightsize` + E6.1 `estimation_config.json` (partial); closes audit FIN-1/FIN-2 | [pdca-log.md](pdca-log.md) · **done** |
+| 4 | E2.2 — `estimate_compute_cost` (BoM + PAYG/RI/AHB + storage, low/expected/high) | planned |

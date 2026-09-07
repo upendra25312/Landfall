@@ -1,0 +1,49 @@
+{
+  "$comment": "Landfall estimation config — YOUR FIRM'S numbers. The agent's tools apply these rather than inventing rates. Copy this file, edit, and point the Function app at it with the ESTIMATION_CONFIG app setting, or leave it at the repo root. Anything you omit falls back to the defaults in src/api/cost/config.py.",
+
+  "pricing": {
+    "region": "swedencentral",
+    "currency": "USD",
+    "reserved_term": "1yr",
+    "reservation_coverage_pct": 80,
+    "azure_hybrid_benefit_windows": true,
+    "azure_hybrid_benefit_sql": true,
+    "dev_test_pricing_nonprod": false
+  },
+
+  "rightsize": {
+    "utilisation_metric": "p95",
+    "cpu_target_utilisation_pct": 65,
+    "ram_target_utilisation_pct": 80,
+    "min_vcpu_retain_pct": 50,
+    "min_ram_retain_pct": 60,
+    "vcpu_floor": 2,
+    "ram_floor_gb": 4,
+    "headroom_band_pct": 20,
+    "no_perf_data": {
+      "cpu_scale_pct": 100,
+      "ram_scale_pct": 100,
+      "confidence": "low"
+    }
+  },
+
+  "uplift": {
+    "nonprod_compute_pct": 0,
+    "dr_compute_pct": 100
+  },
+
+  "effort": {
+    "bands_pd": { "S": 8, "M": 14, "L": 22, "XL": 40 },
+    "assessment_pd_per_server": 0.15,
+    "assessment_pd_per_app": 1.5,
+    "rehost_pd_per_server": 0.5,
+    "pm_pct": 15,
+    "governance_pct": 10,
+    "contingency_pct": null
+  },
+
+  "rates": {
+    "blended_day_rate": 780,
+    "currency": "USD"
+  }
+}

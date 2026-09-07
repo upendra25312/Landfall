@@ -5,6 +5,93 @@ Operating model: [`landfall-5x5-prd.md` §7](landfall-5x5-prd.md). Tracker:
 
 ---
 
+## Cycle 3 — deterministic right-sizer + firm config
+
+**Date:** 2026-09-07 · **Owner:** FinOps + SWE · **Tracker:** E2.1 (done), E6.1 (partial) ·
+**Closes audit** FIN-1 (`vcpu/2` haircut), FIN-2 (RAM never sized).
+
+### Plan
+
+**Objective.** Replace the crude `vm_rightsize` heuristic with a deterministic,
+RAM-aware right-sizer driven by the firm's config.
+
+**Acceptance criteria this cycle**
+
+| # | Criterion | Check |
+|---|---|---|
+| B1 | Sizes vCPU and RAM independently; a 128 GB box never maps to a 32 GB SKU; output says which bound it | unit test |
+| B2 | No perf data → allocation kept as-is (no blind haircut), confidence "low" | unit test |
+| B3 | With utilisation data → sizes to p95 (not raw peak) at the configured target; confidence "high" | unit test + full-estate rollup |
+| B4 | Disk tier respects IOPS, not just size | unit test (100 GiB / 4000 IOPS → P30) |
+| B5 | `estimation_config.json` changes the output | unit test with `config` override |
+| B6 | Deterministic — same input, same output | unit test |
+| B7 | Full `sample-estate/` (250) → every server gets a SKU; over-provisioned fleet shrinks on vCPU | integration test |
+
+**Design.** New `src/api/cost/` package: `config.py` (DEFAULTS + `estimation_config.json`
+deep-merge loader), `skus.py` (v5 F/D/E families **incl. constrained-vCPU E-SKUs** for
+RAM-heavy boxes + Premium SSD tiers), `rightsize.py` (pure logic), `functions.py`
+(`POST /api/vm_rightsize` blueprint). `vm_rightsize` route moves out of `tools.py`.
+New root `estimation_config.json`. OpenAPI spec + `create_agent.py` prompt updated so the
+agent passes utilisation columns and never sizes servers itself.
+
+**Deferred.** `ESTIMATION_CONFIG` app setting in Bicep; the pricing / effort blocks of the
+config aren't consumed yet (E2.2 / E6.2). `azure_retail_prices` still returns raw meters —
+the cost roll-up is E2.2 (next cycle).
+
+### Do
+
+- `src/api/cost/{__init__,config,skus,rightsize,functions}.py` — new.
+- `estimation_config.json` — new (root).
+- `src/api/tools.py` — `vm_rightsize` + `_SKU_TABLE` + `_HEURISTIC` removed.
+- `src/api/function_app.py` — register `cost_bp`.
+- `src/api/openapi/vm_rightsize.json` — v2 schema (utilisation inputs, range, bound_by).
+- `scripts/create_agent.py` — tool description + `SYSTEM_PROMPT` ("pass ALL utilisation
+  columns; never size servers yourself").
+- **Data:** `sample-estate/generate_estate.py` now rolls up `cpu_p95_pct` / `ram_p95_pct`
+  (p95 of daily averages — the right-sizing signal). `schema.sql`, `ingest/core.py`,
+  `ingest/loader.py`, `load_estate.py`, `tools.py` `SCHEMA_HINT` extended. CSVs regenerated.
+- `tests/test_rightsize.py` (9 cases) + smoke-import checks.
+- `README.md` — `estimation_config.json` section + repo-layout rows.
+
+### Check
+
+`pytest tests -q` → **31 passed**.
+
+Full `sample-estate/` right-size rollup:
+```
+servers 250 · downsized 72 · at_ceiling 0 · low_confidence 66
+current_vcpu 1940 → recommended_vcpu 1604   (-17% fleet vCPU)
+```
+Spot check srv-0014 (64 vCPU / 256 GB, p95 CPU 33% / RAM 87%): → `E48s_v5`, bound_by
+`ram`, confidence high, basis *"sized to p95 utilisation … at 65/80% targets"*, range
+`E32s_v5`…`E48s_v5`. Unmonitored srv-0004: kept at 100%, confidence low, basis names it.
+
+| # | Result |
+|---|---|
+| B1 | pass — `{vcpu:4, ram_gb:128}` → E-family, `ram_gb ≥ 128`, `bound_by=="ram"` |
+| B2 | pass — no perf → `vcpu` not reduced, confidence low, "no blind reduction" in basis |
+| B3 | pass — p95 path downsizes 16→8 vCPU, confidence high; full estate -17% vCPU, only monitored servers move |
+| B4 | pass — 100 GiB / 4000 IOPS → P30 (P10 caps at 500 IOPS) |
+| B5 | pass — `no_perf_data.cpu_scale_pct=60` → `need.vcpu == 6.0` |
+| B6 | pass — `rightsize_one(s) == rightsize_one(s)` |
+| B7 | pass — 250/250 get a `Standard_*` SKU; fleet vCPU shrinks |
+
+Bug found + fixed during Check: sizing fell back to raw 30-day **peak** when p95 was
+absent, which upsized the whole over-provisioned estate (2472 vs 1940 vCPU). Fixed:
+added real `cpu_p95_pct` / `ram_p95_pct` rollups to the data; right-sizer p95-chain is now
+`[p95, avg, peak×0.75]` — never sizes to a raw maximum.
+
+### Act
+
+- E2.1 → `in-review` (unit-verified; live check with E1.6). E6.1 → `in-review` (file +
+  loader done; pricing/effort blocks unused until E2.2 / E6.2).
+- **Next — Cycle 4:** E2.2 `estimate_compute_cost` — take the right-size output, price it
+  via `azure_retail_prices`, compute monthly PAYG + 1yr/3yr RI + AHB, storage from the
+  `storage` table, return a line-item BoM with region + term + price date and a
+  low/expected/high range.
+
+---
+
 ## Cycle 2 — deploy wiring + docs for the ingestion pipeline (E1.6, partial)
 
 **Date:** 2026-09-07 · **Owner:** SRE + Writer · **Tracker:** E1.6, D1.

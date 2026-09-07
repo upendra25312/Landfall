@@ -45,8 +45,10 @@ CREATE TABLE dbo.servers (
     provisioned_disk_gb DECIMAL(12,2) NULL,
     used_disk_gb        DECIMAL(12,2) NULL,
     cpu_avg_pct         DECIMAL(5,2)  NULL,          -- 30-day rollups (see dbo.performance for the daily series)
-    cpu_peak_pct        DECIMAL(5,2)  NULL,
+    cpu_peak_pct        DECIMAL(5,2)  NULL,          -- 30-day maximum
+    cpu_p95_pct         DECIMAL(5,2)  NULL,          -- 95th percentile of daily averages (use this to right-size)
     ram_avg_pct         DECIMAL(5,2)  NULL,
+    ram_p95_pct         DECIMAL(5,2)  NULL,
     disk_iops_avg       DECIMAL(12,2) NULL,
     disk_iops_peak      DECIMAL(12,2) NULL,
     net_in_gb_30d       DECIMAL(14,2) NULL,          -- total inbound data over the 30-day window

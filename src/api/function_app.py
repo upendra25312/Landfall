@@ -47,11 +47,13 @@ from azure.identity import DefaultAzureCredential
 from azure.ai.projects import AIProjectClient
 from azure.storage.blob import BlobServiceClient
 
-from tools import bp  # query_inventory / vm_rightsize / azure_retail_prices HTTP tools
+from tools import bp  # query_inventory / azure_retail_prices HTTP tools
+from cost.functions import cost_bp  # vm_rightsize (deterministic cost engine)
 from ingest.functions import ingest_bp  # raw/inventory/* -> normalize -> Azure SQL + DQ report
 
 app = df.DFApp()
 app.register_functions(bp)
+app.register_functions(cost_bp)
 app.register_functions(ingest_bp)
 
 # Lazily built on first use - keep module import (and worker function indexing) fast

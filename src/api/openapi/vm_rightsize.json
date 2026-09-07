@@ -2,16 +2,16 @@
   "openapi": "3.0.1",
   "info": {
     "title": "vm_rightsize",
-    "description": "Map on-prem servers to Azure VM SKUs and managed-disk tiers with a documented heuristic.",
-    "version": "1.0.0"
+    "description": "Deterministic Azure VM SKU + managed-disk tier per on-prem server. RAM-aware (sizes against vCPU and RAM independently), driven by the firm's estimation_config.json.",
+    "version": "2.0.0"
   },
   "servers": [{ "url": "https://REPLACE/api" }],
   "paths": {
     "/vm_rightsize": {
       "post": {
         "operationId": "vm_rightsize",
-        "summary": "Recommend an Azure VM SKU + disk tier per server",
-        "description": "Stateless heuristic. If cpu_peak_pct is present the SKU is sized to keep 75% headroom on peak; if absent the allocation is assumed oversized, mapped one size down, and flagged low confidence. Never silently guesses - every row returns its basis.",
+        "summary": "Recommend an Azure VM SKU + disk tier per server (deterministic)",
+        "description": "Sizes vCPU and RAM independently and picks the smallest SKU meeting BOTH; the response says which dimension bound it. With utilisation data (p95 preferred, then peak, then avg) it scales the allocation to the configured target utilisation, floored so it never cuts below the retain thresholds. Without utilisation data it keeps the allocation as-is (no blind haircut) and marks confidence 'low'. Returns a low/expected/high SKU range. Same input always gives the same output. Feed recommended.sku to azure_retail_prices for cost.",
         "requestBody": {
           "required": true,
           "content": {
@@ -29,10 +29,20 @@
                         "server_id": { "type": "string" },
                         "vcpu": { "type": "number" },
                         "ram_gb": { "type": "number" },
+                        "cpu_p95_pct": { "type": "number", "nullable": true },
                         "cpu_peak_pct": { "type": "number", "nullable": true },
-                        "used_disk_gb": { "type": "number", "nullable": true }
+                        "cpu_avg_pct": { "type": "number", "nullable": true },
+                        "ram_avg_pct": { "type": "number", "nullable": true },
+                        "mem_p95_pct": { "type": "number", "nullable": true },
+                        "used_disk_gb": { "type": "number", "nullable": true },
+                        "disk_iops_peak": { "type": "number", "nullable": true }
                       }
                     }
+                  },
+                  "config": {
+                    "type": "object",
+                    "nullable": true,
+                    "description": "Optional overrides merged over estimation_config.json (e.g. {\"rightsize\":{\"cpu_target_utilisation_pct\":70}})"
                   }
                 }
               }
@@ -41,7 +51,7 @@
         },
         "responses": {
           "200": {
-            "description": "One recommendation per input server",
+            "description": "One recommendation per input server, plus a roll-up and the config used",
             "content": {
               "application/json": {
                 "schema": {
@@ -53,17 +63,31 @@
                         "type": "object",
                         "properties": {
                           "server_id": { "type": "string" },
-                          "sku": { "type": "string" },
-                          "family": { "type": "string" },
-                          "vcpu": { "type": "integer" },
-                          "ram_gb": { "type": "number" },
-                          "disk_tier": { "type": "string" },
+                          "current": { "type": "object" },
+                          "recommended": {
+                            "type": "object",
+                            "properties": {
+                              "sku": { "type": "string" },
+                              "family": { "type": "string" },
+                              "vcpu": { "type": "integer" },
+                              "ram_gb": { "type": "number" },
+                              "bound_by": { "type": "string", "enum": ["cpu", "ram"] },
+                              "at_catalog_ceiling": { "type": "boolean" }
+                            }
+                          },
+                          "range": { "type": "object", "properties": {
+                            "low": { "type": "string" }, "expected": { "type": "string" }, "high": { "type": "string" }
+                          }},
+                          "disk": { "type": "object" },
+                          "utilisation_used": { "type": "object", "nullable": true },
                           "confidence": { "type": "string", "enum": ["high", "medium", "low"] },
                           "basis": { "type": "string" }
                         }
                       }
                     },
-                    "heuristic": { "type": "string", "description": "the rule set applied" }
+                    "summary": { "type": "object" },
+                    "config": { "type": "object" },
+                    "catalog_version": { "type": "string" }
                   }
                 }
               }

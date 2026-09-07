@@ -68,7 +68,7 @@ Every table also has source_file and ingested_at (ignore unless asked about prov
 
 servers(server_id, hostname, env /* prod|nonprod|dev|dr */, os_name, os_version,
         os_eol_date, vcpu, ram_gb, provisioned_disk_gb, used_disk_gb,
-        cpu_avg_pct, cpu_peak_pct, ram_avg_pct /* 30-day rollups */,
+        cpu_avg_pct, cpu_peak_pct, cpu_p95_pct, ram_avg_pct, ram_p95_pct /* 30-day rollups; p95 = right-sizing signal */,
         disk_iops_avg, disk_iops_peak, net_in_gb_30d, net_out_gb_30d /* 30-day totals */,
         cluster, datacenter, powerstate, app_id /* -> applications.app_id */, notes)
 applications(app_id, app_name, business_owner, criticality /* 1 high..4 */, users,
@@ -182,70 +182,7 @@ def _cell(v):
     return str(v)
 
 
-# ==========================================================================
-# vm_rightsize
-# ==========================================================================
-# vCPU -> RAM GiB per family (Azure v5). Keys are the sizes we will map to.
-_SKU_TABLE = {
-    "Dsv5": [(2, 8, "Standard_D2s_v5"), (4, 16, "Standard_D4s_v5"), (8, 32, "Standard_D8s_v5"),
-             (16, 64, "Standard_D16s_v5"), (32, 128, "Standard_D32s_v5"), (64, 256, "Standard_D64s_v5")],
-    "Esv5": [(2, 16, "Standard_E2s_v5"), (4, 32, "Standard_E4s_v5"), (8, 64, "Standard_E8s_v5"),
-             (16, 128, "Standard_E16s_v5"), (32, 256, "Standard_E32s_v5"), (64, 512, "Standard_E64s_v5")],
-    "Fsv2": [(2, 4, "Standard_F2s_v2"), (4, 8, "Standard_F4s_v2"), (8, 16, "Standard_F8s_v2"),
-             (16, 32, "Standard_F16s_v2"), (32, 64, "Standard_F32s_v2"), (64, 128, "Standard_F64s_v2")],
-}
-_HEURISTIC = (
-    "family by RAM/vCPU ratio (<=2 Fsv2, <=5 Dsv5, else Esv5); if cpu_peak_pct present, "
-    "size vCPU so peak load leaves ~25% headroom; if absent, assume oversized, map one "
-    "size down, confidence=low; disk tier by used_disk_gb (<=128 P10, <=512 P20, "
-    "<=1024 P30, else P40)."
-)
-
-
-def _disk_tier(used_gb):
-    g = used_gb or 0
-    return "P10" if g <= 128 else "P20" if g <= 512 else "P30" if g <= 1024 else "P40"
-
-
-def _rightsize_one(s: dict) -> dict:
-    sid = s.get("server_id")
-    vcpu = float(s.get("vcpu") or 0) or 2.0
-    ram = float(s.get("ram_gb") or 0) or vcpu * 4
-    peak = s.get("cpu_peak_pct")
-    ratio = ram / vcpu if vcpu else 4
-    family = "Fsv2" if ratio <= 2 else "Dsv5" if ratio <= 5 else "Esv5"
-
-    if peak is not None:
-        needed = max(1.0, vcpu * (float(peak) / 100.0) / 0.75)
-        confidence, basis = "medium", f"sized to {peak}% peak with 25% headroom"
-    else:
-        needed = vcpu / 2.0
-        confidence, basis = "low", "no utilisation data - assumed oversized, mapped one size down"
-
-    table = _SKU_TABLE[family]
-    pick = next((row for row in table if row[0] >= needed), table[-1])
-    return {
-        "server_id": sid,
-        "sku": pick[2],
-        "family": family,
-        "vcpu": pick[0],
-        "ram_gb": pick[1],
-        "disk_tier": _disk_tier(s.get("used_disk_gb")),
-        "confidence": confidence,
-        "basis": basis,
-    }
-
-
-@bp.route(route="vm_rightsize", methods=["POST"], auth_level=func.AuthLevel.ANONYMOUS)
-def vm_rightsize(req: func.HttpRequest) -> func.HttpResponse:
-    try:
-        servers = req.get_json().get("servers") or []
-    except ValueError:
-        servers = []
-    if not isinstance(servers, list) or not servers:
-        return _json({"error": "body must be {\"servers\": [ {server_id, vcpu, ram_gb, ...} ]}"}, 400)
-    recs = [_rightsize_one(s) for s in servers[:500]]
-    return _json({"recommendations": recs, "heuristic": _HEURISTIC})
+# vm_rightsize moved to cost/functions.py (deterministic, RAM-aware, config-driven).
 
 
 # ==========================================================================
