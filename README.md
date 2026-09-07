@@ -78,6 +78,7 @@ blob events.
 | `src/api/openapi/` | OpenAPI 3.0 specs for those tools; `create_agent.py` points them at the deployed Function app |
 | `src/web/` | FastAPI chat UI container |
 | `samples/smoke-questions.xlsx` | two-question sheet for a first end-to-end test of the batch runner |
+| `docs/operating-sop.html` | **how to use a deployed Landfall** — step-by-step SOP from data load to architect hand-off |
 | `docs/build-spec.html` | solution build specification |
 | `docs/effort-and-resource-loading.html` | pre-sales parametric effort model + 6-month resource loading |
 | `docs/discovery-questionnaire.html` | client questionnaire + assumptions register (AS-01…14) + risk register (RK-01…12) |

@@ -1,0 +1,388 @@
+<title>Landfall Operating Guide</title>
+<meta name="description" content="Standard operating procedure for using a deployed Landfall to produce a draft Azure migration estimate for a client — from data load to architect hand-off.">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Spectral:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  /* ---- palette: nautical chart — sounding-line teal on cool paper ---- */
+  :root{
+    --paper:#EDF1F2; --surface:#FFFFFF; --surface-2:#F5F8F8;
+    --ink:#14262F; --muted:#566A70; --line:#CFDBDE;
+    --accent:#0F6E7A; --accent-deep:#0A4A54;
+    --good:#2E7D5B; --warn:#8A5E14; --crit:#B23B3B;
+    --hi:#FBF3E4; --hi-line:#E4C98C;
+    --code-bg:#0C1B21; --code-ink:#D6E4E6; --code-dim:#7C949A; --code-accent:#57C3CF;
+  }
+  @media (prefers-color-scheme:dark){
+    :root:not([data-theme="light"]){
+      --paper:#0B1519; --surface:#10222A; --surface-2:#152A32;
+      --ink:#E4EDEF; --muted:#93A7AD; --line:#243A41;
+      --accent:#3FA9B4; --accent-deep:#7FD6DE;
+      --good:#5FB98C; --warn:#D0A44E; --crit:#E07A7A;
+      --hi:#2A2213; --hi-line:#6B5626;
+      --code-bg:#081216; --code-ink:#D6E4E6; --code-dim:#7C949A; --code-accent:#57C3CF;
+    }
+  }
+  :root[data-theme="dark"]{
+    --paper:#0B1519; --surface:#10222A; --surface-2:#152A32;
+    --ink:#E4EDEF; --muted:#93A7AD; --line:#243A41;
+    --accent:#3FA9B4; --accent-deep:#7FD6DE;
+    --good:#5FB98C; --warn:#D0A44E; --crit:#E07A7A;
+    --hi:#2A2213; --hi-line:#6B5626;
+    --code-bg:#081216; --code-ink:#D6E4E6; --code-dim:#7C949A; --code-accent:#57C3CF;
+  }
+
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  @media (prefers-reduced-motion:reduce){html{scroll-behavior:auto} *{animation:none!important;transition:none!important}}
+  body{
+    margin:0; background:var(--paper); color:var(--ink);
+    font-family:"IBM Plex Sans",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+    line-height:1.62; -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:920px;margin:0 auto;padding:56px 26px 120px}
+
+  .eyebrow{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:.7rem;letter-spacing:.2em;text-transform:uppercase;color:var(--accent-deep);margin:0 0 14px}
+  h1{font-family:"Spectral",Georgia,serif;font-weight:600;font-size:clamp(2rem,5vw,2.9rem);line-height:1.05;letter-spacing:-.01em;margin:0 0 12px;text-wrap:balance}
+  .lede{font-family:"Spectral",Georgia,serif;font-size:1.14rem;color:var(--muted);max-width:64ch;margin:0 0 26px}
+  .meta{display:flex;flex-wrap:wrap;gap:8px 22px;font-family:"IBM Plex Mono",monospace;font-size:.72rem;border-top:1px solid var(--line);border-bottom:1px solid var(--line);padding:15px 0;margin-bottom:14px}
+  .meta span{color:var(--muted)} .meta b{color:var(--ink);font-weight:500}
+  .disclaimer{font-size:.84rem;color:var(--muted);border-left:3px solid var(--hi-line);background:var(--hi);padding:11px 14px;border-radius:0 6px 6px 0;margin:0 0 44px}
+  .disclaimer b{color:var(--ink)}
+
+  nav.toc{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:16px 20px;margin-bottom:48px}
+  nav.toc h2{font-family:"IBM Plex Mono",monospace;font-size:.68rem;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin:0 0 10px;font-weight:500}
+  nav.toc ol{margin:0;padding-left:0;list-style:none;columns:2;column-gap:32px;font-size:.9rem}
+  nav.toc li{padding:3px 0;break-inside:avoid}
+  nav.toc a{color:var(--accent-deep);text-decoration:none}
+  nav.toc a:hover{text-decoration:underline}
+  nav.toc .step{font-family:"IBM Plex Mono",monospace;color:var(--muted);margin-right:8px}
+  @media(max-width:560px){nav.toc ol{columns:1}}
+
+  section{margin:0 0 52px;scroll-margin-top:18px}
+  h2.sec{font-family:"Spectral",Georgia,serif;font-weight:600;font-size:1.44rem;margin:0 0 3px;letter-spacing:-.005em;display:flex;align-items:baseline;gap:12px}
+  h2.sec .n{font-family:"IBM Plex Mono",monospace;font-size:.82rem;font-weight:500;color:var(--accent);flex:none}
+  .sub{color:var(--muted);font-size:.92rem;margin:0 0 20px;max-width:66ch}
+  h3{font-family:"IBM Plex Sans",sans-serif;font-weight:600;font-size:1rem;margin:26px 0 8px}
+  p{margin:0 0 12px;max-width:68ch}
+  ul,ol.plain{margin:0 0 12px;padding-left:20px;max-width:68ch}
+  li{margin:0 0 6px}
+  a{color:var(--accent-deep);text-underline-offset:2px}
+  strong{font-weight:600}
+  code{font-family:"IBM Plex Mono",monospace;font-size:.86em;background:var(--surface-2);border:1px solid var(--line);border-radius:4px;padding:.05em .35em}
+  .rule{height:1px;background:var(--line);border:0;margin:52px 0}
+
+  /* ---- step list: the SOP spine ---- */
+  ol.steps{list-style:none;margin:14px 0 4px;padding:0;counter-reset:step}
+  ol.steps > li{
+    counter-increment:step;
+    display:grid;grid-template-columns:2.4rem 1fr;gap:0 16px;
+    padding:14px 0;border-top:1px solid var(--line);
+  }
+  ol.steps > li::before{
+    content:counter(step);
+    font-family:"IBM Plex Mono",monospace;font-size:.82rem;font-weight:500;
+    color:var(--accent);padding-top:2px;
+  }
+  ol.steps .do{font-weight:600;margin:0 0 4px}
+  ol.steps .detail{color:var(--muted);font-size:.9rem;margin:0}
+  ol.steps .expect{font-size:.84rem;font-family:"IBM Plex Mono",monospace;color:var(--good);margin:6px 0 0}
+  ol.steps .expect::before{content:"→ expect  ";color:var(--muted)}
+  ol.steps pre{margin:8px 0 2px}
+  ol.steps code{font-size:.82rem}
+
+  pre{background:var(--code-bg);color:var(--code-ink);border-radius:8px;padding:15px 16px;overflow-x:auto;font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:.8rem;line-height:1.55;margin:12px 0}
+  pre code{background:none;border:0;padding:0;font-size:inherit;color:inherit}
+  pre .c{color:var(--code-dim)} pre .s{color:var(--code-accent)}
+
+  .callout{background:var(--surface);border:1px solid var(--line);border-left:3px solid var(--accent);border-radius:0 6px 6px 0;padding:12px 15px;font-size:.88rem;margin:14px 0}
+  .callout b{color:var(--accent-deep)}
+  .callout.tip{border-left-color:var(--good)} .callout.tip b{color:var(--good)}
+  .callout.warn{border-left-color:var(--warn)} .callout.warn b{color:var(--warn)}
+
+  .scroll{overflow-x:auto;border:1px solid var(--line);border-radius:8px;margin:14px 0}
+  table{border-collapse:collapse;width:100%;font-size:.86rem;min-width:560px}
+  th,td{text-align:left;padding:10px 14px;border-bottom:1px solid var(--line);vertical-align:top}
+  th{font-family:"IBM Plex Mono",monospace;font-size:.64rem;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);background:var(--surface-2);font-weight:500}
+  tr:last-child td{border-bottom:0}
+  td code{white-space:nowrap}
+
+  .cols{display:grid;gap:18px}
+  @media(min-width:660px){.cols{grid-template-columns:1fr 1fr}}
+  .cols h3{margin-top:0}
+  .cols ul{padding-left:18px}
+  .cols .do3 li::marker{content:"✓  ";color:var(--good)}
+  .cols .dont li::marker{content:"✕  ";color:var(--crit)}
+
+  footer{margin-top:72px;padding-top:18px;border-top:1px solid var(--line);font-family:"IBM Plex Mono",monospace;font-size:.7rem;color:var(--muted)}
+  :focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:2px}
+</style>
+
+<div class="wrap">
+
+  <p class="eyebrow">Landfall · Standard Operating Procedure</p>
+  <h1>Landfall Operating Guide</h1>
+  <p class="lede">How to turn a client's paper inventory into a defensible <strong>draft</strong> Azure landing-zone and migration estimate, using a Landfall instance someone has already deployed. Follow the phases in order — each one depends on the last.</p>
+  <div class="meta">
+    <span>Version <b>1.0</b></span>
+    <span>Updated <b>2026-09-07</b></span>
+    <span>Audience <b>Migration architects &amp; pre-sales consultants</b></span>
+    <span>Prerequisite <b>A deployed Landfall (see INSTALL.md)</b></span>
+  </div>
+  <p class="disclaimer"><b>Everything Landfall produces is a DRAFT for a human architect to review and own.</b> Client inventory is typically incomplete and lacks performance data; every answer carries stated assumptions and a confidence level. It is a fast first pass, not a bid.</p>
+
+  <nav class="toc">
+    <h2>Procedure</h2>
+    <ol>
+      <li><span class="step">0</span><a href="#p0">Get access &amp; approvals</a></li>
+      <li><span class="step">1</span><a href="#p1">Load the client estate</a></li>
+      <li><span class="step">2</span><a href="#p2">Run an estimate in chat</a></li>
+      <li><span class="step">3</span><a href="#p3">Batch an RFP question sheet</a></li>
+      <li><span class="step">4</span><a href="#p4">Assemble the draft estimate</a></li>
+      <li><span class="step">5</span><a href="#p5">Close out the engagement</a></li>
+      <li><span class="step">R</span><a href="#tools">Reference — the agent's tools</a></li>
+      <li><span class="step">R</span><a href="#contract">Reference — the answer contract</a></li>
+      <li><span class="step">R</span><a href="#dodont">Do &amp; don't</a></li>
+      <li><span class="step">R</span><a href="#trouble">Troubleshooting</a></li>
+      <li><span class="step">A</span><a href="#appendix">Appendix — for the operator</a></li>
+    </ol>
+  </nav>
+
+  <section id="p0">
+    <h2 class="sec"><span class="n">Phase 0</span>Get access &amp; approvals</h2>
+    <p class="sub">One-time, per person. You need at minimum the chat URL and a sign-in. If you will also load data, you need a little more.</p>
+    <ol class="steps">
+      <li>
+        <div><p class="do">Get the chat UI URL and a tenant account</p>
+        <p class="detail">The person who deployed Landfall gives you <code>SERVICE_WEB_URI</code> and adds you to the Entra tenant. The UI is single-tenant — only accounts in that directory can sign in.</p>
+        <p class="expect">opening the URL redirects you to a Microsoft sign-in, then to the chat page</p></div>
+      </li>
+      <li>
+        <div><p class="do">(Data loaders only) Get data-plane access</p>
+        <p class="detail"><code>Storage Blob Data Contributor</code> on the storage account, a contained SQL user with <code>db_datawriter</code>, and <code>az</code> CLI + Python 3.11 locally. If you would rather not, ask the operator to run the load for you.</p></div>
+      </li>
+      <li>
+        <div><p class="do">Confirm the data-handling approval</p>
+        <p class="detail">Before any client inventory is uploaded, confirm placing it in this storage account is covered by the MNDA / DPA — discovery questionnaire question <strong>SC7</strong>. Get the named sign-off.</p>
+        <p class="expect">a written approval on file naming who signed and any redaction required</p></div>
+      </li>
+    </ol>
+  </section>
+
+  <section id="p1">
+    <h2 class="sec"><span class="n">Phase 1</span>Load the client estate</h2>
+    <p class="sub">Landfall answers questions about data you have loaded. Two shapes of input, two stores: structured inventory → Azure SQL; narrative documents → the AI Search index.</p>
+    <ol class="steps">
+      <li>
+        <div><p class="do">Collect the data pack</p>
+        <p class="detail">Send the client <a href="discovery-questionnaire.html">discovery-questionnaire.html</a> and collect §1: server/VM inventory (RVTools or vCenter export, or CMDB extract), application portfolio, dependency map, database inventory, storage &amp; backup inventory, network diagrams, licensing position. <strong>MUST</strong>-tagged items block the estimate; chase those first.</p></div>
+      </li>
+      <li>
+        <div><p class="do">Capture the questionnaire answers</p>
+        <p class="detail">Get every section answered — "unknown" is a valid answer, it tells you where to place an assumption. Save the answers as a document you will upload in step 4.</p></div>
+      </li>
+      <li>
+        <div><p class="do">Map the inventory into the four SQL tables</p>
+        <p class="detail">Load the client spreadsheets into <code>servers</code>, <code>applications</code>, <code>dependencies</code>, <code>storage</code>. The column names in <code>scripts/schema.sql</code> are the contract — the <code>query_inventory</code> tool expects them exactly (e.g. RVTools <code>CPUs</code> → <code>vcpu</code>, <code>Memory</code> → <code>ram_gb</code>). Use Azure Data Studio's flat-file import, <code>bcp</code>, or a load script.</p>
+        <pre><code><span class="c"># pattern — adapt sample-estate/load_estate.py to the client's columns</span>
+python load_estate.py --server &lt;sql&gt;.database.windows.net --database sqldb-landfall</code></pre>
+        <p class="expect">in chat, <span style="color:var(--code-accent)">"how many servers are loaded?"</span> returns the right count</p></div>
+      </li>
+      <li>
+        <div><p class="do">Upload the narrative documents</p>
+        <p class="detail">Put architecture docs, the questionnaire answers, standards and runbooks (PDF / DOCX / MD) into the <code>raw/docs/</code> path of the storage account. The indexer picks them up on a 6-hour schedule, or trigger it now.</p>
+        <pre><code>az storage blob upload-batch --account-name &lt;acct&gt; --auth-mode login \
+  -d raw/docs -s ./client-docs
+az rest --method post --resource https://search.azure.com \
+  --url "&lt;search-endpoint&gt;/indexers/landfall-docs-ixr/run?api-version=2024-07-01"</code></pre>
+        <p class="expect">indexer status <code>success</code>; in chat, <span style="color:var(--code-accent)">"search the documents for the migration driver"</span> returns cited text</p></div>
+      </li>
+      <li>
+        <div><p class="do">Sanity-check the load</p>
+        <p class="detail">Ask the agent to total vCPU / RAM and count servers past OS end-of-support, then eyeball it against what the client told you. If a count looks wrong, read the SQL the agent shows — a column mapping is usually the cause.</p></div>
+      </li>
+    </ol>
+    <div class="callout tip"><b>No client data yet?</b> The repo ships <code>sample-estate/</code> — 250 synthetic servers, 31 applications, and a completed questionnaire for a fictional retailer. Load it to learn the workflow, then clear it before real data goes in.</div>
+  </section>
+
+  <section id="p2">
+    <h2 class="sec"><span class="n">Phase 2</span>Run an estimate in chat</h2>
+    <p class="sub">Open <code>SERVICE_WEB_URI</code>, sign in, and work through the estimate one question at a time. Each browser tab keeps its own conversation thread — open a new tab to start clean.</p>
+    <ol class="steps">
+      <li>
+        <div><p class="do">Establish the current state</p>
+        <p class="detail">Ask for counts and totals: VMs by environment and OS, total vCPU / RAM / storage, EOL exposure, criticality spread. The agent uses <code>query_inventory</code> and shows the SQL it ran — keep that for the audit trail.</p>
+        <p class="detail"><em>e.g.</em> "How many prod Windows Server 2012 R2 VMs, and total vCPU across them?"</p></div>
+      </li>
+      <li>
+        <div><p class="do">Size and cost the compute</p>
+        <p class="detail">Ask for an Azure SKU recommendation and run-rate. The agent chains <code>vm_rightsize</code> then <code>azure_retail_prices</code> and must name the <strong>region, term and price date</strong>. Ask for both pay-as-you-go and 1-year / 3-year reserved.</p>
+        <p class="detail"><em>e.g.</em> "Right-size the prod Linux fleet and give a monthly Azure compute run-rate in Sweden Central, PAYG and 1-year RI."</p></div>
+      </li>
+      <li>
+        <div><p class="do">Work the applications — disposition &amp; waves</p>
+        <p class="detail">Ask the agent to propose a disposition (the 6 R's) per application and group them into migration waves by dependency cluster. It reads <code>dependencies</code> and pulls constraints from <code>search_documents</code>.</p></div>
+      </li>
+      <li>
+        <div><p class="do">Scope the landing zone</p>
+        <p class="detail">Ask what the landing zone must contain given the client's compliance scope and connectivity needs. The agent grounds this in <code>microsoft_docs</code> — Cloud Adoption Framework and the Azure landing zone reference architecture.</p></div>
+      </li>
+      <li>
+        <div><p class="do">Read the contract block on every answer</p>
+        <p class="detail">Each answer ends with <strong>Answer · Basis · Assumptions · Data gaps · Confidence</strong>. <span style="color:var(--warn)">Low / Medium confidence is a discovery gap to close, not a bug.</span> Log every Assumption and Data gap as you go.</p></div>
+      </li>
+    </ol>
+  </section>
+
+  <section id="p3">
+    <h2 class="sec"><span class="n">Phase 3</span>Batch an RFP question sheet</h2>
+    <p class="sub">When you have a long list of RFP clarification questions, let the batch runner answer them all instead of asking one by one.</p>
+    <ol class="steps">
+      <li>
+        <div><p class="do">Prepare the workbook</p>
+        <p class="detail">Put one question per row in a column headed <strong>Question</strong> in an <code>.xlsx</code>. Keep it to <strong>300 rows or fewer</strong> — larger sheets are rejected.</p></div>
+      </li>
+      <li>
+        <div><p class="do">Drop it in the <code>questions/</code> container</p>
+        <p class="detail">Upload the workbook to the <code>questions/</code> blob container. That is the trigger — nothing else to press.</p>
+        <pre><code>az storage blob upload --account-name &lt;acct&gt; --auth-mode login \
+  -c questions -f rfp-questions.xlsx -n rfp-questions.xlsx</code></pre></div>
+      </li>
+      <li>
+        <div><p class="do">Collect the answered workbook</p>
+        <p class="detail">A few minutes later (for a few dozen rows), <code>&lt;name&gt;_answered.xlsx</code> appears in the <code>answers/</code> container with columns <strong>Question · Answer · Sources · Status</strong>.</p>
+        <p class="expect"><code>rfp-questions_answered.xlsx</code> in <code>answers/</code></p></div>
+      </li>
+      <li>
+        <div><p class="do">Review the Status column</p>
+        <p class="detail">Filter for <code>error</code> or <code>empty</code>. Re-ask those questions in chat — usually they need rephrasing or the underlying data isn't loaded.</p></div>
+      </li>
+    </ol>
+    <div class="callout tip"><b>Smoke test first.</b> <code>samples/smoke-questions.xlsx</code> is a two-question sheet — run it once to confirm the pipeline works before uploading a real RFP.</div>
+  </section>
+
+  <section id="p4">
+    <h2 class="sec"><span class="n">Phase 4</span>Assemble the draft estimate</h2>
+    <p class="sub">Landfall gives you the raw material. You compose it into the estimate and put your firm's numbers on it.</p>
+    <ol class="steps">
+      <li>
+        <div><p class="do">Pull the deliverable lines</p>
+        <p class="detail">From the chat transcript and the answered sheet, gather: current-state summary, Azure compute bill of materials, landing-zone scope, 6 R's disposition, wave plan, run-rate cost (region + term + date stamped), migration effort range, and the risks &amp; assumptions register.</p></div>
+      </li>
+      <li>
+        <div><p class="do">Apply your firm's rates</p>
+        <p class="detail">Cross-check the effort against <a href="effort-and-resource-loading.html">effort-and-resource-loading.html</a>. The S / M / L / XL effort-hour bands, the RI term assumption, the non-prod &amp; DR uplift %, and the PM / testing / cutover overhead % are <strong>yours</strong> — set them in an <code>estimation_config.json</code> the agent reads, so it applies your rates rather than inventing them.</p></div>
+      </li>
+      <li>
+        <div><p class="do">Consolidate assumptions &amp; gaps</p>
+        <p class="detail">Merge every "Assumptions" and "Data gaps" line into one register. Map it to the questionnaire's working-assumptions register (§16, AS-01…) and risk register (§17, RK-01…) so the RFP risk section writes itself.</p></div>
+      </li>
+      <li>
+        <div><p class="do">Architect review — then watermark</p>
+        <p class="detail">A named architect reviews and <strong>owns</strong> the numbers. Every exported page carries <strong>"DRAFT — architect review required"</strong> and the confidence column is non-optional. Never let the numbers go into a proposal as a fixed price.</p></div>
+      </li>
+    </ol>
+  </section>
+
+  <section id="p5">
+    <h2 class="sec"><span class="n">Phase 5</span>Close out the engagement</h2>
+    <ol class="steps">
+      <li>
+        <div><p class="do">Export and archive</p>
+        <p class="detail">Download the answered sheets from <code>answers/</code> and save the chat transcript with the estimate. That is the evidence pack for the review.</p></div>
+      </li>
+      <li>
+        <div><p class="do">Park or tear down</p>
+        <p class="detail">Between engagements the idle cost is a few dollars a month. To take it to zero, the operator runs <code>azd down --purge</code>; <code>azd up</code> rebuilds in ~15 minutes next time.</p></div>
+      </li>
+      <li>
+        <div><p class="do">Delete client data if required</p>
+        <p class="detail">If the contract requires it, remove the storage account and purge the Key Vault and Foundry account so no client inventory persists. Confirm deletion in writing.</p></div>
+      </li>
+    </ol>
+  </section>
+
+  <hr class="rule">
+
+  <section id="tools">
+    <h2 class="sec"><span class="n">Ref</span>The agent's tools</h2>
+    <p class="sub">You don't call these — the agent picks them. Knowing which one answered helps you judge the answer.</p>
+    <div class="scroll"><table>
+      <thead><tr><th>Tool</th><th>What it does</th><th>Answers like</th></tr></thead>
+      <tbody>
+        <tr><td><code>query_inventory</code></td><td>Turns a plain-English question into one read-only SQL <code>SELECT</code> over the four tables, runs it, returns rows <em>and</em> the SQL.</td><td>"how many…", "total vCPU", "apps with no owner"</td></tr>
+        <tr><td><code>vm_rightsize</code></td><td>Maps each server to an Azure VM SKU + disk tier with a stated heuristic — sizes to peak with headroom, or one size down and flagged low-confidence when there's no utilisation data.</td><td>"what SKU for this server", "right-size the fleet"</td></tr>
+        <tr><td><code>azure_retail_prices</code></td><td>Live pay-as-you-go and reserved prices from the public Azure Retail Prices API, cached.</td><td>"monthly cost", "1-year vs 3-year RI"</td></tr>
+        <tr><td><code>search_documents</code></td><td>Hybrid search over the narrative docs in <code>raw/docs/</code>. Surfaces client constraints — compliance, network, DR, maintenance windows.</td><td>"what does the client say about…"</td></tr>
+        <tr><td><code>microsoft_docs</code></td><td>Microsoft Learn — Cloud Adoption Framework, Azure landing zone reference, target-service sizing.</td><td>"what should the landing zone contain"</td></tr>
+      </tbody>
+    </table></div>
+  </section>
+
+  <section id="contract">
+    <h2 class="sec"><span class="n">Ref</span>The answer contract</h2>
+    <p class="sub">Every substantive answer ends with these five labelled lines. If one is missing, ask the agent to complete it before you use the number.</p>
+    <div class="scroll"><table>
+      <thead><tr><th>Line</th><th>What to check</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Answer</strong></td><td>The number or recommendation itself.</td></tr>
+        <tr><td><strong>Basis</strong></td><td>Which tool / query / document produced it. A cost line must name region, term and price date.</td></tr>
+        <tr><td><strong>Assumptions</strong></td><td>What the agent had to assume. Each one goes in your register.</td></tr>
+        <tr><td><strong>Data gaps</strong></td><td>What was missing. This is where you place a discovery activity.</td></tr>
+        <tr><td><strong>Confidence</strong></td><td>High / Medium / Low. Low is not a defect — it means the inventory was thin here.</td></tr>
+      </tbody>
+    </table></div>
+  </section>
+
+  <section id="dodont">
+    <h2 class="sec"><span class="n">Ref</span>Do &amp; don't</h2>
+    <div class="cols">
+      <div><h3>Do</h3><ul class="do3">
+        <li>Load and sanity-check data <em>before</em> asking estimate questions.</li>
+        <li>Keep the SQL the agent shows — it's your audit trail.</li>
+        <li>Ask one thing at a time; build the estimate incrementally.</li>
+        <li>Log every Assumption and Data gap as you go.</li>
+        <li>Run the smoke sheet before a real batch.</li>
+        <li>Put a human architect's name on the final numbers.</li>
+      </ul></div>
+      <div><h3>Don't</h3><ul class="dont">
+        <li>Treat any output as a bid or a fixed price.</li>
+        <li>Upload client data before the SC7 approval is on file.</li>
+        <li>Trust a cost figure with no region / term / date.</li>
+        <li>Assume a low-confidence answer is wrong — close the gap instead.</li>
+        <li>Exceed 300 rows in a batch question sheet.</li>
+        <li>Leave a client's data in the storage account after close-out if the contract says otherwise.</li>
+      </ul></div>
+    </div>
+  </section>
+
+  <section id="trouble">
+    <h2 class="sec"><span class="n">Ref</span>Troubleshooting</h2>
+    <div class="scroll"><table>
+      <thead><tr><th>Symptom</th><th>Cause / fix</th></tr></thead>
+      <tbody>
+        <tr><td>Chat returns <code>503 — AGENT_ID not set</code></td><td>The deploy's post-provision step didn't finish. Ask the operator to re-run it (<code>azd hooks run postprovision</code>).</td></tr>
+        <tr><td><code>query_inventory</code> answers <code>0</code> or errors</td><td>Data isn't loaded, or the Free SQL database auto-paused after an hour idle — the first query wakes it (~30–60 s); retry once.</td></tr>
+        <tr><td>A count looks wrong</td><td>Read the SQL the agent shows. Almost always a column-mapping mismatch in Phase 1 step 3 — reload with the corrected mapping.</td></tr>
+        <tr><td>Document search returns nothing</td><td>Docs aren't in <code>raw/docs/</code>, or the indexer hasn't run since you uploaded. Trigger it (Phase 1 step 4) and wait for <code>success</code>.</td></tr>
+        <tr><td>Batch sheet never produces an answered file</td><td>The Event Grid subscription on <code>questions/</code> is missing. Operator: <code>azd hooks run postdeploy</code>.</td></tr>
+        <tr><td>First request after a quiet period is slow (~10 s)</td><td>Expected — the chat app scales to zero and the SQL database auto-pauses. It warms up on the first request.</td></tr>
+        <tr><td>Cost figure seems high</td><td>Check whether Azure Hybrid Benefit and reservations were applied, and whether the agent right-sized per server or just scaled a total. Ask it to redo with those explicit.</td></tr>
+      </tbody>
+    </table></div>
+  </section>
+
+  <section id="appendix">
+    <h2 class="sec"><span class="n">Appx</span>For the operator</h2>
+    <p class="sub">You maintain the Landfall instance other people use. This is the short list; the detail is in the repo.</p>
+    <ul>
+      <li><strong>Deploy / redeploy</strong> — <code>INSTALL.md</code> (clean machine) or <code>DEPLOY.md</code> (tooling in place). <code>azd up</code> provisions, runs post-provision (SQL schema, search index, agent), deploys both services, then post-deploy wires the Event Grid subscription.</li>
+      <li><strong>Lock down the chat UI</strong> — required. Container App → Authentication → Microsoft (single-tenant) so only your directory can sign in. CLI recipe in <code>DEPLOY.md</code>.</li>
+      <li><strong>Harden <code>query_inventory</code></strong> — recommended. It ships as an anonymous HTTP function; put Entra auth in front of it with <code>scripts/funcapp-auth.json</code> and re-attach the tool with <code>AGENT_TOOL_AUTH=managed python scripts/create_agent.py</code>.</li>
+      <li><strong>Change the agent's prompt or tools</strong> — edit <code>scripts/create_agent.py</code> and re-run it. It publishes a new agent <em>version</em>; the chat UI and batch runner reference the agent by name and pick it up with no redeploy.</li>
+      <li><strong>Add the client's OpenAPI / SQL connection</strong> — if <code>create_agent.py</code> warns it found no search connection, add it in the Foundry portal (Management center → Connected resources) and re-run.</li>
+      <li><strong>Costs</strong> — idle a few dollars a month; ~$5–15/month at 5–20 estimate runs. <code>azd down --purge</code> between engagements.</li>
+    </ul>
+  </section>
+
+  <footer>Landfall · Operating Guide v1.0 · 2026-09-07 · Outputs are DRAFT estimates and require architect review before external use</footer>
+
+</div>
