@@ -1,0 +1,78 @@
+targetScope = 'subscription'
+
+@minLength(1)
+@maxLength(32)
+@description('Name of the azd environment - used to derive the resource group and resource names')
+param environmentName string
+
+@description('Primary location for all resources')
+param location string
+
+@description('Object id of the user or service principal running the deployment (azd sets AZURE_PRINCIPAL_ID). Used for data-plane role assignments so the postprovision scripts can run.')
+param principalId string = ''
+
+@description('Model + version for the chat model deployment')
+param chatModelName string = 'gpt-4o-mini'
+param chatModelVersion string = '2024-07-18'
+
+@description('Model + version for the embedding model deployment')
+param embeddingModelName string = 'text-embedding-3-small'
+param embeddingModelVersion string = '1'
+
+@description('TPM (thousands) cap for each model deployment - doubles as a spend brake')
+param modelCapacity int = 30
+
+var abbrs = loadJsonContent('./abbreviations.json')
+var resourceToken = toLower(uniqueString(subscription().id, environmentName, location))
+var tags = { 'azd-env-name': environmentName }
+
+resource rg 'Microsoft.Resources/resourceGroups@2024-03-01' = {
+  name: '${abbrs.resourcesResourceGroups}${environmentName}'
+  location: location
+  tags: tags
+}
+
+module resources './resources.bicep' = {
+  name: 'resources'
+  scope: rg
+  params: {
+    location: location
+    tags: tags
+    resourceToken: resourceToken
+    abbrs: abbrs
+    principalId: principalId
+    chatModelName: chatModelName
+    chatModelVersion: chatModelVersion
+    embeddingModelName: embeddingModelName
+    embeddingModelVersion: embeddingModelVersion
+    modelCapacity: modelCapacity
+  }
+}
+
+// ---- outputs consumed by azd (.azure/<env>/.env) and the postprovision scripts ----
+output AZURE_LOCATION string = location
+output AZURE_TENANT_ID string = tenant().tenantId
+output AZURE_RESOURCE_GROUP string = rg.name
+
+output AZURE_STORAGE_ACCOUNT string = resources.outputs.storageAccountName
+output AZURE_STORAGE_BLOB_ENDPOINT string = resources.outputs.storageBlobEndpoint
+
+output AZURE_SEARCH_ENDPOINT string = resources.outputs.searchEndpoint
+output AZURE_SEARCH_INDEX_NAME string = 'landfall-docs'
+
+output AZURE_OPENAI_ENDPOINT string = resources.outputs.openAiEndpoint
+output AZURE_OPENAI_CHAT_DEPLOYMENT string = chatModelName
+output AZURE_OPENAI_EMBEDDING_DEPLOYMENT string = embeddingModelName
+
+output FOUNDRY_PROJECT_ENDPOINT string = resources.outputs.foundryProjectEndpoint
+output FOUNDRY_ACCOUNT_NAME string = resources.outputs.foundryAccountName
+
+output AZURE_SQL_SERVER_FQDN string = resources.outputs.sqlServerFqdn
+output AZURE_SQL_DATABASE string = resources.outputs.sqlDatabaseName
+
+output SERVICE_API_NAME string = resources.outputs.functionAppName
+output SERVICE_WEB_NAME string = resources.outputs.containerAppName
+output SERVICE_WEB_URI string = resources.outputs.containerAppUri
+
+output AZURE_CONTAINER_REGISTRY_ENDPOINT string = resources.outputs.containerRegistryLoginServer
+output AZURE_USER_ASSIGNED_IDENTITY_CLIENT_ID string = resources.outputs.uamiClientId

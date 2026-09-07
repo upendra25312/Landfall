@@ -1,0 +1,14 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "environmentName": { "value": "${AZURE_ENV_NAME}" },
+    "location": { "value": "${AZURE_LOCATION}" },
+    "principalId": { "value": "${AZURE_PRINCIPAL_ID}" },
+    "chatModelName": { "value": "${CHAT_MODEL_NAME=gpt-4o-mini}" },
+    "chatModelVersion": { "value": "${CHAT_MODEL_VERSION=2024-07-18}" },
+    "embeddingModelName": { "value": "${EMBEDDING_MODEL_NAME=text-embedding-3-small}" },
+    "embeddingModelVersion": { "value": "${EMBEDDING_MODEL_VERSION=1}" },
+    "modelCapacity": { "value": "${MODEL_CAPACITY=30}" }
+  }
+}

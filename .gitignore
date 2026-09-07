@@ -1,6 +1,18 @@
+
+# azd
+.azure/
+
+# bicep build output
+infra/*.json
+!infra/main.parameters.json
+!infra/abbreviations.json
+
+# python
 __pycache__/
 *.pyc
 .venv/
+
+# functions / node
 local.settings.json
-.azure/
-estimation_config.json
+bin/
+obj/

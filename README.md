@@ -43,58 +43,38 @@ Client inventory exports ──► ADLS Gen2 ──► Normalize (Durable Functi
 
 Typical cost: **$3–10/month**, almost entirely Azure OpenAI tokens for the runs you actually do.
 
-## Repository contents
+## Deploy
+
+```bash
+azd auth login && az login
+azd env new landfall
+azd env set AZURE_LOCATION eastus2
+azd up
+```
+
+`azd up` provisions everything in `infra/`, runs `scripts/postprovision.*` (loads the SQL
+schema, builds the AI Search index, creates the Foundry agent), then deploys `src/api` and
+`src/web`. Full prerequisites, step-by-step, and manual follow-ups: **[DEPLOY.md](DEPLOY.md)**.
+
+## Repository layout
 
 | Path | What |
 |---|---|
-| [`docs/build-spec.html`](docs/build-spec.html) | **Solution build specification** — architecture, SQL model, agent tools, estimation methodology, phased build plan, cost table, risk register |
-| [`docs/effort-and-resource-loading.html`](docs/effort-and-resource-loading.html) | **Pre-sales estimation pack** — parametric effort model, reference-estate roll-up, 6-month resource-loading plan, commercial roll-up, Microsoft funding levers, assumptions & risks |
-| [`docs/discovery-questionnaire.html`](docs/discovery-questionnaire.html) | **Client discovery questionnaire** — data pack request + ~100 questions across 15 domains, working assumptions register (AS-01…14), risk register (RK-01…12) |
-| [`src/function_app.py`](src/function_app.py) | Durable Functions batch runner for the RFP question sheet (Python v2 model, fan-out / fan-in) |
+| `azure.yaml` | azd template — services `api` (Function) and `web` (Container App) |
+| `infra/main.bicep`, `infra/resources.bicep` | all Azure resources + data-plane role assignments |
+| `scripts/postprovision.*` | post-provision hook (SQL schema, search index, agent creation) |
+| `scripts/schema.sql` | inventory tables — `servers`, `applications`, `dependencies`, `storage` |
+| `scripts/setup_search.py` | builds the AI Search data source / skillset / index / indexer (512-dim) |
+| `scripts/create_agent.py` | creates the **Migration Estimator** agent with the Learn MCP + AI Search tools |
+| `src/api/function_app.py` | Durable Functions RFP-question-sheet batch runner (fan-out / fan-in) |
+| `src/web/` | FastAPI chat UI container |
+| `docs/build-spec.html` | solution build specification |
+| `docs/effort-and-resource-loading.html` | pre-sales parametric effort model + 6-month resource loading |
+| `docs/discovery-questionnaire.html` | client questionnaire + assumptions register (AS-01…14) + risk register (RK-01…12) |
 
-Open the `docs/*.html` files in a browser — they are self-contained, theme-aware pages.
+Open the `docs/*.html` files in a browser — self-contained, theme-aware pages.
 
-## Deploying `src/function_app.py`
-
-Python v2 Azure Functions app. Pair with:
-
-**`host.json`**
-```json
-{
-  "version": "2.0",
-  "extensions": {
-    "durableTask": {
-      "maxConcurrentActivityFunctions": 3,
-      "maxConcurrentOrchestratorFunctions": 1
-    }
-  }
-}
-```
-
-**`requirements.txt`**
-```
-azure-functions
-azure-functions-durable
-azure-identity
-azure-ai-projects
-azure-storage-blob
-pandas
-openpyxl
-```
-
-**App settings**
-
-| Setting | Value |
-|---|---|
-| `FOUNDRY_PROJECT_ENDPOINT` | `https://<proj>.services.ai.azure.com/api/projects/<name>` |
-| `AGENT_ID` | the Migration Estimator agent id |
-| `STORAGE_URL` | `https://<account>.blob.core.windows.net` |
-| `STORAGE_CONN` | connection config for the blob trigger |
-
-The Function app's managed identity needs **Storage Blob Data Contributor** on the storage
-account and **Azure AI Developer** on the Foundry project.
-
-## Before you run
+## Before you run a real estimate
 
 Create an `estimation_config.json` with **your firm's** numbers — the agent applies these
 rather than inventing rates:
@@ -106,6 +86,6 @@ rather than inventing rates:
 
 ## Between engagements
 
-Nothing runs continuously. Leave it idle (cost is already ~$0) or delete the resource group
-and redeploy from a Bicep template + `schema.sql` next time (~10 min). Keep the ADLS account
-and Key Vault only if you need to retain prior clients' data.
+Nothing runs continuously. `azd down --purge` deletes everything and takes run cost to
+zero; `azd up` rebuilds in ~15 minutes. Or leave it idle — storage + Log Analytics is a
+couple of dollars a month.

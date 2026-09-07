@@ -1,0 +1,7 @@
+azure-functions
+azure-functions-durable
+azure-identity
+azure-ai-projects>=1.0.0
+azure-storage-blob
+pandas
+openpyxl

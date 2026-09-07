@@ -1,0 +1,17 @@
+{
+  "resourcesResourceGroups": "rg-",
+  "managedIdentityUserAssignedIdentities": "id-",
+  "keyVaultVaults": "kv",
+  "operationalInsightsWorkspaces": "log-",
+  "insightsComponents": "appi-",
+  "storageStorageAccounts": "st",
+  "searchSearchServices": "srch-",
+  "cognitiveServicesAccounts": "aif-",
+  "sqlServers": "sql-",
+  "sqlServersDatabases": "sqldb-",
+  "webServerFarms": "plan-",
+  "webSitesFunctions": "func-",
+  "containerRegistryRegistries": "cr",
+  "appManagedEnvironments": "cae-",
+  "appContainerApps": "ca-"
+}
