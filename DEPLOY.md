@@ -13,7 +13,7 @@ azd up
 ```
 
 `azd up` = `azd provision` (Bicep in `infra/`) → `postprovision` hook → `azd deploy`
-(pushes `src/api` and `src/web`).
+(pushes `src/api` and `src/web`) → `postdeploy` hook (Event Grid subscription).
 
 ---
 
@@ -28,8 +28,8 @@ azd up
 | Docker | `azd` builds the `web` container image | Docker Desktop |
 | An Azure subscription where you can create resources **and assign roles** (Owner or User Access Administrator on the target scope) | the Bicep creates data-plane role assignments | — |
 
-Quota: the deployment needs **30K TPM each** for `gpt-4o-mini` (GlobalStandard) and
-`text-embedding-3-small` (Standard) in your chosen region. Check
+Quota: the deployment needs **30K TPM each** for `gpt-4o` and `text-embedding-3-small`
+(both GlobalStandard) in your chosen region. Check
 `az cognitiveservices usage list -l <region>` first; request an increase if needed, or
 lower `MODEL_CAPACITY` (`azd env set MODEL_CAPACITY 10`).
 
@@ -47,7 +47,7 @@ azd env new landfall
 azd env set AZURE_LOCATION eastus2          # a region with the two models + SQL free offer
 
 # 3. (optional) override model versions if the defaults are retired in your region
-#    azd env set CHAT_MODEL_VERSION 2024-07-18
+#    azd env set CHAT_MODEL_VERSION 2024-11-20
 #    azd env set EMBEDDING_MODEL_VERSION 1
 
 # 4. provision + deploy
@@ -64,11 +64,18 @@ What `azd up` does:
 2. **postprovision** (`scripts/postprovision.*`) —
    - loads `scripts/schema.sql` into the SQL database (Entra auth),
    - builds the AI Search data source / skillset / index / indexer (`setup_search.py`),
-   - creates the **Migration Estimator** agent with the Microsoft Learn MCP tool and the
-     AI Search tool (`create_agent.py`), then writes `AGENT_ID` into the azd env and into
-     both running services.
+   - creates (versions) the **Migration Estimator** prompt agent with the Microsoft Learn
+     MCP tool and the AI Search tool (`create_agent.py`). The agent is addressed by
+     **name** (`landfall-migration-estimator`), not an `asst_` id; that name is written to
+     `AGENT_ID` in the azd env and pushed to both running services.
 3. **deploy** — zip-deploys `src/api` to the Function app and builds + pushes the
    `src/web` image to the registry, then updates the Container App.
+4. **postdeploy** (`scripts/eventgrid.*`) — creates the `landfall-questions` Event Grid
+   subscription so blobs dropped in `questions/` trigger the `start` function. This runs
+   after `deploy` because the subscription's webhook needs the function app's
+   `blobs_extension` system key, which only exists once the function is published.
+   Idempotent and `continueOnError` — re-run by hand with `azd hooks run postdeploy` if
+   the function host was still warming up.
 
 At the end `azd` prints the **`SERVICE_WEB_URI`** — the chat UI.
 
@@ -85,7 +92,8 @@ These need the portal or a couple of CLI calls once, after the first `azd up`:
 2. **Foundry connection for AI Search.** If `create_agent.py` warned that no connection
    was found: Foundry portal → *Management center* → *Connected resources* → add your
    search service, then re-run `python scripts/create_agent.py` (env still loaded via
-   `azd env get-values`).
+   `azd env get-values`). This publishes a new agent version; the services reference the
+   agent by name, so they pick it up with no redeploy.
 
 3. **The three OpenAPI tools** (`query_inventory`, `vm_rightsize`, `azure_retail_prices`).
    Publish their OpenAPI specs from the Function app, then add them to the agent in the
@@ -108,6 +116,8 @@ These need the portal or a couple of CLI calls once, after the first `azd up`:
 azd deploy api          # redeploy just the Function app after a code change
 azd deploy web          # rebuild + redeploy just the chat UI
 azd provision           # re-apply infra changes
+azd hooks run postprovision   # rebuild SQL schema / search index / agent
+azd hooks run postdeploy      # re-create the Event Grid subscription for the batch runner
 azd env get-values      # see all endpoints / names
 azd down --purge        # delete everything (including soft-deleted Key Vault / Foundry)
 ```
@@ -118,6 +128,6 @@ azd down --purge        # delete everything (including soft-deleted Key Vault / 
 
 ## Cost
 
-Idle: a few dollars a month (storage + Log Analytics). Per estimate run: cents of
-`gpt-4o-mini` tokens. AI Search Free, SQL Free offer, Container Apps and Functions
-free grants keep the rest at $0. Expect **$3–10/month** at 5–20 runs.
+Idle: a few dollars a month (storage + Log Analytics). Per estimate run: a few tens of
+cents of `gpt-4o` tokens. AI Search Free, SQL Free offer, Container Apps and Functions
+free grants keep the rest at $0. Expect **$5–15/month** at 5–20 runs.

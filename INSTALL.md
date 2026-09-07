@@ -23,13 +23,13 @@ the Azure tooling, skip to [§4](#4-get-the-code).
 | File store | Storage account, ADLS Gen2 (hierarchical namespace) | Standard LRS |
 | Structured inventory store | Azure SQL Database | **Free offer** (serverless, auto-pause) |
 | Narrative-doc retrieval index | Azure AI Search | **Free** |
-| Models | Azure OpenAI `gpt-4o-mini` + `text-embedding-3-small` | 30K TPM each |
-| Agent runtime | Azure AI Foundry account + project | S0 control plane |
+| Models | Azure OpenAI `gpt-4o` + `text-embedding-3-small` | 30K TPM each |
+| Agent runtime | Microsoft Foundry account + project — prompt agent via the Responses API | S0 control plane |
 | Chat UI | Azure Container App | Consumption, scale-to-zero |
 | RFP batch runner | Azure Functions (Durable) | Flex Consumption |
 | Secrets / logging | Key Vault, Log Analytics, Application Insights | Standard / free grant |
 
-Running cost at 5–20 estimate runs/month: **$3–10**, almost all `gpt-4o-mini` tokens.
+Running cost at 5–20 estimate runs/month: **$5–15**, almost all `gpt-4o` tokens.
 
 ---
 
@@ -62,12 +62,13 @@ You need **all** of the following:
    done
    ```
 
-4. **Azure OpenAI access.** On most subscriptions `gpt-4o-mini` and
+4. **Azure OpenAI access.** On most subscriptions `gpt-4o` and
    `text-embedding-3-small` are available immediately. If your subscription has never used
    Azure OpenAI, the first deployment in a region may require a one-time enablement.
 
-5. **A region that has all three of:** the two models, the Azure SQL **free offer**, and
-   Container Apps. Good choices: `eastus2`, `westus3`, `swedencentral`, `uksouth`.
+5. **A region that has all of:** the two models, the Azure SQL **free offer**, Container
+   Apps, and Microsoft Foundry project management (`allowProjectManagement`). Good
+   choices: `eastus2`, `westus3`, `swedencentral`, `uksouth`.
    The free SQL offer is **one per subscription** — if you already used it, the deploy
    fails on the database; see [§10](#10-troubleshooting).
 
@@ -184,7 +185,7 @@ Optional overrides:
 
 ```bash
 azd env set MODEL_CAPACITY 10                       # if you have limited TPM quota
-azd env set CHAT_MODEL_VERSION 2024-07-18           # if the default is retired in your region
+azd env set CHAT_MODEL_VERSION 2024-11-20           # if the default is retired in your region
 azd env set EMBEDDING_MODEL_VERSION 1
 ```
 
@@ -192,7 +193,7 @@ azd env set EMBEDDING_MODEL_VERSION 1
 
 ```bash
 az cognitiveservices usage list -l eastus2 \
-  --query "[?contains(name.value,'gpt-4o-mini') || contains(name.value,'text-embedding-3-small')].{name:name.value, current:currentValue, limit:limit}" -o table
+  --query "[?contains(name.value,'gpt-4o') || contains(name.value,'text-embedding-3-small')].{name:name.value, current:currentValue, limit:limit}" -o table
 ```
 
 If `limit - current` is below `MODEL_CAPACITY` (default 30) for either model, either lower
@@ -214,11 +215,23 @@ This runs, in order:
    - loads `scripts/schema.sql` into the SQL database via `sqlcmd` (Entra auth),
    - runs `scripts/setup_search.py` — builds the AI Search data source, skillset
      (split + embed at 512 dimensions), index, and indexer,
-   - runs `scripts/create_agent.py` — creates the **Migration Estimator** agent with the
-     Microsoft Learn MCP tool and the AI Search tool, then stores `AGENT_ID` in the azd
-     environment and pushes it to the Function app and Container App.
+   - runs `scripts/create_agent.py` — creates (versions) the **Migration Estimator**
+     prompt agent with the Microsoft Learn MCP tool and the AI Search tool. The agent is
+     addressed by **name** (`landfall-migration-estimator`), not an `asst_` id; that name
+     is stored as `AGENT_ID` in the azd environment and pushed to the Function app and
+     Container App.
 3. **deploy** — zip-deploys `src/api` to the Function app; builds the `src/web` Docker
    image, pushes it to the container registry, and updates the Container App.
+4. **postdeploy** — `scripts/eventgrid.ps1` / `.sh`: creates the `landfall-questions`
+   Event Grid subscription on the storage account's system topic so blobs dropped in the
+   `questions/` container trigger the batch runner. On the Flex Consumption plan a blob
+   trigger *must* be driven by Event Grid, and the subscription's webhook needs the
+   function app's `blobs_extension` key — which only exists after `deploy` — so this is a
+   post-deploy step. It is idempotent and marked `continueOnError`: if the function host
+   is still warming up when it runs, re-run it by hand once the host is up:
+   ```bash
+   azd hooks run postdeploy
+   ```
 
 On success `azd` prints outputs including **`SERVICE_WEB_URI`** — the chat UI URL.
 
@@ -317,7 +330,12 @@ expects.
   VMs, and total vCPU across them?"*).
 - **Batch:** put questions in column **Question** of an `.xlsx`, upload to the
   `questions/` container. The Durable Function fans out, answers each, and writes
-  `<name>_answered.xlsx` to the `answers/` container.
+  `<name>_answered.xlsx` to the `answers/` container. `samples/smoke-questions.xlsx` is a
+  two-question sheet for a first end-to-end test:
+  ```bash
+  az storage blob upload --account-name "$ACC" --auth-mode login \
+    -c questions -f samples/smoke-questions.xlsx -n smoke-questions.xlsx
+  ```
 
 ---
 
@@ -375,7 +393,9 @@ containers first) if you must retain a prior client's data.
 | `postprovision` skips the schema — "sqlcmd not found" | Install go-sqlcmd (step 3), then run `scripts/schema.sql` manually: `sqlcmd -S <AZURE_SQL_SERVER_FQDN> -d <AZURE_SQL_DATABASE> --authentication-method ActiveDirectoryDefault -i scripts/schema.sql`. |
 | `sqlcmd` login fails | The Entra admin on the SQL server is the deploying user (set by Bicep). Sign in with that same account: `az login`. Also add your client IP: `az sql server firewall-rule create -g <rg> -s <sql-server> -n me --start-ip-address <ip> --end-ip-address <ip>`. |
 | `create_agent.py` warns about the search connection | See [§6.2](#62-if-warned-add-the-foundry--ai-search-connection). |
-| Chat UI returns `503 AGENT_ID not set` | postprovision did not finish. Re-run the hook: reload env (`azd env get-values`), then `python scripts/create_agent.py`, then `az containerapp update -g <rg> -n <web> --set-env-vars AGENT_ID=<id>`. |
+| Chat UI returns `503 AGENT_ID not set` | postprovision did not finish. Re-run: `azd hooks run postprovision` (reloads env, re-creates the agent, re-pushes `AGENT_ID`). Or by hand: `python scripts/create_agent.py` prints `AGENT_ID=<name>`; then `azd env set AGENT_ID <name>` and `az containerapp update -g <rg> -n <web> --set-env-vars AGENT_ID=<name>`. |
+| Batch runner never fires when a workbook lands in `questions/` | The Event Grid subscription is missing (postdeploy skipped or the key wasn't ready). Run `azd hooks run postdeploy`. Check it exists: `az eventgrid system-topic event-subscription list --system-topic-name "$(azd env get-value AZURE_EVENTGRID_SYSTEM_TOPIC)" -g <rg> -o table`. |
+| `create_agent.py` fails with `allowProjectManagement` / project-agents API errors | The region or the Foundry account predates the prompt-agents surface. Confirm the account was provisioned with `allowProjectManagement: true` (it is in `infra/resources.bicep`) and that the region supports it; redeploy in `eastus2` if unsure. |
 | `azd deploy web` fails to build | Docker Desktop not running, or you are not logged into the registry. `azd` handles registry auth; ensure `docker info` works. |
 | First chat request after idle is slow (~10 s) | Container App and SQL free offer both scale/auto-pause. Expected. Set Container App `minReplicas: 1` in `infra/resources.bicep` if you need it warm (small cost). |
 | Search index near 50 MB / indexer errors | Free tier cap. Index fewer docs (put the rest in `raw/archive/`), or move to AI Search Basic — change `sku.name` to `basic` in `infra/resources.bicep` (~$75/mo). |

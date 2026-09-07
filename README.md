@@ -35,13 +35,13 @@ Client inventory exports ──► ADLS Gen2 ──► Normalize (Durable Functi
 | File store | ADLS Gen2 (hierarchical namespace) |
 | Structured store | Azure SQL Database — Free offer (serverless, auto-pause) |
 | Retrieval index | Azure AI Search — Free (narrative docs only, 512-dim vectors) |
-| Models | `gpt-4o-mini` + `text-embedding-3-small` |
-| Agent host | Azure AI Foundry Agent Service |
+| Models | `gpt-4o` + `text-embedding-3-small` |
+| Agent host | Microsoft Foundry — prompt agent, driven through the Responses API |
 | Agent tools | AI Search · Azure SQL text-to-SQL · Azure Retail Prices API · VM right-size heuristic · Microsoft Learn MCP |
 | Chat UI | Azure Container Apps (scale-to-zero) |
 | Batch runner | Azure Durable Functions (Consumption) |
 
-Typical cost: **$3–10/month**, almost entirely Azure OpenAI tokens for the runs you actually do.
+Typical cost: **$5–15/month**, almost entirely Azure OpenAI tokens for the runs you actually do.
 
 ## Deploy
 
@@ -53,8 +53,9 @@ azd up
 ```
 
 `azd up` provisions everything in `infra/`, runs `scripts/postprovision.*` (loads the SQL
-schema, builds the AI Search index, creates the Foundry agent), then deploys `src/api` and
-`src/web`.
+schema, builds the AI Search index, creates the Foundry agent), deploys `src/api` and
+`src/web`, then runs `scripts/eventgrid.*` to subscribe the batch runner to `questions/`
+blob events.
 
 - **[INSTALL.md](INSTALL.md)** — full walkthrough from a clean machine: every prerequisite,
   tool install commands per OS, Azure account setup, deploy, verify, troubleshoot, tear down.
@@ -67,11 +68,13 @@ schema, builds the AI Search index, creates the Foundry agent), then deploys `sr
 | `azure.yaml` | azd template — services `api` (Function) and `web` (Container App) |
 | `infra/main.bicep`, `infra/resources.bicep` | all Azure resources + data-plane role assignments |
 | `scripts/postprovision.*` | post-provision hook (SQL schema, search index, agent creation) |
+| `scripts/eventgrid.*` | post-deploy hook — wires `questions/` blobs to the batch runner via an Event Grid subscription (Flex Consumption needs this) |
 | `scripts/schema.sql` | inventory tables — `servers`, `applications`, `dependencies`, `storage` |
 | `scripts/setup_search.py` | builds the AI Search data source / skillset / index / indexer (512-dim) |
 | `scripts/create_agent.py` | creates the **Migration Estimator** agent with the Learn MCP + AI Search tools |
 | `src/api/function_app.py` | Durable Functions RFP-question-sheet batch runner (fan-out / fan-in) |
 | `src/web/` | FastAPI chat UI container |
+| `samples/smoke-questions.xlsx` | two-question sheet for a first end-to-end test of the batch runner |
 | `docs/build-spec.html` | solution build specification |
 | `docs/effort-and-resource-loading.html` | pre-sales parametric effort model + 6-month resource loading |
 | `docs/discovery-questionnaire.html` | client questionnaire + assumptions register (AS-01…14) + risk register (RK-01…12) |
