@@ -1,0 +1,67 @@
+<title>Landfall Docs</title>
+<meta name="description" content="Documentation for Landfall — a low-code Azure agent that drafts landing-zone and migration estimates from a client's paper inventory.">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Spectral:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  :root{
+    --paper:#EDF1F2; --surface:#FFFFFF; --surface-2:#F5F8F8;
+    --ink:#14262F; --muted:#566A70; --line:#CFDBDE;
+    --accent:#0F6E7A; --accent-deep:#0A4A54;
+  }
+  @media (prefers-color-scheme:dark){
+    :root:not([data-theme="light"]){
+      --paper:#0B1519; --surface:#10222A; --surface-2:#152A32;
+      --ink:#E4EDEF; --muted:#93A7AD; --line:#243A41;
+      --accent:#3FA9B4; --accent-deep:#7FD6DE;
+    }
+  }
+  :root[data-theme="dark"]{
+    --paper:#0B1519; --surface:#10222A; --surface-2:#152A32;
+    --ink:#E4EDEF; --muted:#93A7AD; --line:#243A41;
+    --accent:#3FA9B4; --accent-deep:#7FD6DE;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--paper);color:var(--ink);
+    font-family:"IBM Plex Sans",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;line-height:1.6;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:760px;margin:0 auto;padding:72px 26px 100px}
+  .eyebrow{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:.7rem;letter-spacing:.2em;text-transform:uppercase;color:var(--accent-deep);margin:0 0 14px}
+  h1{font-family:"Spectral",Georgia,serif;font-weight:600;font-size:clamp(2.1rem,6vw,3rem);line-height:1.04;margin:0 0 12px;text-wrap:balance}
+  .lede{font-family:"Spectral",Georgia,serif;font-size:1.14rem;color:var(--muted);max-width:60ch;margin:0 0 40px}
+  ul{list-style:none;margin:0;padding:0;display:grid;gap:12px}
+  a.card{display:block;text-decoration:none;color:inherit;background:var(--surface);border:1px solid var(--line);border-radius:9px;padding:18px 20px;transition:border-color .15s,transform .15s}
+  a.card:hover{border-color:var(--accent);transform:translateY(-1px)}
+  a.card .t{font-family:"Spectral",serif;font-weight:600;font-size:1.12rem;color:var(--accent-deep)}
+  a.card .d{font-size:.9rem;color:var(--muted);margin-top:4px}
+  @media (prefers-reduced-motion:reduce){a.card{transition:none} a.card:hover{transform:none}}
+  footer{margin-top:56px;padding-top:18px;border-top:1px solid var(--line);font-family:"IBM Plex Mono",monospace;font-size:.7rem;color:var(--muted)}
+  footer a{color:var(--accent-deep)}
+  :focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:3px}
+</style>
+
+<div class="wrap">
+  <p class="eyebrow">Landfall</p>
+  <h1>Landfall documentation</h1>
+  <p class="lede">A low-code Azure agent that reads a client's on-premises server and application inventory and drafts the landing-zone and migration numbers needed for an RFP response — no discovery tooling on the client estate.</p>
+
+  <ul>
+    <li><a class="card" href="operating-sop.html">
+      <div class="t">Operating Guide</div>
+      <div class="d">Step-by-step SOP for running an estimate against a deployed Landfall — data load, chat, batch sheets, hand-off.</div>
+    </a></li>
+    <li><a class="card" href="build-spec.html">
+      <div class="t">Build Specification</div>
+      <div class="d">The full solution design — architecture, agent tools, SQL model, cost, build phases.</div>
+    </a></li>
+    <li><a class="card" href="discovery-questionnaire.html">
+      <div class="t">Discovery Questionnaire</div>
+      <div class="d">The questions and data pack needed from the client, plus the working-assumptions and risk registers.</div>
+    </a></li>
+    <li><a class="card" href="effort-and-resource-loading.html">
+      <div class="t">Effort &amp; Resource Loading</div>
+      <div class="d">Parametric pre-sales effort model and a six-month resource-loading plan.</div>
+    </a></li>
+  </ul>
+
+  <footer>
+    Source: <a href="https://github.com/upendra25312/Landfall">github.com/upendra25312/Landfall</a> · All estimates are DRAFT and require architect review.
+  </footer>
+</div>
