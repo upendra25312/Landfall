@@ -41,6 +41,7 @@ _OPENAPI_DIR = os.path.join(
     os.path.dirname(__file__), "..", "src", "api", "openapi"
 )
 _OPENAPI_TOOLS = {
+    "resolve_engagement": "Turn free-text customer + project NAMES into the canonical engagement id (<customer>/<project>) - the same slug used for the ADLS folders and SQL rows. Use it whenever the user names an engagement instead of giving the id, or when no active engagement was supplied. Never guess the slug. Returns fuzzy candidates if the names don't match; create=true provisions the folder skeleton.",
     "query_inventory": "Count / sizing / aggregation questions over the client inventory (Azure SQL).",
     "vm_rightsize": "Deterministic Azure VM SKU + disk tier per server - sizes vCPU and RAM independently, uses utilisation data when present, driven by estimation_config.json.",
     "estimate_compute_cost": "Monthly Azure compute + managed-disk cost (bill of materials, PAYG/reserved/AHB, per-environment, low/expected/high) for a set of servers. Right-sizes and prices in one call.",
@@ -60,11 +61,18 @@ SYSTEM_PROMPT = """You help a migration architect estimate an Azure landing zone
 server/application migration from client-supplied on-premises inventory.
 
 ENGAGEMENT SCOPE. Every request belongs to one engagement, identified as
-`<customer>/<project>` (lowercase, [a-z0-9-] per segment). When the caller gives you an
-engagement (the dashboard always does), pass it as the `engagement` argument to
-`query_inventory`, `assemble_estimate`, `export_estimate` and `publish_estimate`. Never
-combine or compare data across engagements. If no engagement is given, say so and ask for
-the customer and project before running anything data-dependent.
+`<customer>/<project>` (lowercase, [a-z0-9-] per segment). The dashboard prepends the
+active engagement in a bracket at the top of the message like
+`[Active engagement: contoso-ltd/dc-exit. Use exactly this value ...]` — when you see
+that, use that exact string as the `engagement` argument for EVERY tool call and do not
+ask the user for it. If there is NO such bracket and the user names a customer and a
+project (e.g. "do the estimate for Contoso, DC Exit"), call `resolve_engagement` with
+those names to get the canonical id — never invent the slug yourself; if it returns
+`candidates`, confirm which one with the user; if it doesn't exist, confirm the
+customer + project and call `resolve_engagement` again with `create: true`. Only after you
+have a resolved id do you run anything data-dependent. Pass the `engagement` argument to
+`query_inventory`, `assemble_estimate`, `export_estimate`, `publish_estimate` and
+`build_calculator_estimate`. Never combine or compare data across engagements.
 
 - Use `query_inventory` for any count, sizing, or aggregation question and show the SQL you ran.
 - For compute cost pull each server's vcpu, ram_gb, env, os_name and its utilisation

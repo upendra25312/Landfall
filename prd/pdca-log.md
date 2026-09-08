@@ -5,6 +5,103 @@ Operating model: [`landfall-5x5-prd.md` §7](landfall-5x5-prd.md). Tracker:
 
 ---
 
+## Cycle 24 — Azure Pricing Calculator POE + chat engagement scoping (E11.15–E11.18, part E11.6/E11.7)
+
+**Date:** 2026-09-08 · **Owner:** Azure Pre-Sales Architect + App Eng ·
+**Tracker:** E11.15 (done), E11.16 (code done, deploy pending), E11.17 (done),
+E11.18 (done), E11.6/E11.7 (chat engagement picker done) · **Decisions:**
+[`engagement-workspaces-prd.md` §3.4 / §4.6](engagement-workspaces-prd.md) —
+Microsoft migration-funding POE accepts only the calculator's own Excel; the end
+user picks the target region.
+
+### Plan
+
+Sponsor: the landing-zone + workload cost estimate for a Microsoft funding
+submission must be the **Azure Pricing Calculator's own Excel export**, per
+engagement, on the dashboard, downloadable. Also: the user must not have to type
+the `<customer>/<project>` engagement id, and needs a working-indicator + new-chat
++ prompt cards + a greeting in the chat UI.
+
+### Do
+
+- **`src/api/lz/calculator_spec.py`** (E11.15, pure, 21 tests) — `design_landing_zone`
+  + `estimate_compute_cost` + `estimate_storage_cost` (+ `run_rate`) → a calculator
+  **line-item spec with no prices**. Azure-region→calculator-code map (61 regions;
+  an unsupported region raises at build), VM SKU→size slug, disk tier→module,
+  storage category→module (incl. ANF), LZ platform components→modules (Bastion /
+  Firewall / DDoS / DNS / ExpressRoute / VPN GW / 2× AD DCs / Log Analytics /
+  Key Vault / egress Bandwidth), ASR for tier-1/2 → DR region. Unpriceable items
+  (Oracle, DR compute, no-module storage) → `spec["skipped"]` with a reason.
+  `internal_monthly_estimate` kept for reconciliation.
+- **`src/api/lz/calculator_export.py`** (E11.16, 4 tests vs the real fixture) —
+  parse `ExportedEstimate.xlsx` → `{estimate_name, line_items[], total_monthly,
+  licensing_program, created_at, …}`; `reconcile()` flags a >15% delta.
+- **`src/calc/`** (E11.16) — **`ca-calc` Container App**: `mcr.microsoft.com/playwright/python`
+  image, `POST /build` takes the spec, drives the live calculator (native value
+  setter + `input`/`change` events — verified), sets estimate-name / currency /
+  `discountLevel`, clicks `button.export-button`, returns `{xlsx_b64, screenshot_b64,
+  applied[], skipped[]}`. **`adapters.py`** — 20 product adapters; VM + managed-disks
+  verified end-to-end, the rest built from the observed module shape and marked
+  `verified: false` (the E11.19 weekly smoke fills them in; an adapter that can't
+  set a field records it, an adapter that errors → the line goes to `skipped`).
+- **`src/api/lz/functions.build_calculator_estimate_route`** (E11.16/E11.18) —
+  `POST /api/build_calculator_estimate {engagement}` → read `latest.json` +
+  `tools_raw.json` + `_engagement.json` → `build_calculator_spec` → `POST CALC_URL/build`
+  → parse + `reconcile` → write `answers/engagements/<c>/<p>/estimate/landing_zone.{xlsx,json,png}`.
+  `publish_estimate` now also writes `tools_raw.json` (the raw tool outputs). 3 tests
+  (fake blob + fake ca-calc).
+- **OpenAPI** `build_calculator_estimate.json` + `create_agent.py` tool #13 + a
+  system-prompt line ("for a Microsoft migration-funding POE, call
+  `build_calculator_estimate` AFTER `publish_estimate`…").
+- **Dashboard** (E11.17) — `src/web/app.py` `GET /dashboard/landing-zone` +
+  `GET /dashboard/download/landing-zone-xlsx`; `dashboard.html` "Azure landing
+  zone — Pricing Calculator POE" card ($X/mo, reconciliation delta chip, "not in
+  the calculator estimate" drawer, Download Excel (POE), Open calculator ↗).
+- **Chat engagement scoping** (E11.6/E11.7) — header **engagement `<select>`** +
+  inline **"New engagement"** form (customer, project, **target region** from
+  `/api/calc_regions` = the calculator's supported set, DR region, licensing
+  program, currency). `src/web/app.py` lists/creates engagements **directly in
+  blob** (`GET/POST /api/engagements`) — no Function-to-Function token.
+  `/api/chat` takes `engagement` and **prepends a scoping instruction** to the
+  input so the agent uses it for every tool call and never asks the user for the
+  id. Selected engagement persists in `localStorage`. `_engagement.json` gains
+  `target_region` / `dr_region` / `currency` / `licensing_program` /
+  `target_region_calculator_supported`.
+- **Chat UX** — "+ New chat" (clear + fresh session), animated "The estimator is
+  working… (Ns)" bubble with the input disabled, a greeting (agent intro +
+  capability list), clickable prompt cards from `src/web/prompt_cards.json`
+  (`GET /api/prompt_cards`).
+- **infra** — `ca-calc` Container App (internal ingress, scale-to-zero, 1 vCPU /
+  2 GiB); `CALC_URL` on the Function; `azure.yaml` `calc` service;
+  `main.bicep` / `main.parameters.json` param threading.
+
+### Check
+
+| # | Result |
+|---|---|
+| C1 | `build_calculator_spec` on the sample estate: 54 line items (31 VM groups, 8 disk tiers, DB storage, 11 platform lines, ASR), region `sweden-central`, `internal_monthly_estimate` ~$97.6k; Oracle + ANF + DR-compute in `skipped` |
+| C2 | `parse_calculator_export` on the real `ExportedEstimate.xlsx`: name, 1 line item, `total_monthly` 5664.8, `created_at`; bytes + no-total-row fallback covered |
+| C3 | `build_calculator_estimate_route` (mocked): spec is region-correct + price-free, calls ca-calc, stores `landing_zone.{xlsx,json,png}`, reconciliation delta computed |
+| C4 | Chat page: engagement picker + New-engagement form present; `/api/chat` prepends `[Active engagement: …]`; `/api/calc_regions` returns 61 supported regions |
+| C5 | **183 pytest + 32/8/30 evals green**; `az bicep build` clean |
+
+### Act
+
+- **Deployed 2026-09-08:** `azd deploy web` + `azd deploy api` + `create_agent.py`
+  re-run (tool #13 attached). Chat picker + POE card live.
+- **`ca-calc` NOT deployed yet** — needs `azd provision` (new Container App) +
+  `azd deploy calc` (Playwright image build ~5–10 min). Until then
+  `build_calculator_estimate` returns 503 ("CALC_URL not configured"). **C24 tail.**
+- **C25:** E11.19 weekly Playwright adapter smoke; verify/complete the ~14
+  unverified product adapters against the live calculator; wire the
+  `run_engagement` → `build_calculator_estimate` hook; authenticated Save →
+  `landing_zone_url` (deferred).
+- **Known:** the `ca-calc` adapters beyond VM/disk are best-effort; a real POE run
+  will surface which need field-map fixes. The spec builder's platform quantities
+  (egress GB, LA GB, DNS zones) are heuristic — an architect reviews before submit.
+
+---
+
 ## Cycle 18 — engagement tenancy foundation (E11.1 / E11.2 / E11.3)
 
 **Date:** 2026-09-08 · **Owner:** App + Data Eng · **Tracker:** E11.1–E11.3 (done, live),

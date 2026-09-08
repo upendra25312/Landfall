@@ -1,0 +1,70 @@
+{
+  "openapi": "3.0.1",
+  "info": {
+    "title": "resolve_engagement",
+    "description": "Turns free-text customer and project NAMES into the canonical engagement id (<customer>/<project>) — the exact same slugging used for the client's ADLS folders and SQL rows. Use this whenever the user refers to an engagement by name instead of giving the id, or when no active engagement was supplied. Never guess the slug yourself. Returns the id, whether it exists, and fuzzy-matched candidates if the names don't slug to an existing engagement. With create=true it provisions the ADLS folder skeleton.",
+    "version": "1.0.0"
+  },
+  "servers": [{ "url": "https://REPLACE/api" }],
+  "paths": {
+    "/resolve_engagement": {
+      "post": {
+        "operationId": "resolve_engagement",
+        "summary": "Customer + project names -> canonical engagement id",
+        "description": "Pass the customer name and project name as the user said them. Returns {engagement, exists, candidates?}. If exists is true, use `engagement` for every other tool call. If exists is false but `candidates` are returned, pick the right one with the user or confirm the names. If the user confirms a brand-new engagement, call again with create=true (and optionally target_region / dr_region / currency / licensing_program).",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["customer", "project"],
+                "properties": {
+                  "customer": { "type": "string", "description": "Customer / client name as the user said it (e.g. 'Contoso Ltd')." },
+                  "project": { "type": "string", "description": "Project / engagement name (e.g. 'DC Exit 2027')." },
+                  "create": { "type": "boolean", "nullable": true, "description": "Provision the ADLS folder skeleton if it doesn't exist. Only pass true once the user has confirmed a new engagement." },
+                  "target_region": { "type": "string", "nullable": true },
+                  "dr_region": { "type": "string", "nullable": true },
+                  "currency": { "type": "string", "nullable": true },
+                  "licensing_program": { "type": "string", "nullable": true }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The resolved engagement id",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "engagement": { "type": "string" },
+                    "exists": { "type": "boolean" },
+                    "customer": { "type": "string" },
+                    "project": { "type": "string" },
+                    "adls_prefix": { "type": "string" },
+                    "candidates": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "engagement": { "type": "string" },
+                          "customer": { "type": "string" },
+                          "project": { "type": "string" },
+                          "match_score": { "type": "number" }
+                        }
+                      }
+                    },
+                    "hint": { "type": "string" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
