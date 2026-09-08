@@ -2,16 +2,16 @@
   "openapi": "3.0.1",
   "info": {
     "title": "build_calculator_estimate",
-    "description": "Drives the REAL Azure Pricing Calculator (via the ca-calc container) for one engagement and stores the calculator's own Excel export as the Proof of Estimate (POE) for Microsoft migration funding. Reads the engagement's published estimate (latest.json + tools_raw.json) and _engagement.json, translates the target-state design + right-sized workloads into a calculator line-item spec (Landfall supplies quantities, the calculator supplies every price), and writes landing_zone.xlsx / landing_zone.json / landing_zone.png to the engagement folder so the dashboard 'Azure landing zone — Pricing Calculator POE' card shows it. Call publish_estimate first.",
-    "version": "1.0.0"
+    "description": "STARTS a background run of the REAL Azure Pricing Calculator (via the ca-calc container) for one engagement. Reads the engagement's published estimate (latest.json + tools_raw.json) and _engagement.json, translates the target-state design + right-sized workloads into a calculator line-item spec (Landfall supplies quantities, the calculator supplies every price), then kicks the ca-calc container which drives the live calculator and writes landing_zone.xlsx / landing_zone.json / landing_zone.png to the engagement folder itself. The run takes a few minutes, so this returns 202 immediately — poll get_calculator_estimate for status, or tell the user to watch the dashboard 'Azure landing zone — Pricing Calculator POE' card. Call publish_estimate first.",
+    "version": "2.0.0"
   },
   "servers": [{ "url": "https://REPLACE/api" }],
   "paths": {
     "/build_calculator_estimate": {
       "post": {
         "operationId": "build_calculator_estimate",
-        "summary": "Build the Azure Pricing Calculator POE for an engagement",
-        "description": "Pass the engagement id (<customer>/<project>). The tool builds a calculator line-item spec from the engagement's published estimate, drives the live Azure Pricing Calculator, captures its Excel export, reconciles the calculator total against Landfall's internal run-rate, and stores the result. Quote the monthly total, the reconciliation delta, and anything in 'skipped' (line items with no direct calculator module). The stored landing_zone.xlsx is the file to submit to Microsoft.",
+        "summary": "Start the Azure Pricing Calculator POE build for an engagement (async)",
+        "description": "Pass the engagement id (<customer>/<project>). Returns 202 with status 'building' — the calculator run happens in the background and takes a few minutes. Tell the user the POE is being built and to watch the dashboard 'Azure landing zone — Pricing Calculator POE' card, or call get_calculator_estimate with the same engagement to check whether it is ready. Do NOT expect the monthly total in this response.",
         "requestBody": {
           "required": true,
           "content": {
@@ -35,33 +35,19 @@
           }
         },
         "responses": {
-          "200": {
-            "description": "The Pricing Calculator POE summary",
+          "202": {
+            "description": "The calculator run has been started",
             "content": {
               "application/json": {
                 "schema": {
                   "type": "object",
                   "properties": {
                     "engagement": { "type": "string" },
-                    "monthly_total": { "type": "number" },
-                    "annual": { "type": "number" },
-                    "currency": { "type": "string" },
-                    "region": { "type": "string" },
-                    "line_count": { "type": "number" },
-                    "created_at": { "type": "string" },
-                    "calculator_url": { "type": "string" },
-                    "reconciliation": {
-                      "type": "object",
-                      "properties": {
-                        "internal_monthly": { "type": "number" },
-                        "poe_monthly": { "type": "number" },
-                        "delta_pct": { "type": "number", "nullable": true },
-                        "within_tolerance": { "type": "boolean" },
-                        "note": { "type": "string" }
-                      }
-                    },
-                    "skipped": { "type": "array", "items": { "type": "object" } },
-                    "stored": { "type": "array", "items": { "type": "string" } }
+                    "status": { "type": "string", "description": "'building'" },
+                    "spec_line_count": { "type": "number" },
+                    "internal_monthly_estimate": { "type": "number", "nullable": true },
+                    "poll": { "type": "string" },
+                    "dashboard_hint": { "type": "string" }
                   }
                 }
               }

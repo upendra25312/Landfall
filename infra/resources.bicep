@@ -343,6 +343,11 @@ resource calcApp 'Microsoft.App/containerApps@2024-03-01' = {
           resources: { cpu: json('1.0'), memory: '2Gi' } // Chromium needs headroom
           env: [
             { name: 'APPLICATIONINSIGHTS_CONNECTION_STRING', value: appInsights.properties.ConnectionString }
+            // ca-calc writes landing_zone.{xlsx,json,png} to the answers container itself
+            // (async — the Function returns 202); it shares the workload identity `uami`,
+            // which already has Storage Blob Data Owner (ra_uami_blob).
+            { name: 'AZURE_CLIENT_ID', value: uami.properties.clientId }
+            { name: 'STORAGE_URL', value: storage.properties.primaryEndpoints.blob }
           ]
         }
       ]

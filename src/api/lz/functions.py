@@ -8,10 +8,11 @@ Landing-zone HTTP tools (PRD E3 + E11.16). Registered from function_app.py.
 """
 from __future__ import annotations
 
-import base64
+import datetime as _dt
 import json
 import logging
 import os
+import urllib.error
 import urllib.request
 
 import azure.functions as func
@@ -20,11 +21,14 @@ import engagement as eng
 from cost.config import load_config
 from .design import design_landing_zone
 from .calculator_spec import build_calculator_spec
-from .calculator_export import parse_calculator_export, reconcile
 
 lz_bp = func.Blueprint()
 
 _state: dict = {}
+
+
+def _now() -> str:
+    return _dt.datetime.now(_dt.timezone.utc).isoformat(timespec="seconds")
 
 
 @lz_bp.route(route="design_landing_zone", methods=["POST"], auth_level=func.AuthLevel.ANONYMOUS)
@@ -65,32 +69,59 @@ def _read_json(container: str, name: str) -> dict | None:
         return None
 
 
-@lz_bp.route(route="build_calculator_estimate", methods=["POST"], auth_level=func.AuthLevel.ANONYMOUS)
+@lz_bp.route(route="build_calculator_estimate", methods=["POST", "GET"],
+             auth_level=func.AuthLevel.ANONYMOUS)
 def build_calculator_estimate_route(req: func.HttpRequest) -> func.HttpResponse:
-    """Body: {"engagement": "<customer>/<project>", "include_dr_compute": false}.
+    """POST {"engagement": "<customer>/<project>", "include_dr_compute": false}
+    -> starts a background Azure Pricing Calculator run and returns 202 immediately.
 
-    Reads the engagement's published estimate (`latest.json` + `tools_raw.json`) and
-    `_engagement.json`, builds an Azure Pricing Calculator line-item spec, hands it to
-    the `ca-calc` container which drives the real calculator and returns its Excel
-    export, then stores `landing_zone.{xlsx,json,png}` in the engagement folder so the
-    dashboard can show the POE. `CALC_URL` env points at the container."""
+    GET  ?engagement=<customer>/<project>
+    -> the current landing_zone.json (status: building | ready | failed) for polling.
+
+    Async by necessity: driving ~50 calculator line items through Playwright takes
+    minutes and a synchronous call is cut at the ~230s Functions HTTP limit. This
+    route builds the calculator spec from the engagement's published estimate
+    (`latest.json` + `tools_raw.json`) + `_engagement.json`, writes a `building`
+    marker, then POSTs the spec + a blob destination to `ca-calc` fire-and-forget.
+    `ca-calc` drives the real calculator and writes `landing_zone.{xlsx,json,png}`
+    to the engagement folder itself (shared workload identity). `CALC_URL` env
+    points at the container."""
     try:
-        body = req.get_json() or {}
+        raw_eng = (req.params.get("engagement")
+                   or ((req.get_json() or {}) if req.method == "POST" else {}).get("engagement"))
     except ValueError:
-        body = {}
-    raw_eng = body.get("engagement") or req.params.get("engagement")
+        raw_eng = req.params.get("engagement")
     if not raw_eng:
-        return _json({"error": 'body needs {"engagement": "<customer>/<project>"}'}, 400)
+        return _json({"error": 'need engagement — {"engagement": "<customer>/<project>"} '
+                               '(POST) or ?engagement= (GET)'}, 400)
     try:
         engagement = eng.normalize_engagement(raw_eng)
     except ValueError as exc:
         return _json({"error": str(exc)}, 400)
 
+    prefix = eng.estimate_prefix(engagement)
+
+    if req.method == "GET":
+        status = _read_json(eng.ANSWERS_CONTAINER, f"{prefix}/landing_zone.json")
+        if not status:
+            return _json({"engagement": engagement, "status": "none",
+                          "hint": "no POE yet — POST to build_calculator_estimate to start one"}, 404)
+        return _json({k: status[k] for k in (
+            "engagement", "status", "estimate_name", "region", "currency", "monthly_total",
+            "annual", "line_count", "created_at", "built_at", "reconciliation", "skipped",
+            "calculator_url", "error") if k in status}
+            | {"download": "landing_zone.xlsx (dashboard)"})
+
+    # ---- POST: start a run --------------------------------------------------
+    try:
+        body = req.get_json() or {}
+    except ValueError:
+        body = {}
+
     calc_url = os.environ.get("CALC_URL", "").rstrip("/")
     if not calc_url:
         return _json({"error": "CALC_URL not configured — the ca-calc container is not deployed yet"}, 503)
 
-    prefix = eng.estimate_prefix(engagement)
     latest = _read_json(eng.ANSWERS_CONTAINER, f"{prefix}/latest.json")
     tools_raw = _read_json(eng.ANSWERS_CONTAINER, f"{prefix}/tools_raw.json") or {}
     manifest = _read_json(eng.RAW_CONTAINER, eng.engagement_file(engagement)) or {}
@@ -121,63 +152,53 @@ def build_calculator_estimate_route(req: func.HttpRequest) -> func.HttpResponse:
     except ValueError as exc:
         return _json({"error": f"cannot build a calculator spec: {exc}"}, 400)
 
-    try:
-        req_body = json.dumps(spec).encode()
-        r = urllib.request.Request(f"{calc_url}/build", data=req_body,
-                                   headers={"Content-Type": "application/json"}, method="POST")
-        with urllib.request.urlopen(r, timeout=600) as resp:
-            run = json.loads(resp.read())
-    except Exception as exc:                       # noqa: BLE001
-        logging.exception("ca-calc call failed")
-        return _json({"error": f"ca-calc run failed: {exc}"}, 502)
-    if run.get("error"):
-        return _json({"error": f"ca-calc: {run['error']}"}, 502)
-
-    xlsx = base64.b64decode(run["xlsx_b64"])
-    parsed = parse_calculator_export(xlsx)
-    rec = reconcile(parsed, spec.get("internal_monthly_estimate"))
-
-    summary = {
+    marker = {
         "engagement": engagement,
-        "estimate_name": parsed["estimate_name"],
+        "status": "building",
+        "estimate_name": spec.get("estimate_name"),
         "region": engagement_meta["target_region"],
-        "currency": parsed["currency"],
-        "monthly_total": parsed["total_monthly"],
-        "annual": parsed["annual"],
-        "upfront_total": parsed["total_upfront"],
-        "line_items": parsed["line_items"],
-        "line_count": parsed["line_count"],
-        "created_at": parsed["created_at"],
-        "calculator_url": run.get("calculator"),
-        "reconciliation": rec,
-        "applied": run.get("applied", []),
-        "skipped": run.get("skipped", []),
-        "spec": spec,
-        "source": "azure-pricing-calculator",
-        "note": "Excel exported by the Azure Pricing Calculator — submit landing_zone.xlsx "
-                "as the Proof of Estimate. All prices are the calculator's; quantities are "
-                "Landfall figures (see spec + applied/skipped).",
+        "currency": engagement_meta["currency"],
+        "started_at": _now(),
+        "spec_line_count": len(spec.get("line_items", [])),
+        "internal_monthly_estimate": spec.get("internal_monthly_estimate"),
     }
-
     try:
-        cc = _blob().get_container_client(eng.ANSWERS_CONTAINER)
-        cc.upload_blob(f"{prefix}/landing_zone.xlsx", xlsx, overwrite=True)
-        cc.upload_blob(f"{prefix}/landing_zone.json",
-                       json.dumps(summary, default=str).encode(), overwrite=True)
-        if run.get("screenshot_b64"):
-            cc.upload_blob(f"{prefix}/landing_zone.png",
-                           base64.b64decode(run["screenshot_b64"]), overwrite=True)
-    except Exception as exc:                       # noqa: BLE001
-        logging.exception("storing landing_zone.* failed")
-        return _json({"error": f"calculator run OK but storing the result failed: {exc}"}, 500)
+        _blob().get_container_client(eng.ANSWERS_CONTAINER).upload_blob(
+            f"{prefix}/landing_zone.json", json.dumps(marker, default=str).encode(), overwrite=True)
+    except Exception:                              # noqa: BLE001
+        logging.exception("could not write the building marker (continuing)")
 
-    _state["last"] = summary
-    return _json({k: summary[k] for k in
-                  ("engagement", "monthly_total", "annual", "currency", "region",
-                   "line_count", "created_at", "reconciliation", "skipped", "calculator_url")}
-                 | {"stored": ["landing_zone.xlsx", "landing_zone.json", "landing_zone.png"],
-                    "dashboard_hint": f"open the dashboard for {engagement} — the "
-                                      "'Azure landing zone — Pricing Calculator POE' card"})
+    dest = {"storage_url": os.environ["STORAGE_URL"],
+            "container": eng.ANSWERS_CONTAINER, "prefix": prefix}
+    payload = json.dumps({"spec": spec, "dest": dest}).encode()
+    try:
+        r = urllib.request.Request(f"{calc_url}/build", data=payload,
+                                   headers={"Content-Type": "application/json"}, method="POST")
+        with urllib.request.urlopen(r, timeout=60) as resp:
+            kicked = json.loads(resp.read() or b"{}")
+    except urllib.error.URLError as exc:
+        # a slow accept is fine (ca-calc cold-start) — the job may still be running;
+        # only a hard connection failure is an error.
+        if isinstance(getattr(exc, "reason", None), TimeoutError) or "timed out" in str(exc).lower():
+            kicked = {"status": "building", "note": "ca-calc accept slow — assumed started"}
+        else:
+            logging.exception("could not reach ca-calc")
+            return _json({"error": f"could not start the calculator run: {exc}"}, 502)
+    except Exception as exc:                       # noqa: BLE001
+        logging.exception("ca-calc kick failed")
+        return _json({"error": f"could not start the calculator run: {exc}"}, 502)
+
+    return _json({
+        "engagement": engagement,
+        "status": kicked.get("status", "building"),
+        "spec_line_count": marker["spec_line_count"],
+        "internal_monthly_estimate": marker["internal_monthly_estimate"],
+        "poll": f"GET /api/build_calculator_estimate?engagement={engagement}",
+        "dashboard_hint": f"the calculator run takes a few minutes — open the dashboard "
+                          f"for {engagement} and watch the 'Azure landing zone — Pricing "
+                          f"Calculator POE' card; it will show the monthly total and a "
+                          f"Download Excel (POE) button when ready",
+    }, 202)
 
 
 def _json(body: dict, status: int = 200) -> func.HttpResponse:

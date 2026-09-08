@@ -1,0 +1,70 @@
+{
+  "openapi": "3.0.1",
+  "info": {
+    "title": "get_calculator_estimate",
+    "description": "Returns the current state of an engagement's Azure Pricing Calculator POE (started by build_calculator_estimate). Status is 'building' while the ca-calc container drives the calculator, 'ready' when landing_zone.xlsx / landing_zone.json are stored, 'failed' with an error if the run broke, or 'none' if no run has been started. When ready, carries the calculator's monthly total, annual, line count, and the reconciliation against Landfall's internal run-rate.",
+    "version": "1.0.0"
+  },
+  "servers": [{ "url": "https://REPLACE/api" }],
+  "paths": {
+    "/build_calculator_estimate": {
+      "get": {
+        "operationId": "get_calculator_estimate",
+        "summary": "Poll the Azure Pricing Calculator POE status for an engagement",
+        "description": "Pass ?engagement=<customer>/<project>. Use this to answer 'is the POE ready yet?' after build_calculator_estimate. If status is 'ready', quote monthly_total, the reconciliation delta, and anything in 'skipped', and point the user at the dashboard's Download Excel (POE) button. If 'building', tell the user it is still running.",
+        "parameters": [
+          {
+            "name": "engagement",
+            "in": "query",
+            "required": true,
+            "schema": { "type": "string" },
+            "description": "Engagement id '<customer>/<project>'."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Current POE state",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "engagement": { "type": "string" },
+                    "status": { "type": "string", "description": "building | ready | failed" },
+                    "estimate_name": { "type": "string" },
+                    "region": { "type": "string" },
+                    "currency": { "type": "string" },
+                    "monthly_total": { "type": "number", "nullable": true },
+                    "annual": { "type": "number", "nullable": true },
+                    "line_count": { "type": "number", "nullable": true },
+                    "created_at": { "type": "string", "nullable": true },
+                    "built_at": { "type": "string", "nullable": true },
+                    "reconciliation": { "type": "object", "nullable": true },
+                    "skipped": { "type": "array", "items": { "type": "object" } },
+                    "calculator_url": { "type": "string", "nullable": true },
+                    "error": { "type": "string", "nullable": true }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No POE has been started for this engagement",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "engagement": { "type": "string" },
+                    "status": { "type": "string", "description": "'none'" },
+                    "hint": { "type": "string" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

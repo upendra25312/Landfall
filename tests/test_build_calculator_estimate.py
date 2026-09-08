@@ -1,31 +1,18 @@
-"""E11.16 — build_calculator_estimate Function: spec -> ca-calc -> stored POE."""
-import base64
-import io
+"""E11.16 — build_calculator_estimate: async start + poll.
+
+The Function builds the calculator spec, writes a `building` marker, kicks the
+`ca-calc` container fire-and-forget and returns 202. `ca-calc` writes the real
+`landing_zone.{xlsx,json,png}` itself (covered by tests/test_calc_service.py).
+"""
 import json
 import os
 import sys
+import urllib.error
 
 import pytest
 from conftest import ROOT
 
 sys.path.insert(0, os.path.join(ROOT, "src", "api"))
-
-
-def _calc_xlsx_bytes(name="Contoso — DC Exit — Azure Landing Zone (POE)", monthly=4210.0):
-    from openpyxl import Workbook
-    wb = Workbook()
-    ws = wb.active
-    ws.append(["Microsoft Azure Estimate"])
-    ws.append([name])
-    ws.append(["Service category", "Service type", "Custom name", "Region",
-               "Description", "Estimated monthly cost", "Estimated upfront cost"])
-    ws.append(["Compute", "Virtual Machines", "", "Sweden Central", "40 x D4s v5", monthly * 0.8, 0])
-    ws.append(["Networking", "Azure Firewall", "", "Sweden Central", "1 deployment", monthly * 0.2, 0])
-    ws.append([None, None, None, "Total", None, monthly, 0])
-    ws.append(["This estimate was created at 9/8/2026 1:00:00 PM UTC"])
-    buf = io.BytesIO()
-    wb.save(buf)
-    return buf.getvalue()
 
 
 class _FakeBlobClient:
@@ -90,11 +77,13 @@ def wired(monkeypatch):
     }
     monkeypatch.setattr(fn, "_blob", lambda: _FakeSvc(store))
     monkeypatch.setenv("CALC_URL", "http://ca-calc.internal")
+    monkeypatch.setenv("STORAGE_URL", "https://st.blob.core.windows.net")
 
     calls = {}
 
     def _fake_urlopen(req, timeout=0):
-        calls["spec"] = json.loads(req.data)
+        calls["payload"] = json.loads(req.data)
+        calls["url"] = req.full_url
 
         class _R:
             def __enter__(_s):
@@ -104,59 +93,103 @@ def wired(monkeypatch):
                 return False
 
             def read(_s):
-                return json.dumps({
-                    "xlsx_b64": base64.b64encode(_calc_xlsx_bytes()).decode(),
-                    "screenshot_b64": base64.b64encode(b"\x89PNG\r\n").decode(),
-                    "applied": [{"service": "virtual-machines"}],
-                    "skipped": [{"what": "Oracle storage", "why": "no module"}],
-                    "calculator": "https://azure.microsoft.com/pricing/calculator/",
-                }).encode()
+                return json.dumps({"status": "building", "prefix": prefix}).encode()
         return _R()
 
     monkeypatch.setattr(fn.urllib.request, "urlopen", _fake_urlopen)
     return fn, store, calls, prefix
 
 
-def _req(body):
+def _post(body):
     import azure.functions as func
     return func.HttpRequest(method="POST", url="http://x/api/build_calculator_estimate",
                             body=json.dumps(body).encode(),
                             headers={"Content-Type": "application/json"})
 
 
-def test_builds_spec_calls_calc_and_stores_poe(wired):
+def _get(engagement):
+    import azure.functions as func
+    return func.HttpRequest(method="GET", url="http://x/api/build_calculator_estimate",
+                            params={"engagement": engagement}, body=b"", headers={})
+
+
+def test_post_starts_run_and_returns_202(wired):
     fn, store, calls, prefix = wired
-    resp = fn.build_calculator_estimate_route(_req({"engagement": "contoso/dc-exit"}))
-    assert resp.status_code == 200
+    resp = fn.build_calculator_estimate_route(_post({"engagement": "contoso/dc-exit"}))
+    assert resp.status_code == 202
     out = json.loads(resp.get_body())
     assert out["engagement"] == "contoso/dc-exit"
-    assert out["monthly_total"] == 4210.0
-    assert out["currency"] == "USD"
-    assert out["reconciliation"]["delta_pct"] is not None
-    assert any("Oracle" in s["what"] for s in out["skipped"])
+    assert out["status"] == "building"
+    assert out["spec_line_count"] >= 1
+    assert "dashboard" in out["dashboard_hint"].lower()
 
-    # the spec handed to ca-calc is region-correct and price-free
-    spec = calls["spec"]
+    # a building marker was written for the dashboard / poll to read
+    marker = json.loads(store[f"{prefix}/landing_zone.json"])
+    assert marker["status"] == "building"
+    assert marker["internal_monthly_estimate"] is not None
+
+    # ca-calc got {spec, dest} with the right blob destination and a price-free spec
+    payload = calls["payload"]
+    assert payload["dest"] == {"storage_url": "https://st.blob.core.windows.net",
+                               "container": "answers", "prefix": prefix}
+    spec = payload["spec"]
     assert spec["region_default"] == "sweden-central"
-    assert spec["estimate_name"].startswith("Contoso — DC Exit")
+    assert spec["estimate_name"].startswith("Contoso")
     assert all("price" not in json.dumps(li).lower() for li in spec["line_items"])
+    assert calls["url"].endswith("/build")
 
-    # blobs stored
-    assert f"{prefix}/landing_zone.xlsx" in store
-    assert f"{prefix}/landing_zone.png" in store
-    lz = json.loads(store[f"{prefix}/landing_zone.json"])
-    assert lz["monthly_total"] == 4210.0
-    assert lz["source"] == "azure-pricing-calculator"
+
+def test_get_returns_status(wired):
+    fn, store, calls, prefix = wired
+    fn.build_calculator_estimate_route(_post({"engagement": "contoso/dc-exit"}))
+    resp = fn.build_calculator_estimate_route(_get("contoso/dc-exit"))
+    assert resp.status_code == 200
+    assert json.loads(resp.get_body())["status"] == "building"
+
+    # ca-calc later writes a ready doc; GET reflects it
+    store[f"{prefix}/landing_zone.json"] = json.dumps({
+        "engagement": "contoso/dc-exit", "status": "ready", "monthly_total": 4210.0,
+        "annual": 50520.0, "line_count": 5, "currency": "USD",
+        "reconciliation": {"delta_pct": 2.1, "within_tolerance": True}}).encode()
+    resp = fn.build_calculator_estimate_route(_get("contoso/dc-exit"))
+    out = json.loads(resp.get_body())
+    assert out["status"] == "ready" and out["monthly_total"] == 4210.0
+
+
+def test_get_404_when_nothing_started(wired):
+    fn, *_ = wired
+    resp = fn.build_calculator_estimate_route(_get("contoso/dc-exit"))
+    assert resp.status_code == 404
+    assert json.loads(resp.get_body())["status"] == "none"
 
 
 def test_missing_engagement_is_400(wired):
     fn, *_ = wired
-    resp = fn.build_calculator_estimate_route(_req({}))
+    resp = fn.build_calculator_estimate_route(_post({}))
     assert resp.status_code == 400
 
 
 def test_no_calc_url_is_503(wired, monkeypatch):
     fn, *_ = wired
     monkeypatch.delenv("CALC_URL", raising=False)
-    resp = fn.build_calculator_estimate_route(_req({"engagement": "contoso/dc-exit"}))
+    resp = fn.build_calculator_estimate_route(_post({"engagement": "contoso/dc-exit"}))
     assert resp.status_code == 503
+
+
+def test_no_published_estimate_is_409(wired):
+    fn, store, calls, prefix = wired
+    store.pop(f"{prefix}/latest.json")
+    store.pop(f"{prefix}/tools_raw.json")
+    resp = fn.build_calculator_estimate_route(_post({"engagement": "contoso/dc-exit"}))
+    assert resp.status_code == 409
+
+
+def test_ca_calc_unreachable_is_502(wired, monkeypatch):
+    fn, store, calls, prefix = wired
+
+    def _boom(req, timeout=0):
+        raise urllib.error.URLError("Connection refused")
+
+    monkeypatch.setattr(fn.urllib.request, "urlopen", _boom)
+    resp = fn.build_calculator_estimate_route(_post({"engagement": "contoso/dc-exit"}))
+    assert resp.status_code == 502
