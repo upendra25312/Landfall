@@ -49,7 +49,8 @@ from azure.storage.blob import BlobServiceClient
 
 from tools import bp  # query_inventory / azure_retail_prices HTTP tools
 from cost.functions import cost_bp  # deterministic cost engine (right-size + cost BoMs)
-from ingest.functions import ingest_bp  # raw/inventory/* -> normalize -> Azure SQL + DQ report
+from engagements import engagements_bp  # create / list engagements (E11.1)
+from ingest.functions import ingest_bp  # raw/engagements/*/inventory/* -> normalize -> Azure SQL + DQ report
 from lz.functions import lz_bp  # design_landing_zone (CAF ALZ from the portfolio)
 from waves.functions import waves_bp  # score_dispositions + plan_waves (E4 wave engine)
 from deliverable.functions import deliverable_bp  # assemble_estimate (E5 structured package)
@@ -57,6 +58,7 @@ from deliverable.functions import deliverable_bp  # assemble_estimate (E5 struct
 app = df.DFApp()
 app.register_functions(bp)
 app.register_functions(cost_bp)
+app.register_functions(engagements_bp)
 app.register_functions(ingest_bp)
 app.register_functions(lz_bp)
 app.register_functions(waves_bp)

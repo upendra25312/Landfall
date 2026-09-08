@@ -58,11 +58,25 @@ def _estimate_container():
     return _blob_state["cc"]
 
 
-def _read_estimate_blob(name: str) -> bytes | None:
-    try:
-        return _estimate_container().download_blob(f"{_ESTIMATE['prefix']}/{name}").readall()
-    except Exception:  # noqa: BLE001 - missing blob / no storage -> treat as "not published"
-        return None
+def _estimate_prefixes(engagement: str | None) -> list[str]:
+    """Where a published estimate might live. Prefer the engagement path; fall back to
+    the default engagement, then the pre-E11 flat `estimate/` path."""
+    out = []
+    eid = (engagement or "").strip().strip("/")
+    if eid and eid != "_default_/_default_":
+        out.append(f"engagements/{eid}/estimate")
+    out.append("engagements/_default_/_default_/estimate")
+    out.append("estimate")  # legacy (cycles 1-17)
+    return out
+
+
+def _read_estimate_blob(name: str, engagement: str | None = None) -> bytes | None:
+    for prefix in _estimate_prefixes(engagement):
+        try:
+            return _estimate_container().download_blob(f"{prefix}/{name}").readall()
+        except Exception:  # noqa: BLE001 - missing blob -> try the next location
+            continue
+    return None
 
 
 def _citations(resp) -> list:
@@ -127,23 +141,24 @@ def dashboard():
 
 
 @app.get("/dashboard/data")
-def dashboard_data():
-    blob = _read_estimate_blob("latest.json")
+def dashboard_data(e: str | None = None):
+    blob = _read_estimate_blob("latest.json", e)
     if blob is None:
         return JSONResponse({"error": "no estimate published"}, status_code=404)
     return JSONResponse(json.loads(blob))
 
 
 @app.get("/dashboard/download/{fmt}")
-def dashboard_download(fmt: str):
+def dashboard_download(fmt: str, e: str | None = None):
     fmt = fmt.lower().lstrip(".")
     if fmt not in _EXPORT_MIME:
         return JSONResponse({"error": "format must be xlsx | docx | pptx"}, status_code=400)
-    blob = _read_estimate_blob(f"latest.{fmt}")
+    blob = _read_estimate_blob(f"latest.{fmt}", e)
     if blob is None:
         return JSONResponse({"error": f"no {fmt} export published"}, status_code=404)
+    name = (e or "landfall-estimate").replace("/", "-")
     return Response(blob, media_type=_EXPORT_MIME[fmt], headers={
-        "Content-Disposition": f'attachment; filename="landfall-estimate.{fmt}"'})
+        "Content-Disposition": f'attachment; filename="{name}.{fmt}"'})
 
 
 @app.get("/", response_class=HTMLResponse)

@@ -34,5 +34,12 @@ def test_vm_rightsize_route_lives_in_cost_not_tools():
 
 def test_blob_trigger_uses_event_grid_source():
     src = open(os.path.join(API, "ingest/functions.py"), encoding="utf-8").read()
-    assert 'path="raw/inventory/{name}"' in src
+    assert 'path="raw/engagements/{customer}/{project}/inventory/{name}"' in src
     assert "func.BlobSource.EVENT_GRID" in src
+
+
+def test_engagements_blueprint_registered():
+    src = open(os.path.join(API, "function_app.py"), encoding="utf-8").read()
+    assert "app.register_functions(engagements_bp)" in src
+    for rel in ("engagement.py", "engagement_sql.py", "engagements.py"):
+        ast.parse(open(os.path.join(API, rel), encoding="utf-8").read())

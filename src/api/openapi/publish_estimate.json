@@ -5,7 +5,11 @@
     "description": "Assembles the estimate and writes the package JSON plus the Excel / Word / PowerPoint exports to blob storage (answers/estimate/latest.*), so the assessment dashboard web app on the Container App can serve it. Call after the other tools; then point the user at the Container App's /dashboard URL.",
     "version": "1.0.0"
   },
-  "servers": [{ "url": "https://REPLACE/api" }],
+  "servers": [
+    {
+      "url": "https://REPLACE/api"
+    }
+  ],
   "paths": {
     "/publish_estimate": {
       "post": {
@@ -19,16 +23,50 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "package": { "type": "object", "nullable": true },
-                  "inventory_summary": { "type": "object", "nullable": true },
-                  "data_quality": { "type": "object", "nullable": true },
-                  "compute_cost": { "type": "object", "nullable": true },
-                  "storage_cost": { "type": "object", "nullable": true },
-                  "run_rate_extras": { "type": "object", "nullable": true },
-                  "landing_zone": { "type": "object", "nullable": true },
-                  "dispositions": { "type": "object", "nullable": true },
-                  "waves": { "type": "object", "nullable": true },
-                  "config": { "type": "object", "nullable": true }
+                  "package": {
+                    "type": "object",
+                    "nullable": true
+                  },
+                  "inventory_summary": {
+                    "type": "object",
+                    "nullable": true
+                  },
+                  "data_quality": {
+                    "type": "object",
+                    "nullable": true
+                  },
+                  "compute_cost": {
+                    "type": "object",
+                    "nullable": true
+                  },
+                  "storage_cost": {
+                    "type": "object",
+                    "nullable": true
+                  },
+                  "run_rate_extras": {
+                    "type": "object",
+                    "nullable": true
+                  },
+                  "landing_zone": {
+                    "type": "object",
+                    "nullable": true
+                  },
+                  "dispositions": {
+                    "type": "object",
+                    "nullable": true
+                  },
+                  "waves": {
+                    "type": "object",
+                    "nullable": true
+                  },
+                  "config": {
+                    "type": "object",
+                    "nullable": true
+                  },
+                  "engagement": {
+                    "type": "string",
+                    "description": "Engagement id as '<customer>/<project>' (lowercase, [a-z0-9-] per segment). Scopes the data and where the deliverables are written. Omit only for the legacy single-estate flow (defaults to '_default_/_default_')."
+                  }
                 }
               }
             }
@@ -42,10 +80,21 @@
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "published": { "type": "array", "items": { "type": "string" } },
-                    "package_id": { "type": "string" },
-                    "figures": { "type": "number" },
-                    "dashboard_hint": { "type": "string" }
+                    "published": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "package_id": {
+                      "type": "string"
+                    },
+                    "figures": {
+                      "type": "number"
+                    },
+                    "dashboard_hint": {
+                      "type": "string"
+                    }
                   }
                 }
               }

@@ -5,7 +5,11 @@
     "description": "Assembles the outputs of the other Landfall tools (estimate_compute_cost, estimate_storage_cost, estimate_run_rate_extras, design_landing_zone, score_dispositions, plan_waves) plus an inventory summary into ONE structured estimate package: eight sections, a stable ID + calculation-appendix entry on every headline figure (source tool, inputs, formula, assumptions applied, confidence), a machine-built assumptions / exclusions / data-gaps register collected from every tool's own caveats, a parametric migration-effort and services-cost estimate, and a markdown render. Deterministic. Call this last, after the other tools.",
     "version": "1.0.0"
   },
-  "servers": [{ "url": "https://REPLACE/api" }],
+  "servers": [
+    {
+      "url": "https://REPLACE/api"
+    }
+  ],
   "paths": {
     "/assemble_estimate": {
       "post": {
@@ -18,40 +22,101 @@
             "application/json": {
               "schema": {
                 "type": "object",
-                "required": ["inventory_summary"],
+                "required": [
+                  "inventory_summary"
+                ],
                 "properties": {
                   "inventory_summary": {
                     "type": "object",
                     "properties": {
-                      "servers": { "type": "number" },
-                      "servers_powered_on": { "type": "number" },
-                      "applications": { "type": "number" },
-                      "total_vcpu": { "type": "number" },
-                      "total_ram_gb": { "type": "number" },
-                      "provisioned_disk_tb": { "type": "number" },
-                      "used_disk_tb": { "type": "number" },
-                      "os_mix": { "type": "object" },
-                      "by_env": { "type": "object" },
-                      "criticality_spread": { "type": "object" },
-                      "eol_servers": { "type": "number" },
-                      "no_perf_data_servers": { "type": "number" }
+                      "servers": {
+                        "type": "number"
+                      },
+                      "servers_powered_on": {
+                        "type": "number"
+                      },
+                      "applications": {
+                        "type": "number"
+                      },
+                      "total_vcpu": {
+                        "type": "number"
+                      },
+                      "total_ram_gb": {
+                        "type": "number"
+                      },
+                      "provisioned_disk_tb": {
+                        "type": "number"
+                      },
+                      "used_disk_tb": {
+                        "type": "number"
+                      },
+                      "os_mix": {
+                        "type": "object"
+                      },
+                      "by_env": {
+                        "type": "object"
+                      },
+                      "criticality_spread": {
+                        "type": "object"
+                      },
+                      "eol_servers": {
+                        "type": "number"
+                      },
+                      "no_perf_data_servers": {
+                        "type": "number"
+                      }
                     }
                   },
                   "data_quality": {
                     "type": "object",
                     "properties": {
-                      "confidence": { "type": "string" },
-                      "findings": { "type": "array", "items": { "type": "string" } }
+                      "confidence": {
+                        "type": "string"
+                      },
+                      "findings": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      }
                     }
                   },
-                  "compute_cost": { "type": "object", "nullable": true },
-                  "storage_cost": { "type": "object", "nullable": true },
-                  "run_rate_extras": { "type": "object", "nullable": true },
-                  "landing_zone": { "type": "object", "nullable": true },
-                  "dispositions": { "type": "object", "nullable": true },
-                  "waves": { "type": "object", "nullable": true },
-                  "generated_on": { "type": "string", "nullable": true },
-                  "config": { "type": "object", "nullable": true }
+                  "compute_cost": {
+                    "type": "object",
+                    "nullable": true
+                  },
+                  "storage_cost": {
+                    "type": "object",
+                    "nullable": true
+                  },
+                  "run_rate_extras": {
+                    "type": "object",
+                    "nullable": true
+                  },
+                  "landing_zone": {
+                    "type": "object",
+                    "nullable": true
+                  },
+                  "dispositions": {
+                    "type": "object",
+                    "nullable": true
+                  },
+                  "waves": {
+                    "type": "object",
+                    "nullable": true
+                  },
+                  "generated_on": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "config": {
+                    "type": "object",
+                    "nullable": true
+                  },
+                  "engagement": {
+                    "type": "string",
+                    "description": "Engagement id as '<customer>/<project>' (lowercase, [a-z0-9-] per segment). Scopes the data and where the deliverables are written. Omit only for the legacy single-estate flow (defaults to '_default_/_default_')."
+                  }
                 }
               }
             }
@@ -65,12 +130,33 @@
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "meta": { "type": "object" },
-                    "sections": { "type": "array", "items": { "type": "object" } },
-                    "figures": { "type": "array", "items": { "type": "object" } },
-                    "calculation_appendix": { "type": "array", "items": { "type": "object" } },
-                    "register": { "type": "object" },
-                    "summary_markdown": { "type": "string" }
+                    "meta": {
+                      "type": "object"
+                    },
+                    "sections": {
+                      "type": "array",
+                      "items": {
+                        "type": "object"
+                      }
+                    },
+                    "figures": {
+                      "type": "array",
+                      "items": {
+                        "type": "object"
+                      }
+                    },
+                    "calculation_appendix": {
+                      "type": "array",
+                      "items": {
+                        "type": "object"
+                      }
+                    },
+                    "register": {
+                      "type": "object"
+                    },
+                    "summary_markdown": {
+                      "type": "string"
+                    }
                   }
                 }
               }

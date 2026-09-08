@@ -53,7 +53,7 @@ az eventgrid system-topic event-subscription create `
   --endpoint-type webhook `
   --endpoint "$base`?functionName=Host.Functions.ingest_blob&code=$key" `
   --included-event-types Microsoft.Storage.BlobCreated `
-  --subject-begins-with "/blobServices/default/containers/raw/blobs/inventory/" `
+  --subject-begins-with "/blobServices/default/containers/raw/blobs/engagements/" `
   --max-delivery-attempts 30 `
   --event-ttl 1440 `
   --only-show-errors `

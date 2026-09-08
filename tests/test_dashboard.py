@@ -41,15 +41,29 @@ def test_publish_estimate_writes_package_and_three_exports(monkeypatch):
     out = json.loads(resp.get_body())
     assert set(out["published"]) == {"latest.json", "latest.xlsx", "latest.docx", "latest.pptx"}
 
-    assert set(fake.blobs) == {"estimate/latest.json", "estimate/latest.xlsx",
-                               "estimate/latest.docx", "estimate/latest.pptx"}
-    back = json.loads(fake.blobs["estimate/latest.json"])
+    base = "engagements/_default_/_default_/estimate"
+    assert set(fake.blobs) == {f"{base}/latest.{x}" for x in ("json", "xlsx", "docx", "pptx")}
+    back = json.loads(fake.blobs[f"{base}/latest.json"])
     assert back["meta"]["package_id"] == pkg["meta"]["package_id"]
+    assert back["meta"]["engagement"] == "_default_/_default_"
     assert len(back["figures"]) == len(pkg["figures"])
 
     from openpyxl import load_workbook
-    wb = load_workbook(io.BytesIO(fake.blobs["estimate/latest.xlsx"]))
+    wb = load_workbook(io.BytesIO(fake.blobs[f"{base}/latest.xlsx"]))
     assert "Calculation appendix" in wb.sheetnames
+
+
+def test_publish_estimate_scopes_by_engagement(monkeypatch):
+    from deliverable import functions as dfn
+    fake = _FakeContainer()
+    monkeypatch.setattr(dfn, "_container_client", lambda: fake)
+    pkg = P.run()
+    resp = dfn.publish_estimate_route(_req({"package": pkg, "engagement": "contoso-ltd/dc-exit"}))
+    assert resp.status_code == 200
+    out = json.loads(resp.get_body())
+    assert out["engagement"] == "contoso-ltd/dc-exit"
+    assert all(n.startswith("engagements/contoso-ltd/dc-exit/estimate/") for n in fake.blobs)
+    assert json.loads(fake.blobs["engagements/contoso-ltd/dc-exit/estimate/latest.json"])["meta"]["engagement"] == "contoso-ltd/dc-exit"
 
 
 def test_publish_estimate_rejects_empty_body(monkeypatch):

@@ -5,7 +5,11 @@
     "description": "Natural-language questions over the Landfall inventory (Azure SQL). Returns rows and the SELECT that produced them.",
     "version": "1.0.0"
   },
-  "servers": [{ "url": "https://REPLACE/api" }],
+  "servers": [
+    {
+      "url": "https://REPLACE/api"
+    }
+  ],
   "paths": {
     "/query_inventory": {
       "post": {
@@ -18,11 +22,17 @@
             "application/json": {
               "schema": {
                 "type": "object",
-                "required": ["question"],
+                "required": [
+                  "question"
+                ],
                 "properties": {
                   "question": {
                     "type": "string",
                     "description": "e.g. 'how many prod Windows Server 2012 VMs and their total vCPU?'"
+                  },
+                  "engagement": {
+                    "type": "string",
+                    "description": "Engagement id as '<customer>/<project>' (lowercase, [a-z0-9-] per segment). Scopes the data and where the deliverables are written. Omit only for the legacy single-estate flow (defaults to '_default_/_default_')."
                   }
                 }
               }
@@ -37,15 +47,30 @@
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "sql": { "type": "string", "description": "the SELECT that was executed" },
-                    "columns": { "type": "array", "items": { "type": "string" } },
+                    "sql": {
+                      "type": "string",
+                      "description": "the SELECT that was executed"
+                    },
+                    "columns": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
                     "rows": {
                       "type": "array",
                       "description": "each row is an array of cell values in column order",
-                      "items": { "type": "array" }
+                      "items": {
+                        "type": "array"
+                      }
                     },
-                    "row_count": { "type": "integer" },
-                    "truncated": { "type": "boolean", "description": "true if more than 200 rows matched" }
+                    "row_count": {
+                      "type": "integer"
+                    },
+                    "truncated": {
+                      "type": "boolean",
+                      "description": "true if more than 200 rows matched"
+                    }
                   }
                 }
               }
@@ -58,8 +83,12 @@
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "error": { "type": "string" },
-                    "sql": { "type": "string" }
+                    "error": {
+                      "type": "string"
+                    },
+                    "sql": {
+                      "type": "string"
+                    }
                   }
                 }
               }

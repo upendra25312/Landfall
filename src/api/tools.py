@@ -28,6 +28,8 @@ from azure.identity import DefaultAzureCredential
 from azure.ai.projects import AIProjectClient
 
 from sqlguard import safe_select as _safe_select, signature as _sql_signature
+from engagement import normalize_engagement as _norm_engagement, DEFAULT_ENGAGEMENT as _DEFAULT_ENGAGEMENT
+from engagement_sql import set_engagement as _set_engagement
 
 bp = func.Blueprint()
 
@@ -137,11 +139,17 @@ def _sql_for(question: str) -> str:
 @bp.route(route="query_inventory", methods=["POST"], auth_level=func.AuthLevel.ANONYMOUS)
 def query_inventory(req: func.HttpRequest) -> func.HttpResponse:
     try:
-        question = (req.get_json().get("question") or "").strip()
+        body = req.get_json() or {}
     except ValueError:
-        question = ""
+        body = {}
+    question = (body.get("question") or "").strip()
     if not question:
-        return _json({"error": "body must be {\"question\": \"...\"}"}, 400)
+        return _json({"error": "body must be {\"engagement\": \"<customer>/<project>\", \"question\": \"...\"}"}, 400)
+    raw_eng = body.get("engagement") or req.params.get("engagement") or _DEFAULT_ENGAGEMENT
+    try:
+        engagement = _norm_engagement(raw_eng)
+    except ValueError as exc:
+        return _json({"error": str(exc)}, 400)
 
     sig = _sql_signature(question)
     try:
@@ -155,8 +163,8 @@ def query_inventory(req: func.HttpRequest) -> func.HttpResponse:
         return _json({"error": "text-to-SQL failed"}, 502)
 
     sig = _sql_signature(question, sql)
-    logging.info("query_inventory q=%s shape=%s tables=%s", sig["q_hash"],
-                 sig.get("shape"), ",".join(sig.get("tables", [])))
+    logging.info("query_inventory eng=%s q=%s shape=%s tables=%s", engagement,
+                 sig["q_hash"], sig.get("shape"), ",".join(sig.get("tables", [])))
     try:
         conn = _sql_connect()
         try:
@@ -165,6 +173,7 @@ def query_inventory(req: func.HttpRequest) -> func.HttpResponse:
                 cur.timeout = QUERY_TIMEOUT_S
             except Exception:                                  # noqa: BLE001
                 pass
+            _set_engagement(cur, engagement)   # RLS: scope every table to this engagement
             cur.execute(sql)
             columns = [d[0] for d in cur.description] if cur.description else []
             fetched = cur.fetchmany(MAX_ROWS + 1)

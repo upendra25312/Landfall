@@ -6,6 +6,18 @@
 -- out of order). Orphan app_id / server_id values are reported in the data-quality
 -- report instead. Every row carries `source_file` so re-uploading a corrected export
 -- replaces only its own rows.
+--
+-- MULTI-ENGAGEMENT (PRD E11.3): every table carries `engagement_id` ('<customer>/<project>').
+-- Natural-key tables key on (engagement_id, <id>). A Row-Level Security policy filters
+-- every read by SESSION_CONTEXT('engagement_id'); callers set it via
+-- sp_set_session_context before querying (src/api/engagement_sql.py). With no context set,
+-- the policy returns NOTHING - every reader must scope itself.
+
+IF EXISTS (SELECT 1 FROM sys.security_policies WHERE name = 'EngagementFilter')
+    DROP SECURITY POLICY dbo.EngagementFilter;
+IF OBJECT_ID('dbo.fn_engagement_predicate', 'IF') IS NOT NULL
+    DROP FUNCTION dbo.fn_engagement_predicate;
+GO
 
 IF OBJECT_ID('dbo.performance', 'U')  IS NOT NULL DROP TABLE dbo.performance;
 IF OBJECT_ID('dbo.dependencies', 'U') IS NOT NULL DROP TABLE dbo.dependencies;
@@ -16,7 +28,8 @@ IF OBJECT_ID('dbo.ingest_log', 'U')   IS NOT NULL DROP TABLE dbo.ingest_log;
 GO
 
 CREATE TABLE dbo.applications (
-    app_id          NVARCHAR(64)  NOT NULL PRIMARY KEY,
+    engagement_id   NVARCHAR(120) NOT NULL,
+    app_id          NVARCHAR(64)  NOT NULL,
     app_name        NVARCHAR(256) NULL,
     business_owner  NVARCHAR(256) NULL,
     criticality     TINYINT       NULL,           -- 1 (highest) .. 4
@@ -29,12 +42,14 @@ CREATE TABLE dbo.applications (
     complexity      NVARCHAR(8)   NULL,           -- S/M/L/XL (agent-filled)
     wave            INT           NULL,           -- (agent-filled)
     source_file     NVARCHAR(260) NULL,
-    ingested_at     DATETIME2     NULL CONSTRAINT DF_applications_ingested DEFAULT SYSUTCDATETIME()
+    ingested_at     DATETIME2     NULL CONSTRAINT DF_applications_ingested DEFAULT SYSUTCDATETIME(),
+    CONSTRAINT PK_applications PRIMARY KEY (engagement_id, app_id)
 );
 GO
 
 CREATE TABLE dbo.servers (
-    server_id           NVARCHAR(64)  NOT NULL PRIMARY KEY,
+    engagement_id       NVARCHAR(120) NOT NULL,
+    server_id           NVARCHAR(64)  NOT NULL,
     hostname            NVARCHAR(256) NULL,
     env                 NVARCHAR(32)  NULL,       -- prod/nonprod/dev/dr
     os_name             NVARCHAR(128) NULL,
@@ -59,12 +74,14 @@ CREATE TABLE dbo.servers (
     app_id              NVARCHAR(64)  NULL,       -- soft link to applications.app_id (not FK-enforced; see header)
     notes               NVARCHAR(1024) NULL,
     source_file         NVARCHAR(260) NULL,
-    ingested_at         DATETIME2     NULL CONSTRAINT DF_servers_ingested DEFAULT SYSUTCDATETIME()
+    ingested_at         DATETIME2     NULL CONSTRAINT DF_servers_ingested DEFAULT SYSUTCDATETIME(),
+    CONSTRAINT PK_servers PRIMARY KEY (engagement_id, server_id)
 );
 GO
 
 CREATE TABLE dbo.dependencies (
     dep_id       INT IDENTITY(1,1) PRIMARY KEY,
+    engagement_id NVARCHAR(120) NOT NULL,
     src_id       NVARCHAR(64)  NULL,
     dst_id       NVARCHAR(64)  NULL,
     port         INT           NULL,
@@ -78,11 +95,14 @@ CREATE TABLE dbo.dependencies (
     ingested_at  DATETIME2     NULL CONSTRAINT DF_dependencies_ingested DEFAULT SYSUTCDATETIME()
 );
 GO
+CREATE INDEX IX_dependencies_engagement ON dbo.dependencies (engagement_id);
+GO
 
 -- Daily performance samples over a ~30-day observation window (one row per server per day).
 -- servers.csv carries the rollups; this table is the series behind them.
 CREATE TABLE dbo.performance (
     perf_id                   INT IDENTITY(1,1) PRIMARY KEY,
+    engagement_id             NVARCHAR(120) NOT NULL,
     server_id                 NVARCHAR(64)  NULL,    -- soft link to servers.server_id
     sample_date               DATE          NULL,
     cpu_avg_pct               DECIMAL(5,2)  NULL,
@@ -104,22 +124,27 @@ CREATE TABLE dbo.performance (
     ingested_at               DATETIME2     NULL CONSTRAINT DF_performance_ingested DEFAULT SYSUTCDATETIME()
 );
 GO
+CREATE INDEX IX_performance_engagement ON dbo.performance (engagement_id);
+GO
 
 CREATE TABLE dbo.storage (
-    storage_id     NVARCHAR(64)  NOT NULL PRIMARY KEY,
+    engagement_id  NVARCHAR(120) NOT NULL,
+    storage_id     NVARCHAR(64)  NOT NULL,
     server_id      NVARCHAR(64)  NULL,            -- soft link to servers.server_id (not FK-enforced)
     type           NVARCHAR(16)  NULL,            -- block/file/object/db
     size_gb        DECIMAL(12,2) NULL,
     iops           INT           NULL,
     target_service NVARCHAR(128) NULL,
     source_file    NVARCHAR(260) NULL,
-    ingested_at    DATETIME2     NULL CONSTRAINT DF_storage_ingested DEFAULT SYSUTCDATETIME()
+    ingested_at    DATETIME2     NULL CONSTRAINT DF_storage_ingested DEFAULT SYSUTCDATETIME(),
+    CONSTRAINT PK_storage PRIMARY KEY (engagement_id, storage_id)
 );
 GO
 
 -- One row per ingested file: what the Normalize pipeline detected, loaded, and flagged.
 CREATE TABLE dbo.ingest_log (
     run_id        INT IDENTITY(1,1) PRIMARY KEY,
+    engagement_id NVARCHAR(120) NOT NULL,
     file_name     NVARCHAR(260) NULL,
     profile       NVARCHAR(64)  NULL,
     target_table  NVARCHAR(64)  NULL,
@@ -131,6 +156,34 @@ CREATE TABLE dbo.ingest_log (
     ingested_at   DATETIME2     NULL CONSTRAINT DF_ingestlog_ingested DEFAULT SYSUTCDATETIME()
 );
 GO
+CREATE INDEX IX_ingestlog_engagement ON dbo.ingest_log (engagement_id);
+GO
 
--- Read-only login for the query_inventory tool is created in scripts/grant_api_sql.sql
+-- ---------------------------------------------------------------------------
+-- Row-Level Security: every read is scoped to SESSION_CONTEXT('engagement_id').
+-- No context set  ->  the predicate returns no rows (fail closed). Callers set the
+-- context with sp_set_session_context before running any SELECT (this is what makes
+-- the free-form text-to-SQL in query_inventory tenant-safe regardless of the SQL the
+-- model writes). INSERTs are unaffected (the loader writes engagement_id explicitly).
+-- ---------------------------------------------------------------------------
+CREATE FUNCTION dbo.fn_engagement_predicate(@engagement_id AS NVARCHAR(120))
+    RETURNS TABLE
+    WITH SCHEMABINDING
+AS
+    RETURN SELECT 1 AS ok
+           WHERE @engagement_id =
+                 CAST(SESSION_CONTEXT(N'engagement_id') AS NVARCHAR(120));
+GO
+
+CREATE SECURITY POLICY dbo.EngagementFilter
+    ADD FILTER PREDICATE dbo.fn_engagement_predicate(engagement_id) ON dbo.servers,
+    ADD FILTER PREDICATE dbo.fn_engagement_predicate(engagement_id) ON dbo.applications,
+    ADD FILTER PREDICATE dbo.fn_engagement_predicate(engagement_id) ON dbo.dependencies,
+    ADD FILTER PREDICATE dbo.fn_engagement_predicate(engagement_id) ON dbo.storage,
+    ADD FILTER PREDICATE dbo.fn_engagement_predicate(engagement_id) ON dbo.performance,
+    ADD FILTER PREDICATE dbo.fn_engagement_predicate(engagement_id) ON dbo.ingest_log
+    WITH (STATE = ON);
+GO
+
+-- Read-only + read-write login for the workload identity is granted in scripts/apply_sql.py
 -- (contained user mapped to the workload managed identity - name passed in by the script).

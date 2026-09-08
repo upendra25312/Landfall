@@ -188,6 +188,17 @@ Route model: `/` = engagements home · `/e/<customer>/<project>` = one engagemen
 
    Cards are config (`src/web/prompt_cards.json`) so pre-sales can add their own.
 
+   **Ask & export to Excel (E11.14).** A pre-sales architect asks any free-text question
+   in the chat, gets the answer, and clicks **"Download as Excel"** on that answer. The
+   chat client keeps the structured tool outputs behind the last response (a
+   `query_inventory` result is `{columns, rows, sql}`; the cost / wave / disposition
+   tools return structured JSON). "Download as Excel" `POST`s
+   `{engagement, question, answer_text, tables:[{title, columns, rows}], provenance:[{tool, sql, run_at}]}`
+   to a new Function `POST /api/answer_to_xlsx`, which builds a workbook — a **Question &
+   answer** sheet, one sheet per returned table, and a **Provenance** sheet (the SQL /
+   tool call, the engagement, timestamp, the DRAFT disclaimer) — and streams it back.
+   Same openpyxl standards as E5.4q (formulas where derived, `$#,##0`, recalc-clean).
+
 ### 4.6 Studio-deck container (E11.9 — makes E5.6 concrete)
 
 A small **Container App** (`ca-deckgen`) running Node + `presentation-skill` +
@@ -230,6 +241,7 @@ Registered as an agent tool. min-replicas 0 (scale-to-zero — it runs seconds p
 | **E11.11** | Migration + back-compat — fold the current single-tenant `raw/inventory/` + `answers/estimate/latest.*` + un-keyed SQL into `_default_/_default_` (or drop, synthetic); one-release shim | P1 | Existing deploy keeps working through the transition; docs updated |
 | **E11.12** | E5.4q — `.xlsx` formulas-not-literals + a headless-LibreOffice recalc **CI gate**; `.docx` US-Letter DXA + tracked-changes-ready + `accept_changes` | P1 | Change an input in the workbook → the model re-flows; recalc reports 0 errors; architect edits are Word tracked changes |
 | **E11.13** | Evals — golden per-engagement isolation tests (two synthetic estates, assert no bleed); a `run_engagement` end-to-end scenario in the harness | P0 | A regression that leaks one engagement's rows into another fails CI |
+| **E11.14** | **Ask & export to Excel** — `POST /api/answer_to_xlsx` (Question&answer + a sheet per table + Provenance), and a "Download as Excel" affordance on chat answers that carry tabular tool output | P0 | An architect asks "how many prod Windows servers and their vCPU?", gets the answer, and downloads a workbook with the rows + the SQL + the engagement + a DRAFT note |
 
 **Infra deltas (`infra/resources.bicep`):** Event Grid subject filter; a `ca-deckgen`
 Container App + its ACR image + an OpenAPI tool env var; no new data stores for v1.
@@ -246,7 +258,7 @@ eval-harness gates — E11 is plumbing + UX + tenancy around the existing engine
 | **C18** | E11.1 + E11.2 + E11.3 (engagement model, ADLS layout, SQL `engagement_id` + migration) | `create_engagement` works; two engagements' data is isolated in SQL and blob; tests |
 | **C19** | E11.4 + E11.5 + E11.13 (ingestion + every tool scoped; isolation evals) | `run_engagement` ingests one folder; every tool rejects a missing `engagement`; isolation eval green |
 | **C20** | E11.6 (dashboard: home, new-engagement, upload, start analysis) | A no-CLI user creates an engagement, uploads, and runs analysis from the browser |
-| **C21** | E11.7 + E11.8 (engagement-scoped chat + prompt cards; versioned publish) | Prompt cards drive per-engagement outcomes; dashboard shows the right engagement's estimate |
+| **C21** | E11.7 + E11.8 + E11.14 (engagement-scoped chat + prompt cards + "ask & export to Excel"; versioned publish) | Prompt cards drive per-engagement outcomes; an architect downloads any chat answer as a workbook; dashboard shows the right engagement's estimate |
 | **C22** | E11.9 + E11.12 (studio-deck container; xlsx/docx polish + CI recalc gate) | "Studio deck" card produces a `qa_gate`-passing deck; recalc gate live |
 | **C23** | E11.10 + E11.11 (access control, audit, migration + shim, docs) | Visibility enforced; the old single-tenant deploy migrates cleanly |
 
@@ -254,16 +266,20 @@ Each cycle logged in [`pdca-log.md`](pdca-log.md) (Plan / Do / Check / Act).
 
 ---
 
-## 7. Open questions for the sponsor
+## 7. Sponsor decisions (2026-09-08)
 
-1. **Isolation tier** — single DB + `engagement_id` column for all (cheapest), or
-   DB-per-engagement for regulated clients (the `--tier regulated` switch)? Plan assumes
-   the column, switch available.
-2. **Who may create engagements / see them** — any authenticated user, or a named
-   pre-sales group? Plan assumes creator + optional group share.
-3. **Retention** — how long do closed engagements' data and deliverables stay before
-   `azd`-independent cleanup? Plan assumes a documented manual close-out + a
-   `history/` snapshot kept.
-4. **Studio deck** — is the Node side-car (`ca-deckgen`) acceptable operationally, or
-   should E5.6 stay "architect runs it locally" for now? Plan builds the container in C22
-   but it can be deferred.
+1. **Isolation tier — `engagement_id` column** on one Free-tier DB, enforced by **SQL
+   Server Row-Level Security** (a filter predicate + `SECURITY POLICY` on all 6 tables;
+   `query_inventory` sets `sp_set_session_context 'engagement_id'` before running the
+   model's SQL, so free-form text-to-SQL physically cannot see another engagement's rows).
+   DB/schema-per-engagement stays a `--tier regulated` switch for later.
+2. **Access — creator + optional group share.** `_engagement.json` records `created_by`
+   (Entra user) and `visibility: {owner | group:<id> | all}`; the engagements list
+   filters by it (E11.10).
+3. **Retention** — documented manual close-out; every publish keeps a `history/<ts>/`
+   snapshot. (unchanged from the plan)
+4. **Studio deck (`ca-deckgen`) — deferred.** The rebuilt in-Function `python-pptx` deck
+   is the default; add the Node side-car in a later cycle when a client needs it. E11.9
+   moves to backlog.
+
+**Build order confirmed:** start **Cycle 18** — E11.1 + E11.2 + E11.3.

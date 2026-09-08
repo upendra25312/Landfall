@@ -23,16 +23,20 @@ import os
 
 import azure.functions as func
 
+import engagement as eng
 from cost.config import load_config
 from .assemble import assemble_estimate
 from .export import export
 
 deliverable_bp = func.Blueprint()
 
-# where the assessment dashboard (src/web) reads the published estimate from
-ESTIMATE_PREFIX = "estimate"
-ESTIMATE_CONTAINER = "answers"
+ESTIMATE_CONTAINER = eng.ANSWERS_CONTAINER
 _blob_state: dict = {}
+
+
+def _engagement_of(req, body: dict) -> str:
+    raw = body.get("engagement") or req.params.get("engagement") or eng.DEFAULT_ENGAGEMENT
+    return eng.normalize_engagement(raw)
 
 
 def _container_client():
@@ -55,8 +59,13 @@ def assemble_estimate_route(req: func.HttpRequest) -> func.HttpResponse:
         return _json({"error": 'body needs at least {"inventory_summary": {...}} plus the tool outputs to assemble'}, 400)
 
     try:
+        engagement = _engagement_of(req, body)
+    except ValueError as exc:
+        return _json({"error": str(exc)}, 400)
+    try:
         cfg = load_config(overrides=body.get("config"))
         package = assemble_estimate(body, cfg)
+        package.setdefault("meta", {})["engagement"] = engagement
     except Exception as exc:                       # noqa: BLE001
         logging.exception("assemble_estimate failed")
         return _json({"error": f"assemble failed: {exc}"}, 500)
@@ -98,27 +107,36 @@ def publish_estimate_route(req: func.HttpRequest) -> func.HttpResponse:
         return _json({"error": 'body needs the assemble_estimate inputs (or {"package": ...})'}, 400)
 
     try:
+        engagement = _engagement_of(req, body)
+    except ValueError as exc:
+        return _json({"error": str(exc)}, 400)
+
+    try:
         cfg = load_config(overrides=body.get("config"))
         package = body.get("package") or assemble_estimate(body, cfg)
+        package.setdefault("meta", {})["engagement"] = engagement
         cc = _container_client()
+        prefix = eng.estimate_prefix(engagement)
         written = []
 
         payload = json.dumps(package, default=str).encode("utf-8")
-        cc.upload_blob(f"{ESTIMATE_PREFIX}/latest.json", payload, overwrite=True)
+        cc.upload_blob(f"{prefix}/latest.json", payload, overwrite=True)
         written.append("latest.json")
         for fmt in ("xlsx", "docx", "pptx"):
             blob, _name, _mime = export(package, fmt)
-            cc.upload_blob(f"{ESTIMATE_PREFIX}/latest.{fmt}", blob, overwrite=True)
+            cc.upload_blob(f"{prefix}/latest.{fmt}", blob, overwrite=True)
             written.append(f"latest.{fmt}")
     except Exception as exc:                       # noqa: BLE001
         logging.exception("publish_estimate failed")
         return _json({"error": f"publish failed: {exc}"}, 500)
 
     return _json({
+        "engagement": engagement,
         "published": written,
+        "prefix": prefix,
         "package_id": package.get("meta", {}).get("package_id"),
         "figures": len(package.get("figures", [])),
-        "dashboard_hint": "open the chat-UI Container App at /dashboard",
+        "dashboard_hint": f"open the Container App at /e/{engagement}",
     })
 
 

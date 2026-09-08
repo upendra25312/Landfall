@@ -5,6 +5,80 @@ Operating model: [`landfall-5x5-prd.md` §7](landfall-5x5-prd.md). Tracker:
 
 ---
 
+## Cycle 18 — engagement tenancy foundation (E11.1 / E11.2 / E11.3)
+
+**Date:** 2026-09-08 · **Owner:** App + Data Eng · **Tracker:** E11.1–E11.3 (in-review),
+E11.4 / E11.5 (partial) · **Decisions:** [`engagement-workspaces-prd.md` §7](engagement-workspaces-prd.md)
+(engagement_id column + RLS; creator+group visibility; studio-deck container deferred).
+
+### Do
+
+- **`src/api/engagement.py`** — engagement identity: `slug()`, `make_engagement_id()`,
+  `normalize_engagement()` (`^[a-z0-9][a-z0-9-]{0,39}$` per segment), the per-engagement
+  ADLS prefixes (`inventory_prefix` / `answers_prefix` / `estimate_prefix` /
+  `ingest_report_prefix` / `history_prefix`), and `parse_inventory_blob()` (bare path or
+  full Event Grid subject → `(engagement, filename)`). Pure, no Azure imports.
+  `DEFAULT_ENGAGEMENT = "_default_/_default_"` folds the pre-E11 single estate.
+- **`src/api/engagement_sql.py`** — `set_engagement(cursor, id)` → `sp_set_session_context`.
+- **`scripts/schema.sql`** — `engagement_id NVARCHAR(120) NOT NULL` on all 6 tables;
+  composite PKs `(engagement_id, <id>)` for servers/applications/storage; indexes on the
+  IDENTITY tables; **Row-Level Security** — `dbo.fn_engagement_predicate` +
+  `dbo.EngagementFilter` `SECURITY POLICY` filtering every table by
+  `SESSION_CONTEXT('engagement_id')`. **No context set → no rows** (fail closed); every
+  reader sets it first. INSERTs unaffected (loader writes `engagement_id` explicitly).
+- **`src/api/ingest/loader.py`** — `engagement_id` first in every `TABLE_COLS` list;
+  `load(table, rows, engagement, conn=None)` validates the id up front, sets the session
+  context, keys the DELETE on `(engagement_id, source_file)`; `existing_keys(engagement)`
+  and `write_log` scoped too.
+- **`src/api/ingest/functions.py`** — blob trigger path
+  `raw/engagements/{customer}/{project}/inventory/{name}`, engagement derived via
+  `parse_inventory_blob`; `POST /api/ingest` takes `engagement`; DQ reports written to
+  `answers/engagements/<c>/<p>/_ingest/`.
+- **`src/api/engagements.py`** (new blueprint) — `POST /api/engagements`
+  (slug + uniqueness → `_engagement.json` + folder skeleton; records `created_by` from
+  the EasyAuth principal + `visibility`), `GET /api/engagements` (list, filtered by
+  creator/visibility), `GET /api/engagements/{customer}/{project}`.
+- **`src/api/tools.py`** — `query_inventory` takes `engagement` (defaults to
+  `_default_/_default_`), sets the RLS context before running the model's SQL — this is
+  what makes free-form text-to-SQL tenant-safe regardless of what the model writes.
+- **`src/api/deliverable/functions.py`** — `assemble_estimate` / `export_estimate` /
+  `publish_estimate` take `engagement`; `publish_estimate` writes to
+  `answers/engagements/<c>/<p>/estimate/`; the package `meta.engagement` is stamped.
+- **`src/web/app.py`** — `/dashboard/data` + `/dashboard/download/{fmt}` accept `?e=`;
+  `_read_estimate_blob` tries the engagement path, then `_default_`, then the legacy
+  `estimate/` path (back-compat for cycles 1–17).
+- **OpenAPI specs** (`query_inventory`, `assemble_estimate`, `export_estimate`,
+  `publish_estimate`) + `create_agent.py` SYSTEM_PROMPT gain the `engagement` argument /
+  the ENGAGEMENT SCOPE rule.
+- **`eventgrid.{sh,ps1}`** — inventory subscription subject → `/blobs/engagements/`.
+- **Tests** — `tests/test_engagement.py` (22 cases: slugs, ids, prefixes, blob parsing,
+  loader scoping); `test_dashboard.py` + `test_smoke_imports.py` updated. **150 pytest +
+  32/8/30 evals green.**
+
+### Check
+
+| # | Result |
+|---|---|
+| C1 | `make_engagement_id("Contoso Ltd", "DC Exit 2027")` → `contoso-ltd/dc-exit-2027`; a duplicate becomes `…-2` |
+| C2 | `loader.load` stamps `engagement_id`, sets the session context, keys the delete on `(engagement_id, source_file)`; a bad id raises before any DB call |
+| C3 | `publish_estimate` with `engagement=contoso-ltd/dc-exit` writes only under that prefix; `meta.engagement` set |
+| C4 | dashboard still reads the legacy `estimate/` path when nothing is published to an engagement |
+| C5 | 150 pytest, evals 32/32 · 8/8 · 30/30 |
+
+### Act
+
+- **Not deployed yet.** Deploy order for C18: `azd deploy api` (new `query_inventory` sets
+  context, safe against the old schema) → `azd provision` (RLS schema; wipes + recreates —
+  known `schema.sql` behaviour) → re-ingest the sample estate as `_default_/_default_` via
+  the new path → re-publish. The Event Grid subscription must be recreated for the new
+  subject filter (postdeploy hook).
+- **C19:** `run_engagement` bulk-ingest Function; tighten `engagement` to required + a
+  run/publish audit line; `test_evals` per-engagement isolation cases (E11.13).
+- **C20:** the dashboard UX (engagements home, new-engagement form, upload panel, start
+  analysis).
+
+---
+
 ## Plan note — 2026-09-08 — Epic E11 Engagement Workspaces raised
 
 Sponsor: the solution must produce **per-customer / per-project** deliverables, driven
