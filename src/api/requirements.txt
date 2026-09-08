@@ -5,6 +5,7 @@ python-pptx>=1.0          # deliverable/export.py — PowerPoint export (E5.4)
 azure-identity
 azure-ai-projects==2.6.0
 azure-storage-blob
+azure-storage-queue        # lz/functions.py — enqueue ca-calc jobs (E11.16)
 mssql-python
 pandas
 openpyxl

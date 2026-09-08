@@ -125,6 +125,18 @@ resource containers 'Microsoft.Storage/storageAccounts/blobServices/containers@2
   name: name
 }]
 
+// Queue that decouples build_calculator_estimate (Function, returns 202) from the
+// ca-calc container (KEDA-scaled 0->1 on a message; drains it, writes the POE). E11.16.
+resource queueService 'Microsoft.Storage/storageAccounts/queueServices@2023-05-01' = {
+  parent: storage
+  name: 'default'
+}
+
+resource calcJobsQueue 'Microsoft.Storage/storageAccounts/queueServices/queues@2023-05-01' = {
+  parent: queueService
+  name: 'calc-jobs'
+}
+
 // ==================================================================
 // Azure AI Search - FREE tier (50 MB, no semantic ranker, no SLA)
 // ==================================================================
@@ -343,15 +355,21 @@ resource calcApp 'Microsoft.App/containerApps@2024-03-01' = {
           resources: { cpu: json('1.0'), memory: '2Gi' } // Chromium needs headroom
           env: [
             { name: 'APPLICATIONINSIGHTS_CONNECTION_STRING', value: appInsights.properties.ConnectionString }
-            // ca-calc writes landing_zone.{xlsx,json,png} to the answers container itself
-            // (async — the Function returns 202); it shares the workload identity `uami`,
-            // which already has Storage Blob Data Owner (ra_uami_blob).
+            // ca-calc drains the calc-jobs queue and writes landing_zone.{xlsx,json,png}
+            // to the answers container itself, with the shared workload identity `uami`
+            // (Storage Blob Data Owner + Storage Queue Data Contributor already assigned).
             { name: 'AZURE_CLIENT_ID', value: uami.properties.clientId }
             { name: 'STORAGE_URL', value: storage.properties.primaryEndpoints.blob }
+            { name: 'STORAGE_QUEUE_URL', value: storage.properties.primaryEndpoints.queue }
+            { name: 'CALC_QUEUE', value: calcJobsQueue.name }
           ]
         }
       ]
-      scale: { minReplicas: 0, maxReplicas: 2 }
+      // One always-on replica drains the calc-jobs queue (a background poller in
+      // app.py). KEDA queue-scale-to-zero with the workload identity is the
+      // follow-up optimisation (E11.16) — the scale-rule MI auth shape isn't in
+      // this Bicep type version and shared-key auth is disabled on the account.
+      scale: { minReplicas: 1, maxReplicas: 1 }
     }
   }
 }
@@ -418,8 +436,11 @@ resource functionApp 'Microsoft.Web/sites@2023-12-01' = {
         { name: 'AZURE_SQL_SERVER_FQDN', value: sqlServer.properties.fullyQualifiedDomainName }
         { name: 'AZURE_SQL_DATABASE', value: sqlDatabase.name }
         { name: 'QUERY_TIMEOUT_S', value: '20' } // query_inventory statement timeout (E8.3)
-        // ca-calc (Azure Pricing Calculator driver) — internal ingress FQDN (E11.16)
-        { name: 'CALC_URL', value: 'https://${calcApp.properties.configuration.ingress.fqdn}' }
+        // ca-calc (Azure Pricing Calculator driver, E11.16): build_calculator_estimate
+        // writes the spec to blob + a message on this queue and returns 202; the
+        // ca-calc container drains the queue and writes landing_zone.* itself.
+        { name: 'STORAGE_QUEUE_URL', value: storage.properties.primaryEndpoints.queue }
+        { name: 'CALC_QUEUE', value: calcJobsQueue.name }
       ]
     }
   }

@@ -1,4 +1,5 @@
-"""E11.16 — the ca-calc FastAPI service: async /build writes landing_zone.* itself."""
+"""E11.16 — ca-calc: the queue worker writes landing_zone.* ; /build runs sync."""
+import asyncio
 import base64
 import importlib.util
 import io
@@ -9,15 +10,15 @@ import sys
 import pytest
 from conftest import ROOT
 
-# `src/calc` at the END of the path — `driver` / `calculator_export` / `adapters`
-# are unique names; `app` collides with src/web so it is loaded by path below.
+# `src/calc` at the END of the path — `driver` / `calculator_export` / `worker` /
+# `adapters` are unique names; `app` collides with src/web so it is loaded by path.
 _CALC = os.path.join(ROOT, "src", "calc")
 if _CALC not in sys.path:
     sys.path.append(_CALC)
 
 
-def _load_calc_app():
-    spec = importlib.util.spec_from_file_location("calc_service_app", os.path.join(_CALC, "app.py"))
+def _load(name):
+    spec = importlib.util.spec_from_file_location(f"calc_{name}", os.path.join(_CALC, f"{name}.py"))
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
     return mod
@@ -40,32 +41,13 @@ def _calc_xlsx(name="Contoso — DC Exit — Azure Landing Zone (POE)", monthly=
     return buf.getvalue()
 
 
-class _FakeContainer:
-    def __init__(self, store):
-        self.store = store
-
-    def upload_blob(self, name, data, overwrite=False, content_settings=None):
-        self.store[name] = bytes(data) if not isinstance(data, str) else data.encode()
-
-
-@pytest.fixture()
-def client(monkeypatch):
-    calc_app = _load_calc_app()
-    from fastapi.testclient import TestClient
-
-    store = {}
-    monkeypatch.setattr(calc_app, "_container_client", lambda dest: _FakeContainer(store))
-
-    async def _fake_build(spec):
-        return {"xlsx_b64": base64.b64encode(_calc_xlsx()).decode(),
-                "screenshot_b64": base64.b64encode(b"\x89PNG\r\n").decode(),
-                "applied": [{"service": "virtual-machines"}],
-                "skipped": [{"what": "Oracle", "why": "no module"}],
-                "monthly_header": "$4,210",
-                "calculator": "https://azure.microsoft.com/pricing/calculator/"}
-
-    monkeypatch.setattr(calc_app, "build_estimate", _fake_build)
-    return calc_app, TestClient(calc_app.app), store
+async def _fake_run(spec):
+    return {"xlsx_b64": base64.b64encode(_calc_xlsx()).decode(),
+            "screenshot_b64": base64.b64encode(b"\x89PNG\r\n").decode(),
+            "applied": [{"service": "virtual-machines"}],
+            "skipped": [{"what": "Oracle", "why": "no module"}],
+            "monthly_header": "$4,210",
+            "calculator": "https://azure.microsoft.com/pricing/calculator/"}
 
 
 _SPEC = {"engagement": "contoso/dc-exit",
@@ -73,64 +55,102 @@ _SPEC = {"engagement": "contoso/dc-exit",
          "region_default": "sweden-central", "currency": "USD",
          "licensing_program_calc": "mca", "internal_monthly_estimate": 4000.0,
          "line_items": [{"service": "virtual-machines", "config": {}}]}
-_DEST = {"storage_url": "https://st.blob.core.windows.net", "container": "answers",
-         "prefix": "engagements/contoso/dc-exit/estimate"}
+_PREFIX = "engagements/contoso/dc-exit/estimate"
 
 
-def test_healthz(client):
-    _app, c, _store = client
-    assert c.get("/healthz").json()["ok"] is True
+# ---- fake blob + queue -------------------------------------------------------
+
+class _Blob:
+    def __init__(self, store, key):
+        self.store, self.key = store, key
+
+    def download_blob(self):
+        data = self.store[self.key]
+
+        class _D:
+            def readall(_s):
+                return data
+        return _D()
 
 
-def test_async_build_writes_landing_zone_blobs(client):
-    _app, c, store = client
-    r = c.post("/build", json={"spec": _SPEC, "dest": _DEST})
-    assert r.status_code == 202
-    assert r.json()["status"] == "building"
+class _Container:
+    def __init__(self, store):
+        self.store = store
 
-    # TestClient runs the BackgroundTask before returning — the artifacts are stored
-    p = _DEST["prefix"]
-    assert f"{p}/landing_zone.xlsx" in store
-    assert f"{p}/landing_zone.png" in store
-    lz = json.loads(store[f"{p}/landing_zone.json"])
+    def get_blob_client(self, name):
+        return _Blob(self.store, name)
+
+    def upload_blob(self, name, data, overwrite=False, content_settings=None):
+        self.store[name] = bytes(data) if not isinstance(data, str) else data.encode()
+
+
+class _BlobSvc:
+    def __init__(self, store):
+        self.store = store
+
+    def get_container_client(self, c):
+        return _Container(self.store)
+
+
+# ---- worker ---------------------------------------------------------------
+
+def test_worker_processes_job_and_writes_ready(monkeypatch):
+    worker = _load("worker")
+    store = {f"{_PREFIX}/_calc_spec.json": json.dumps(_SPEC).encode()}
+    monkeypatch.setattr(worker, "build_estimate", _fake_run)
+
+    asyncio.run(worker._process(_BlobSvc(store), {"container": "answers", "prefix": _PREFIX,
+                                                  "spec_blob": f"{_PREFIX}/_calc_spec.json"}))
+    lz = json.loads(store[f"{_PREFIX}/landing_zone.json"])
     assert lz["status"] == "ready"
     assert lz["monthly_total"] == 4210.0
     assert lz["reconciliation"]["delta_pct"] is not None
     assert any("Oracle" in s["what"] for s in lz["skipped"])
-    assert lz["spec"]["engagement"] == "contoso/dc-exit"
+    assert f"{_PREFIX}/landing_zone.xlsx" in store
+    assert f"{_PREFIX}/landing_zone.png" in store
 
 
-def test_build_failure_writes_failed_marker(client, monkeypatch):
-    calc_app, c, store = client
+def test_worker_writes_failed_marker_on_error(monkeypatch):
+    worker = _load("worker")
+    store = {f"{_PREFIX}/_calc_spec.json": json.dumps(_SPEC).encode()}
 
     async def _boom(spec):
         raise RuntimeError("calculator DOM changed")
 
-    monkeypatch.setattr(calc_app, "build_estimate", _boom)
-    r = c.post("/build", json={"spec": _SPEC, "dest": _DEST})
-    assert r.status_code == 202
-    lz = json.loads(store[f"{_DEST['prefix']}/landing_zone.json"])
+    monkeypatch.setattr(worker, "build_estimate", _boom)
+
+    asyncio.run(worker._process(_BlobSvc(store), {"container": "answers", "prefix": _PREFIX,
+                                                  "spec_blob": f"{_PREFIX}/_calc_spec.json"}))
+    lz = json.loads(store[f"{_PREFIX}/landing_zone.json"])
     assert lz["status"] == "failed"
     assert "calculator DOM changed" in lz["error"]
 
 
-def test_sync_wait_returns_summary(client):
-    _app, c, _store = client
-    r = c.post("/build?wait=1", json={"spec": _SPEC, "dest": _DEST})
+# ---- HTTP service (sync path) ------------------------------------------------
+
+@pytest.fixture()
+def client(monkeypatch):
+    calc_app = _load("app")
+    from fastapi.testclient import TestClient
+    monkeypatch.setattr(calc_app, "build_estimate", _fake_run)
+    monkeypatch.delenv("STORAGE_QUEUE_URL", raising=False)   # don't start the consumer
+    return calc_app, TestClient(calc_app.app)
+
+
+def test_healthz(client):
+    _app, c = client
+    assert c.get("/healthz").json()["ok"] is True
+
+
+def test_sync_build_returns_summary(client):
+    _app, c = client
+    r = c.post("/build", json=_SPEC)
     assert r.status_code == 200
     out = r.json()
     assert out["status"] == "ready" and out["monthly_total"] == 4210.0
     assert "xlsx_b64" in out
 
 
-def test_bare_spec_no_dest_runs_sync(client):
-    _app, c, _store = client
-    r = c.post("/build", json=_SPEC)          # no {spec,dest} envelope, no dest
-    assert r.status_code == 200
-    assert r.json()["monthly_total"] == 4210.0
-
-
 def test_bad_body_is_400(client):
-    _app, c, _store = client
-    assert c.post("/build", json={"spec": {"line_items": []}, "dest": _DEST}).status_code == 400
-    assert c.post("/build", json={"spec": _SPEC, "dest": {"container": "x"}}).status_code == 400
+    _app, c = client
+    assert c.post("/build", json={"line_items": []}).status_code == 400

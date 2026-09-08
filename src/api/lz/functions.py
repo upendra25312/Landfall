@@ -12,8 +12,6 @@ import datetime as _dt
 import json
 import logging
 import os
-import urllib.error
-import urllib.request
 
 import azure.functions as func
 
@@ -25,6 +23,8 @@ from .calculator_spec import build_calculator_spec
 lz_bp = func.Blueprint()
 
 _state: dict = {}
+
+CALC_QUEUE = os.environ.get("CALC_QUEUE", "calc-jobs")
 
 
 def _now() -> str:
@@ -69,6 +69,16 @@ def _read_json(container: str, name: str) -> dict | None:
         return None
 
 
+def _queue():
+    if "queue" not in _state:
+        from azure.identity import DefaultAzureCredential
+        from azure.storage.queue import QueueClient
+        base = os.environ["STORAGE_QUEUE_URL"].rstrip("/")
+        _state["queue"] = QueueClient(account_url=base, queue_name=CALC_QUEUE,
+                                      credential=DefaultAzureCredential())
+    return _state["queue"]
+
+
 @lz_bp.route(route="build_calculator_estimate", methods=["POST", "GET"],
              auth_level=func.AuthLevel.ANONYMOUS)
 def build_calculator_estimate_route(req: func.HttpRequest) -> func.HttpResponse:
@@ -81,11 +91,11 @@ def build_calculator_estimate_route(req: func.HttpRequest) -> func.HttpResponse:
     Async by necessity: driving ~50 calculator line items through Playwright takes
     minutes and a synchronous call is cut at the ~230s Functions HTTP limit. This
     route builds the calculator spec from the engagement's published estimate
-    (`latest.json` + `tools_raw.json`) + `_engagement.json`, writes a `building`
-    marker, then POSTs the spec + a blob destination to `ca-calc` fire-and-forget.
-    `ca-calc` drives the real calculator and writes `landing_zone.{xlsx,json,png}`
-    to the engagement folder itself (shared workload identity). `CALC_URL` env
-    points at the container."""
+    (`latest.json` + `tools_raw.json`) + `_engagement.json`, writes the spec to
+    `{prefix}/_calc_spec.json` + a `building` marker, and puts one message on the
+    `calc-jobs` queue. The `ca-calc` container drains the queue, drives the real
+    calculator, and writes `landing_zone.{xlsx,json,png}` to the engagement folder
+    itself (shared workload identity)."""
     try:
         raw_eng = (req.params.get("engagement")
                    or ((req.get_json() or {}) if req.method == "POST" else {}).get("engagement"))
@@ -118,9 +128,8 @@ def build_calculator_estimate_route(req: func.HttpRequest) -> func.HttpResponse:
     except ValueError:
         body = {}
 
-    calc_url = os.environ.get("CALC_URL", "").rstrip("/")
-    if not calc_url:
-        return _json({"error": "CALC_URL not configured — the ca-calc container is not deployed yet"}, 503)
+    if not os.environ.get("STORAGE_QUEUE_URL"):
+        return _json({"error": "STORAGE_QUEUE_URL not configured — the ca-calc queue is not wired yet"}, 503)
 
     latest = _read_json(eng.ANSWERS_CONTAINER, f"{prefix}/latest.json")
     tools_raw = _read_json(eng.ANSWERS_CONTAINER, f"{prefix}/tools_raw.json") or {}
@@ -163,30 +172,27 @@ def build_calculator_estimate_route(req: func.HttpRequest) -> func.HttpResponse:
         "internal_monthly_estimate": spec.get("internal_monthly_estimate"),
     }
     try:
-        _blob().get_container_client(eng.ANSWERS_CONTAINER).upload_blob(
-            f"{prefix}/landing_zone.json", json.dumps(marker, default=str).encode(), overwrite=True)
-    except Exception:                              # noqa: BLE001
-        logging.exception("could not write the building marker (continuing)")
-
-    dest = {"storage_url": os.environ["STORAGE_URL"],
-            "container": eng.ANSWERS_CONTAINER, "prefix": prefix}
-    payload = json.dumps({"spec": spec, "dest": dest}).encode()
-    try:
-        r = urllib.request.Request(f"{calc_url}/build", data=payload,
-                                   headers={"Content-Type": "application/json"}, method="POST")
-        with urllib.request.urlopen(r, timeout=60) as resp:
-            kicked = json.loads(resp.read() or b"{}")
-    except urllib.error.URLError as exc:
-        # a slow accept is fine (ca-calc cold-start) — the job may still be running;
-        # only a hard connection failure is an error.
-        if isinstance(getattr(exc, "reason", None), TimeoutError) or "timed out" in str(exc).lower():
-            kicked = {"status": "building", "note": "ca-calc accept slow — assumed started"}
-        else:
-            logging.exception("could not reach ca-calc")
-            return _json({"error": f"could not start the calculator run: {exc}"}, 502)
+        cc = _blob().get_container_client(eng.ANSWERS_CONTAINER)
+        cc.upload_blob(f"{prefix}/_calc_spec.json", json.dumps(spec, default=str).encode(),
+                       overwrite=True)
+        cc.upload_blob(f"{prefix}/landing_zone.json", json.dumps(marker, default=str).encode(),
+                       overwrite=True)
     except Exception as exc:                       # noqa: BLE001
-        logging.exception("ca-calc kick failed")
+        logging.exception("could not stage the calculator spec")
+        return _json({"error": f"could not stage the calculator run: {exc}"}, 500)
+
+    try:
+        _queue().send_message(json.dumps({
+            "engagement": engagement,
+            "container": eng.ANSWERS_CONTAINER,
+            "prefix": prefix,
+            "spec_blob": f"{prefix}/_calc_spec.json",
+            "queued_at": _now(),
+        }))
+    except Exception as exc:                       # noqa: BLE001
+        logging.exception("could not enqueue the calculator job")
         return _json({"error": f"could not start the calculator run: {exc}"}, 502)
+    kicked = {"status": "building"}
 
     return _json({
         "engagement": engagement,

@@ -1,13 +1,13 @@
-"""E11.16 — build_calculator_estimate: async start + poll.
+"""E11.16 — build_calculator_estimate: async start (queue) + poll.
 
-The Function builds the calculator spec, writes a `building` marker, kicks the
-`ca-calc` container fire-and-forget and returns 202. `ca-calc` writes the real
-`landing_zone.{xlsx,json,png}` itself (covered by tests/test_calc_service.py).
+The Function builds the calculator spec, stages it at `_calc_spec.json`, writes a
+`building` marker, drops a message on `calc-jobs`, and returns 202. The `ca-calc`
+container drains the queue and writes `landing_zone.{xlsx,json,png}` itself
+(covered by tests/test_calc_service.py).
 """
 import json
 import os
 import sys
-import urllib.error
 
 import pytest
 from conftest import ROOT
@@ -76,27 +76,16 @@ def wired(monkeypatch):
                                               "currency": "USD", "licensing_program": "MCA"}).encode(),
     }
     monkeypatch.setattr(fn, "_blob", lambda: _FakeSvc(store))
-    monkeypatch.setenv("CALC_URL", "http://ca-calc.internal")
     monkeypatch.setenv("STORAGE_URL", "https://st.blob.core.windows.net")
+    monkeypatch.setenv("STORAGE_QUEUE_URL", "https://st.queue.core.windows.net")
 
-    calls = {}
+    calls = {"messages": []}
 
-    def _fake_urlopen(req, timeout=0):
-        calls["payload"] = json.loads(req.data)
-        calls["url"] = req.full_url
+    class _FakeQueue:
+        def send_message(self, content, **kw):
+            calls["messages"].append(json.loads(content))
 
-        class _R:
-            def __enter__(_s):
-                return _s
-
-            def __exit__(*a):
-                return False
-
-            def read(_s):
-                return json.dumps({"status": "building", "prefix": prefix}).encode()
-        return _R()
-
-    monkeypatch.setattr(fn.urllib.request, "urlopen", _fake_urlopen)
+    monkeypatch.setattr(fn, "_queue", lambda: _FakeQueue())
     return fn, store, calls, prefix
 
 
@@ -128,15 +117,17 @@ def test_post_starts_run_and_returns_202(wired):
     assert marker["status"] == "building"
     assert marker["internal_monthly_estimate"] is not None
 
-    # ca-calc got {spec, dest} with the right blob destination and a price-free spec
-    payload = calls["payload"]
-    assert payload["dest"] == {"storage_url": "https://st.blob.core.windows.net",
-                               "container": "answers", "prefix": prefix}
-    spec = payload["spec"]
+    # the spec was staged to blob, price-free and region-correct
+    spec = json.loads(store[f"{prefix}/_calc_spec.json"])
     assert spec["region_default"] == "sweden-central"
     assert spec["estimate_name"].startswith("Contoso")
     assert all("price" not in json.dumps(li).lower() for li in spec["line_items"])
-    assert calls["url"].endswith("/build")
+
+    # one calc-jobs message pointing at that spec
+    assert len(calls["messages"]) == 1
+    msg = calls["messages"][0]
+    assert msg["prefix"] == prefix and msg["spec_blob"] == f"{prefix}/_calc_spec.json"
+    assert msg["container"] == "answers"
 
 
 def test_get_returns_status(wired):
@@ -169,9 +160,9 @@ def test_missing_engagement_is_400(wired):
     assert resp.status_code == 400
 
 
-def test_no_calc_url_is_503(wired, monkeypatch):
+def test_no_queue_url_is_503(wired, monkeypatch):
     fn, *_ = wired
-    monkeypatch.delenv("CALC_URL", raising=False)
+    monkeypatch.delenv("STORAGE_QUEUE_URL", raising=False)
     resp = fn.build_calculator_estimate_route(_post({"engagement": "contoso/dc-exit"}))
     assert resp.status_code == 503
 
@@ -184,12 +175,13 @@ def test_no_published_estimate_is_409(wired):
     assert resp.status_code == 409
 
 
-def test_ca_calc_unreachable_is_502(wired, monkeypatch):
+def test_enqueue_failure_is_502(wired, monkeypatch):
     fn, store, calls, prefix = wired
 
-    def _boom(req, timeout=0):
-        raise urllib.error.URLError("Connection refused")
+    class _BadQueue:
+        def send_message(self, content, **kw):
+            raise RuntimeError("queue unreachable")
 
-    monkeypatch.setattr(fn.urllib.request, "urlopen", _boom)
+    monkeypatch.setattr(fn, "_queue", lambda: _BadQueue())
     resp = fn.build_calculator_estimate_route(_post({"engagement": "contoso/dc-exit"}))
     assert resp.status_code == 502
