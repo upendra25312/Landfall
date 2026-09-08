@@ -49,6 +49,39 @@ schema, which is the work the client said they can't do.
 
 ---
 
+## Update — 2026-09-08 (post-remediation)
+
+The P0 backlog below has since been built and deployed to `rg-landfall` over PDCA cycles
+1–16 (see [`prd/pdca-log.md`](../prd/pdca-log.md), [`prd/tracker.md`](../prd/tracker.md)).
+Verified live: ingestion (P0-1), the cost engine (P0-2), landing-zone design (P0-3), the
+wave engine (P0-4), the structured deliverable + traceability (P0-5), `estimation_config`
+(P0-6), the eval harness (P0-7), Function App EasyAuth (P0-8), and per-engagement `azd`
+isolation (P0-9). The verdict above stands as the 2026-09-07 record.
+
+**Client-ready artifacts — generation-tooling direction (folds into PS-2 / P0-5).** The
+assembled package (`assemble_estimate`) is rendered to Excel / Word / PowerPoint by
+`src/api/deliverable/export.py` and surfaced through the assessment dashboard. The
+production bar for those files, and the studio deck, is set by four external skills the
+sponsor selected — the detailed spec lives in
+[`audits/path-to-5x5.md` §"Deliverable polish"](path-to-5x5.md) and PRD **E5.4** / **E5.6**:
+
+| Artifact | Skill | What it dictates |
+|---|---|---|
+| `.xlsx` | [`anthropics/skills · xlsx`](https://github.com/anthropics/skills/tree/main/skills/xlsx) | derived cells are **formulas, not Python literals**; Excel-2007 functions only; `$#,##0` / fractions / parens; a headless LibreOffice recalc must report **0 errors** before delivery |
+| `.docx` | [`anthropics/skills · docx`](https://github.com/anthropics/skills/tree/main/skills/docx) | US-Letter in DXA (not the lib's A4 default); dual table widths; numbering defs not bullet glyphs; authored so an architect's edits land as Word **tracked changes**, `accept_changes` → clean proposal copy |
+| `.pptx` (studio) | [`siril9/presentation-skill`](https://github.com/siril9/presentation-skill) | source-first: `outline.json` from the package → style preset + composition grammar → **pptxgenjs** render → `qa_gate.py` must pass; never hand-edit the `.pptx` |
+| `.pptx` (design-rich) | [`hugohe3/ppt-master`](https://github.com/hugohe3/ppt-master) | SVG layout → native DrawingML, firm `.pptx` template preserved, optional speaker notes |
+
+Both PowerPoint skills need a Node toolchain (+ LibreOffice/Poppler) absent from the
+Function runtime, so **E5.6 runs side-car** — an architect runs the skill locally against
+the downloaded `latest.json`, or the dashboard invokes a dedicated build container. The
+in-Function `python-pptx` deck (E5.4) stays the always-available fallback. Invariants held
+across every path: the `DRAFT — architect review required` watermark, every headline
+number resolvable to an `F*` calculation-appendix id, and the E7.4 no-un-sourced-number
+guard over the rendered text.
+
+---
+
 ## 2. Scenario walk-through (the acid test)
 
 Tracing the 250-server MRG estate end-to-end through the solution **as built**:
