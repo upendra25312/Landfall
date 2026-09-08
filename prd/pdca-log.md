@@ -5,6 +5,79 @@ Operating model: [`landfall-5x5-prd.md` §7](landfall-5x5-prd.md). Tracker:
 
 ---
 
+## Cycle 12 — security & isolation, self-contained hooks (Phase 1 close)
+
+**Date:** 2026-09-08 · **Owner:** Security & Compliance Architect + SRE · **Tracker:**
+E8.3 / E8.4 / E9.1 done; E8.1 / E8.2 in-review · **Closes audit** SEC-1/2/3/8, P0-8, OPS-5.
+
+### Plan
+
+- **E8.3** replace the keyword-blocklist `_safe_select` with an allow-list parser:
+  single `SELECT`/`WITH`, only the six inventory tables, no comments hiding keywords,
+  no `sys.`/`information_schema`/`WAITFOR`/`OPENROWSET`/…; add a statement timeout.
+- **E8.4** the question and generated SQL never reach the logs — log a `sha256[:12]`
+  hash + the table list + the query shape only.
+- **E9.1** move the schema load + `db_datareader` grant off `sqlcmd` into
+  `scripts/apply_sql.py` (pure Python, `mssql-python` + Entra token) so the hook needs
+  neither `sqlcmd` nor `azd` on PATH.
+- **E8.2** wire Function-App EasyAuth into the Bicep (`enableFunctionAuth` param, off by
+  default, `excludedPaths ["/runtime"]`) so turning auth on is `azd env set` + `azd
+  provision`, not a manual CLI recipe.
+- **E8.1** document + verify one datastore per engagement (`resourceToken` already makes
+  every resource env-unique; `azd down --purge`).
+
+**Acceptance**
+
+| # | Criterion | Check |
+|---|---|---|
+| C1 | guard accepts real analytics (joins, CTEs, group-by, TOP, trailing comment) | `test_sqlguard` |
+| C2 | guard rejects 2nd statement, non-SELECT, `sys.`/`information_schema`, unknown table, `WAITFOR`, `INTO`, `OPENROWSET`, comment-hidden `UNION sys.*`, unbalanced parens | `test_sqlguard` |
+| C3 | table allow-list is exactly the six inventory tables; CTE names aren't flagged | `test_sqlguard` |
+| C4 | `signature()` contains no question text and no SQL text; hash is stable | `test_sqlguard` |
+| C5 | `query_inventory` logs a hash + tables + shape, never the text | code review |
+| C6 | `apply_sql.py` splits `schema.sql` on `GO`, skips comment-only batches | unit-ish check |
+| C7 | `az bicep build` clean with the new auth param (default off = no behaviour change) | `az bicep build` |
+
+### Do
+
+- `src/api/sqlguard.py` — new (`safe_select`, `signature`, `ALLOWED_TABLES`). `tools.py`
+  — imports it, drops the old guard, adds `QUERY_TIMEOUT_S` + `cur.timeout`, scrubs
+  every `logging.*` call (hash only).
+- `scripts/apply_sql.py` — new. `postprovision.{sh,ps1}` — call it instead of the
+  `sqlcmd` block. `scripts/requirements.txt` — `mssql-python`.
+- `infra/{main,resources}.bicep` + `main.parameters.json` — `enableFunctionAuth` /
+  `functionAuthClientId` params + `authsettingsV2` (conditional) + `QUERY_TIMEOUT_S`
+  app setting.
+- `tests/test_sqlguard.py` — 20 cases (114 total). `DEPLOY.md` updated (sqlcmd removed,
+  auth recipe, isolation note).
+
+### Check
+
+`pytest tests -q` → **114 passed** (20 new). `az bicep build infra/main.bicep` → clean.
+`apply_sql._run_batches` over `schema.sql` → 7 real batches, trailing comment skipped.
+Guard spot-checks: `SELECT ... FROM sys.databases` → blocked (`sys.`); `SELECT * FROM
+servers /* x */ UNION SELECT name,1,2 FROM sys.tables` → blocked; `WITH prod AS (...)
+SELECT COUNT(*) FROM prod` → accepted.
+
+### Act
+
+- **E8.3 / E8.4 / E9.1 done.** `query_inventory` is now allow-list-parsed, timed out,
+  and log-safe; the deploy no longer needs `sqlcmd`.
+- **E8.2 / E8.1 in-review** — the Bicep path is ready and defaults off (no behaviour
+  change); a live `azd provision` with `ENABLE_FUNCTION_AUTH=true` + an app registration
+  is needed to confirm anonymous → 401 and the agent still works via MSI. Same live-verify
+  bucket as E1.6.
+- **Phase 1 backlog left:** E1.7 (mapping override), E4.3 (duration model), full E6.2
+  resource loading, E8.5–8.7 / E9.2–9.5 (Phase 2). Plus the live checks (E1.6, E8.2).
+- **New scope from the sponsor (this session):** client-ready **XLSX / DOCX / PPTX**
+  exports of the estimate package, and an **Azure Migrate–style assessment dashboard**
+  web app on the existing Container App from which end users export those artifacts.
+  Added to the PRD as **E5.4** (exports) and **E5.5** (assessment web app). Next cycles.
+- **Next — Cycle 13:** E5.4 — `deliverable/export.py`: the assembled package →
+  a formatted Excel workbook, a Word document, and a PowerPoint deck.
+
+---
+
 ## Cycle 11 — fault injection, output guard, CI gate
 
 **Date:** 2026-09-08 · **Owner:** Applied Scientist + SRE · **Tracker:** E7.3 / E7.4 /

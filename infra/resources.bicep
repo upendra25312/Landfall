@@ -13,6 +13,12 @@ param modelCapacity int
 @description('Chat-UI container image. Empty on first provision (placeholder is used); azd sets SERVICE_WEB_IMAGE_NAME after the first deploy so re-provisioning keeps the real image.')
 param webImageName string = ''
 
+@description('Turn on Function App built-in auth (EasyAuth) so query_inventory is not anonymous. When true, set AGENT_TOOL_AUTH=managed and re-run create_agent.py so the agent calls it with its managed identity. /runtime is excluded so the Event Grid webhook + durable endpoints keep working.')
+param enableFunctionAuth bool = false
+
+@description('Entra app registration (client) id the Function App accepts tokens for, when enableFunctionAuth is true. Usually api://<function-app-name>.')
+param functionAuthClientId string = ''
+
 @description('Foundry agent name. Empty on first provision; the postprovision hook creates the agent and stores AGENT_ID in the azd env so re-provisioning keeps it wired to both services.')
 param agentId string = ''
 
@@ -358,7 +364,36 @@ resource functionApp 'Microsoft.Web/sites@2023-12-01' = {
         { name: 'AZURE_OPENAI_CHAT_DEPLOYMENT', value: chatModelName } // text-to-SQL model
         { name: 'AZURE_SQL_SERVER_FQDN', value: sqlServer.properties.fullyQualifiedDomainName }
         { name: 'AZURE_SQL_DATABASE', value: sqlDatabase.name }
+        { name: 'QUERY_TIMEOUT_S', value: '20' } // query_inventory statement timeout (E8.3)
       ]
+    }
+  }
+}
+
+// EasyAuth for query_inventory (E8.2). Off by default; `azd env set ENABLE_FUNCTION_AUTH true`
+// (and provide FUNCTION_AUTH_CLIENT_ID) turns it on. /runtime stays excluded so the Event
+// Grid webhook and durable endpoints keep working; unauthenticated calls get 401.
+resource functionAuth 'Microsoft.Web/sites/config@2023-12-01' = if (enableFunctionAuth) {
+  parent: functionApp
+  name: 'authsettingsV2'
+  properties: {
+    platform: { enabled: true }
+    globalValidation: {
+      requireAuthentication: true
+      unauthenticatedClientAction: 'Return401'
+      excludedPaths: [ '/runtime' ]
+    }
+    identityProviders: {
+      azureActiveDirectory: {
+        enabled: true
+        registration: {
+          openIdIssuer: '${environment().authentication.loginEndpoint}${subscription().tenantId}/v2.0'
+          clientId: functionAuthClientId
+        }
+        validation: {
+          allowedAudiences: [ functionAuthClientId ]
+        }
+      }
     }
   }
 }

@@ -19,7 +19,6 @@ App settings used:
 import json
 import logging
 import os
-import re
 import time
 import urllib.parse
 import urllib.request
@@ -27,6 +26,8 @@ import urllib.request
 import azure.functions as func
 from azure.identity import DefaultAzureCredential
 from azure.ai.projects import AIProjectClient
+
+from sqlguard import safe_select as _safe_select, signature as _sql_signature
 
 bp = func.Blueprint()
 
@@ -93,31 +94,7 @@ _SQL_SYSTEM = (
     "markdown fences, no explanation.\n\n" + SCHEMA_HINT
 )
 
-_FORBIDDEN = re.compile(
-    r"\b(insert|update|delete|drop|alter|create|exec|execute|merge|grant|revoke|"
-    r"truncate|into|backup|restore|sp_\w*|xp_\w*)\b",
-    re.IGNORECASE,
-)
-
-
-def _strip_fences(text: str) -> str:
-    t = text.strip()
-    if t.startswith("```"):
-        t = re.sub(r"^```[a-zA-Z]*\s*", "", t)
-        t = re.sub(r"\s*```$", "", t)
-    return t.strip()
-
-
-def _safe_select(sql: str) -> str:
-    """Raise ValueError unless sql is a single read-only SELECT/WITH."""
-    s = _strip_fences(sql).rstrip(";").strip()
-    if not re.match(r"^\s*(select|with)\b", s, re.IGNORECASE):
-        raise ValueError("not a SELECT")
-    if ";" in s:
-        raise ValueError("multiple statements")
-    if _FORBIDDEN.search(s):
-        raise ValueError("write/DDL keyword present")
-    return s
+QUERY_TIMEOUT_S = int(os.environ.get("QUERY_TIMEOUT_S", "20"))
 
 
 def _sql_for(question: str) -> str:
@@ -141,27 +118,37 @@ def query_inventory(req: func.HttpRequest) -> func.HttpResponse:
     if not question:
         return _json({"error": "body must be {\"question\": \"...\"}"}, 400)
 
+    sig = _sql_signature(question)
     try:
         sql = _sql_for(question)
     except ValueError as exc:
-        logging.warning("unsafe SQL for %r: %s", question, exc)
+        logging.warning("query_inventory rejected q=%s: %s", sig["q_hash"], exc)
         return _json({"error": f"could not build a safe query ({exc})", "sql": ""}, 400)
-    except Exception:
-        logging.exception("text-to-SQL failed")
+    except Exception as exc:                                   # noqa: BLE001
+        logging.error("query_inventory text-to-SQL failed q=%s: %s", sig["q_hash"],
+                      type(exc).__name__)
         return _json({"error": "text-to-SQL failed"}, 502)
 
+    sig = _sql_signature(question, sql)
+    logging.info("query_inventory q=%s shape=%s tables=%s", sig["q_hash"],
+                 sig.get("shape"), ",".join(sig.get("tables", [])))
     try:
         conn = _sql_connect()
         try:
             cur = conn.cursor()
+            try:
+                cur.timeout = QUERY_TIMEOUT_S
+            except Exception:                                  # noqa: BLE001
+                pass
             cur.execute(sql)
             columns = [d[0] for d in cur.description] if cur.description else []
             fetched = cur.fetchmany(MAX_ROWS + 1)
         finally:
             conn.close()
-    except Exception as exc:
-        logging.exception("query failed")
-        return _json({"error": f"query failed: {exc}", "sql": sql}, 502)
+    except Exception as exc:                                   # noqa: BLE001
+        logging.error("query_inventory query failed q=%s: %s", sig["q_hash"],
+                      type(exc).__name__)
+        return _json({"error": "query failed", "sql": sql}, 502)
 
     truncated = len(fetched) > MAX_ROWS
     rows = [[_cell(v) for v in r] for r in fetched[:MAX_ROWS]]

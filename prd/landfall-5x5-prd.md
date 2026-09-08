@@ -144,6 +144,16 @@ Priorities carry over from the audit (P0 = before any real engagement, P1 = befo
 - **E5.2** Stable ID + calculation appendix on every figure: source tool, query/filter,
   input row count, assumptions applied, formula, result, confidence.
 - **E5.3** Machine-tracked assumptions & exclusions register across the whole run.
+- **E5.4** Client-ready exports: the assembled package rendered as a formatted **Excel
+  workbook** (a sheet per section + a BoM + the calculation appendix + the register),
+  a **Word document** (the proposal-ready narrative), and a **PowerPoint deck** (the
+  executive readout). Every figure keeps its `F*` reference so the appendix still ties
+  out. `DRAFT — architect review` watermark on all three.
+- **E5.5** **Assessment dashboard web app** on the existing Container App: an
+  interactive, Azure Migrate–style dashboard of the estimate (current-state summary,
+  right-sizing + cost, landing zone, disposition + waves, effort), with in-page
+  **download** of the E5.4 artifacts. Visual quality on par with Microsoft's own
+  assessment-tool pages; one engagement = one URL; respects the same auth as the chat UI.
 
 ### E6 — Firm Config & Effort Model  *(P0 · audit P0-6, PS-1/5, PM-1..4)*
 - **E6.1** `estimation_config.json` implemented: rates, S/M/L/XL bands, RI term, non-prod /

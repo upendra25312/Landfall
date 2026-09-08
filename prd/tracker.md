@@ -11,11 +11,11 @@ Companion to [`prd/landfall-5x5-prd.md`](landfall-5x5-prd.md). Delivery log:
 
 | Phase | Items | Done | In review | In progress | Backlog |
 |---|---|---|---|---|---|
-| 1 — Engine | 34 | 0 | 26 | 1 | 7 |
+| 1 — Engine | 36 | 0 | 31 | 1 | 4 |
 | 2 — Evidence | 11 | 0 | 0 | 0 | 11 |
 | 3 — Sustain | 3 | 0 | 0 | 0 | 3 |
 
-_Last updated: 2026-09-08 (PDCA cycles 1–11; D1 done; E2–E7 all in review. Backlog: E1.7, E4.3, E8.1–E8.4, E9.1. Live check pending E1.6). Full engine + eval harness (golden SQL + scenarios + fault injection + output guard) + CI gate. Sample: run-rate ~$119k/mo + ~$77k one-time; effort ~834 PD / ~$650k services. 94 pytest + 32 golden SQL + 8 scenarios + 26 fault cases all green (`evals/SCORECARD.md`)._
+_Last updated: 2026-09-08 (PDCA cycles 1–12; D1 done; E2–E8 in review. Backlog: E1.7, E4.3, E5.4, E5.5. Live checks pending: E1.6 ingestion, E8.2 EasyAuth). Full engine + eval harness + CI gate + security hardening. Sample: run-rate ~$119k/mo + ~$77k one-time; effort ~834 PD / ~$650k services. 114 pytest + 32 golden SQL + 8 scenarios + 26 fault cases green. Next: E5.4 Excel/Word/PPT exports + E5.5 assessment dashboard web app._
 
 ---
 
@@ -66,6 +66,8 @@ _Last updated: 2026-09-08 (PDCA cycles 1–11; D1 done; E2–E7 all in review. B
 | E5.1 | "Assemble estimate" → one structured package, 8 sections | P0 | in-review | PM + SWE | 9 | Package needs editing, not authoring (architect board sign-off). _Done — `src/api/deliverable/assemble.py`; 8 sections + markdown render; full-pipeline test._ |
 | E5.2 | Stable IDs + calculation appendix on every figure | P0 | in-review | SWE | 9 | 10 random figures each traceable using only the delivered doc. _Done — `F*` ids + `calculation_appendix` (formula, inputs, assumptions_applied, confidence) per figure._ |
 | E5.3 | Machine-tracked assumptions & exclusions register | P0 | in-review | PM | 9 | Register is generated across the run, not merged by hand. _Done — `_Reg`: collects every tool's caveats + standing exclusions, deduped + categorised (A/X/G ids). Sample: 28/6/8._ |
+| E5.4 | Client-ready exports — the package as a formatted **Excel workbook, Word document, and PowerPoint deck** | P0 | backlog | SWE + Writer | 13 | An architect can send the .xlsx / .docx / .pptx to a client with light edits; every figure keeps its calculation-appendix reference. |
+| E5.5 | **Assessment dashboard web app** on the Container App — an Azure Migrate–style interactive dashboard of the estimate, with in-page export to Excel / Word / PPT | P0 | backlog | SWE | 14 | End user opens the engagement URL, sees the dashboard (inventory, cost, landing zone, waves, effort), and downloads any artifact. Professional, MS-assessment-tool visual quality. |
 
 ### E6 — Firm Config & Effort Model
 
@@ -89,16 +91,16 @@ _Last updated: 2026-09-08 (PDCA cycles 1–11; D1 done; E2–E7 all in review. B
 
 | ID | Item | Pri | Status | Owner | Cycle | Acceptance |
 |---|---|---|---|---|---|---|
-| E8.1 | One deployment per engagement + reliable fast `azd up`/`down` | P0 | backlog | SRE | 12 | Two engagements never share a datastore; clean `azd up` in CI, no manual steps. |
-| E8.2 | `query_inventory` auth on by default | P0 | backlog | Security | 12 | Anonymous `curl` → 401; agent still works via managed identity. |
-| E8.3 | Allow-list SQL parse + statement timeout | P0 | backlog | Applied Sci + Security | 12 | `WAITFOR`, `sys.*`, cartesian joins rejected or bounded. |
-| E8.4 | Keep client SQL text out of logs | P0 | backlog | Security | 12 | Logs contain a hash/template, never the question or SQL. |
+| E8.1 | One deployment per engagement + reliable fast `azd up`/`down` | P0 | in-review | SRE | 12 | Two engagements never share a datastore; clean `azd up` in CI, no manual steps. _`resourceToken` makes every resource env-unique; DEPLOY.md isolation note added. Clean-machine CI is E9.2 (Phase 2)._ |
+| E8.2 | `query_inventory` auth on by default | P0 | in-review | Security | 12 | Anonymous `curl` → 401; agent still works via managed identity. _Bicep `enableFunctionAuth` param + `authsettingsV2` (excludedPaths /runtime), `AGENT_TOOL_AUTH=managed` recipe in DEPLOY. Off by default; needs a live `azd provision` to verify the 401._ |
+| E8.3 | Allow-list SQL parse + statement timeout | P0 | in-review | Applied Sci + Security | 12 | `WAITFOR`, `sys.*`, cartesian joins rejected or bounded. _Done — `src/api/sqlguard.py` (single SELECT/WITH, 6-table allow-list, comment strip, keyword deny) + `QUERY_TIMEOUT_S` / `cur.timeout`; 20 tests._ |
+| E8.4 | Keep client SQL text out of logs | P0 | in-review | Security | 12 | Logs contain a hash/template, never the question or SQL. _Done — `sqlguard.signature()` (sha256[:12] + tables + shape); every `query_inventory` log call scrubbed._ |
 
 ### E9 — Operability (Phase 1 part)
 
 | ID | Item | Pri | Status | Owner | Cycle | Acceptance |
 |---|---|---|---|---|---|---|
-| E9.1 | Self-contained hooks — no `azd`-on-PATH, SQL grant via Python | P0 | backlog | SRE | 12 | `azd up` succeeds with `azd` absent from the hook shell. |
+| E9.1 | Self-contained hooks — no `azd`-on-PATH, SQL grant via Python | P0 | in-review | SRE | 12 | `azd up` succeeds with `azd` absent from the hook shell. _Done — `scripts/apply_sql.py` (mssql-python + Entra token) replaces the `sqlcmd` block in `postprovision.{sh,ps1}`; `sqlcmd` dropped from prereqs._ |
 
 ## Phase 2 — Evidence
 
@@ -148,4 +150,6 @@ _Last updated: 2026-09-08 (PDCA cycles 1–11; D1 done; E2–E7 all in review. B
 | 9 | E5.1 / E5.2 / E5.3 — `assemble_estimate`: one structured deliverable + calculation appendix + assumptions/exclusions register (E2.5 + E6.2-basic folded in) | [pdca-log.md](pdca-log.md) · **done** |
 | 10 | E7.1 / E7.2 — eval harness: 32 golden text-to-SQL cases + 8 full-estimate scenarios + `SCORECARD.md` | [pdca-log.md](pdca-log.md) · **done** |
 | 11 | E7.3 / E7.4 / E7.5 — fault-injection harness + un-sourced-number output guard + CI scorecard gate | [pdca-log.md](pdca-log.md) · **done** |
-| 12 | E8.1–E8.4 + E9.1 — security & isolation (`query_inventory` auth, SQL allow-list + timeout, no SQL in logs, one datastore per engagement) + self-contained hooks | planned |
+| 12 | E8.3 / E8.4 / E9.1 done + E8.1 / E8.2 in-review — SQL allow-list guard + timeout, no SQL in logs, Python schema/grant (no sqlcmd), EasyAuth Bicep param, isolation note | [pdca-log.md](pdca-log.md) · **done** |
+| 13 | E5.4 — client-ready exports: assembled package → Excel / Word / PowerPoint | planned |
+| 14 | E5.5 — assessment dashboard web app on the Container App (Azure Migrate–style) with in-page export | planned |

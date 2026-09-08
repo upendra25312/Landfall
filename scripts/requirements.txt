@@ -1,3 +1,4 @@
 azure-identity
 azure-search-documents==11.6.0
 azure-ai-projects==2.6.0
+mssql-python                 # apply_sql.py — schema + grant, no sqlcmd needed (E9.1)

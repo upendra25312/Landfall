@@ -10,20 +10,8 @@ export AZURE_SUBSCRIPTION_ID="$(azd env get-value AZURE_SUBSCRIPTION_ID)"
 echo "==> Installing helper dependencies"
 python -m pip install --quiet --disable-pip-version-check -r scripts/requirements.txt
 
-echo "==> Loading SQL schema (Entra auth via sqlcmd)"
-if command -v sqlcmd >/dev/null 2>&1; then
-  sqlcmd -S "$AZURE_SQL_SERVER_FQDN" -d "$AZURE_SQL_DATABASE" \
-    --authentication-method ActiveDirectoryDefault -i scripts/schema.sql
-  echo "==> Granting the workload identity read-only SQL access (query_inventory tool)"
-  sqlcmd -S "$AZURE_SQL_SERVER_FQDN" -d "$AZURE_SQL_DATABASE" \
-    --authentication-method ActiveDirectoryDefault \
-    -v uami="$AZURE_USER_ASSIGNED_IDENTITY_NAME" uamioid="$AZURE_USER_ASSIGNED_IDENTITY_PRINCIPAL_ID" \
-    -i scripts/grant_api_sql.sql
-else
-  echo "   ! sqlcmd (go-sqlcmd) not found - skipping. Run scripts/schema.sql and"
-  echo "     scripts/grant_api_sql.sql manually:"
-  echo "     https://learn.microsoft.com/sql/tools/sqlcmd/sqlcmd-utility"
-fi
+echo "==> Applying SQL schema + read-only grant (Python; no sqlcmd needed)"
+python scripts/apply_sql.py
 
 echo "==> Building the AI Search index pipeline"
 python scripts/setup_search.py

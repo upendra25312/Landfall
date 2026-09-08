@@ -25,7 +25,7 @@ azd up
 | [Azure Developer CLI](https://aka.ms/azd) ≥ 1.11 | orchestrates everything | `winget install microsoft.azd` / `brew install azd` |
 | [Azure CLI](https://aka.ms/azcli) | used by the postprovision hook | `winget install -e --id Microsoft.AzureCLI` |
 | Python 3.11 + pip | runs the helper scripts | — |
-| [`sqlcmd` (go-sqlcmd)](https://learn.microsoft.com/sql/tools/sqlcmd/sqlcmd-utility) | loads the SQL schema | `winget install sqlcmd` / `brew install sqlcmd` |
+| ~~`sqlcmd`~~ | *no longer needed* — `scripts/apply_sql.py` loads the schema + grant in pure Python (Entra token) | — |
 | Docker | `azd` builds the `web` container image | Docker Desktop |
 | An Azure subscription where you can create resources **and assign roles** (Owner or User Access Administrator on the target scope) | the Bicep creates data-plane role assignments | — |
 
@@ -63,8 +63,9 @@ What `azd up` does:
    Function app (Flex Consumption), Key Vault, Log Analytics / App Insights, the shared
    managed identity, and all role assignments.
 2. **postprovision** (`scripts/postprovision.*`) —
-   - loads `scripts/schema.sql` into the SQL database (Entra auth) and grants the
-     workload identity read-only access (`grant_api_sql.sql`, for `query_inventory`),
+   - runs `scripts/apply_sql.py` — loads `scripts/schema.sql` and grants the workload
+     identity `db_datareader` (for `query_inventory`), in pure Python with an Entra
+     token; **no `sqlcmd`, no `azd`-on-PATH** needed (E9.1),
    - builds the AI Search data source / skillset / index / indexer (`setup_search.py`),
    - creates (versions) the **Migration Estimator** prompt agent (`create_agent.py`) with
      the Microsoft Learn MCP tool, the AI Search tool, and the OpenAPI tools
@@ -124,18 +125,27 @@ These need the portal or a couple of CLI calls once, after the first `azd up`:
    `estimate_run_rate_extras`, `design_landing_zone`, `score_dispositions`,
    `plan_waves`, `assemble_estimate` and `azure_retail_prices` hold no client data
    (they take their inputs in the request body). `query_inventory` returns
-   inventory rows (SELECT-only, read-only DB user, 200-row cap), so put Entra auth in
-   front of it:
+   inventory rows — its SQL is a single `SELECT`/`WITH` against the six inventory
+   tables only, no comments, no admin/timing keywords, 200-row cap, 20 s statement
+   timeout (`src/api/sqlguard.py`, E8.3); the question and SQL text never reach the
+   logs, only a hash + the table list (E8.4). Still, put Entra auth in front of it:
+   ```bash
+   # provision-time (preferred): turn EasyAuth on via the template
+   APPID=$(az ad app create --display-name "landfall-func ($(azd env get-value SERVICE_API_NAME))" \
+     --identifier-uris "api://$(azd env get-value SERVICE_API_NAME)" --query appId -o tsv)
+   azd env set ENABLE_FUNCTION_AUTH true
+   azd env set FUNCTION_AUTH_CLIENT_ID "$APPID"
+   azd provision            # applies authsettingsV2 with excludedPaths ["/runtime"]
+   AGENT_TOOL_AUTH=managed FUNC_AUTH_AUDIENCE="api://$(azd env get-value SERVICE_API_NAME)" \
+     python scripts/create_agent.py     # agent now calls it with its managed identity
+   ```
+   Or, on an already-running app, the CLI path:
    ```bash
    RG=$(azd env get-value AZURE_RESOURCE_GROUP); FUNC=$(azd env get-value SERVICE_API_NAME)
-   # 1. fill in the <...> tokens in scripts/funcapp-auth.json (tenant id, an app
-   #    registration client id, api://$FUNC audience, the Foundry account MI object id:
-   #    az cognitiveservices account show -g $RG -n $(azd env get-value FOUNDRY_ACCOUNT_NAME) --query identity.principalId -o tsv )
    az webapp auth set -g "$RG" -n "$FUNC" --body @scripts/funcapp-auth.json
-   # 2. re-attach query_inventory with managed-identity auth
    AGENT_TOOL_AUTH=managed python scripts/create_agent.py
    ```
-   `excludedPaths: ["/runtime"]` in the template keeps the Event Grid webhook and durable
+   `excludedPaths: ["/runtime"]` keeps the Event Grid webhook and durable
    endpoints reachable. Skip this only if the agent must call `query_inventory` and you
    accept the public endpoint for the life of the engagement.
 
@@ -208,6 +218,13 @@ azd down --purge        # delete everything (including soft-deleted Key Vault / 
 ```
 
 `azd down` between engagements takes the run cost to zero; `azd up` rebuilds in ~15 min.
+
+**One deployment per engagement (E8.1).** Every resource name carries a `resourceToken`
+derived from the subscription + `AZURE_ENV_NAME` + location, so a second `azd env new`
+gets its own resource group, storage account, SQL database, Foundry project and Function
+app — two engagements never share a datastore. Use a distinct env name per client
+(`azd env new acme-migration`), and `azd down --purge` when the engagement closes (it
+also removes the soft-deleted Key Vault and Foundry account so the names free up).
 
 ---
 

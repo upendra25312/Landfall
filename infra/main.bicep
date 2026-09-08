@@ -28,6 +28,12 @@ param webImageName string = ''
 @description('Foundry agent name; the postprovision hook stores AGENT_ID in the azd env')
 param agentId string = ''
 
+@description('Turn on Function App EasyAuth so query_inventory is not anonymous (azd env set ENABLE_FUNCTION_AUTH true)')
+param enableFunctionAuth bool = false
+
+@description('Entra client id the Function App accepts tokens for when auth is on (azd env set FUNCTION_AUTH_CLIENT_ID ...)')
+param functionAuthClientId string = ''
+
 var abbrs = loadJsonContent('./abbreviations.json')
 var resourceToken = toLower(uniqueString(subscription().id, environmentName, location))
 var tags = { 'azd-env-name': environmentName }
@@ -54,6 +60,8 @@ module resources './resources.bicep' = {
     modelCapacity: modelCapacity
     webImageName: webImageName
     agentId: agentId
+    enableFunctionAuth: enableFunctionAuth
+    functionAuthClientId: functionAuthClientId
   }
 }
 
