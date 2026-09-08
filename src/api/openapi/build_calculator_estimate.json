@@ -1,0 +1,74 @@
+{
+  "openapi": "3.0.1",
+  "info": {
+    "title": "build_calculator_estimate",
+    "description": "Drives the REAL Azure Pricing Calculator (via the ca-calc container) for one engagement and stores the calculator's own Excel export as the Proof of Estimate (POE) for Microsoft migration funding. Reads the engagement's published estimate (latest.json + tools_raw.json) and _engagement.json, translates the target-state design + right-sized workloads into a calculator line-item spec (Landfall supplies quantities, the calculator supplies every price), and writes landing_zone.xlsx / landing_zone.json / landing_zone.png to the engagement folder so the dashboard 'Azure landing zone — Pricing Calculator POE' card shows it. Call publish_estimate first.",
+    "version": "1.0.0"
+  },
+  "servers": [{ "url": "https://REPLACE/api" }],
+  "paths": {
+    "/build_calculator_estimate": {
+      "post": {
+        "operationId": "build_calculator_estimate",
+        "summary": "Build the Azure Pricing Calculator POE for an engagement",
+        "description": "Pass the engagement id (<customer>/<project>). The tool builds a calculator line-item spec from the engagement's published estimate, drives the live Azure Pricing Calculator, captures its Excel export, reconciles the calculator total against Landfall's internal run-rate, and stores the result. Quote the monthly total, the reconciliation delta, and anything in 'skipped' (line items with no direct calculator module). The stored landing_zone.xlsx is the file to submit to Microsoft.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["engagement"],
+                "properties": {
+                  "engagement": {
+                    "type": "string",
+                    "description": "Engagement id '<customer>/<project>' (lowercase, [a-z0-9-] per segment)."
+                  },
+                  "include_dr_compute": {
+                    "type": "boolean",
+                    "nullable": true,
+                    "description": "Add warm standby DR compute in the DR region (default false — DR runs on failover only; an ASR line is always included when a DR region is set)."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The Pricing Calculator POE summary",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "engagement": { "type": "string" },
+                    "monthly_total": { "type": "number" },
+                    "annual": { "type": "number" },
+                    "currency": { "type": "string" },
+                    "region": { "type": "string" },
+                    "line_count": { "type": "number" },
+                    "created_at": { "type": "string" },
+                    "calculator_url": { "type": "string" },
+                    "reconciliation": {
+                      "type": "object",
+                      "properties": {
+                        "internal_monthly": { "type": "number" },
+                        "poe_monthly": { "type": "number" },
+                        "delta_pct": { "type": "number", "nullable": true },
+                        "within_tolerance": { "type": "boolean" },
+                        "note": { "type": "string" }
+                      }
+                    },
+                    "skipped": { "type": "array", "items": { "type": "object" } },
+                    "stored": { "type": "array", "items": { "type": "string" } }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

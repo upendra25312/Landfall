@@ -21,6 +21,14 @@ services:
       path: Dockerfile
       remoteBuild: true
 
+  calc:
+    project: src/calc
+    language: python
+    host: containerapp
+    docker:
+      path: Dockerfile
+      remoteBuild: true
+
 hooks:
   postprovision:
     windows:

@@ -47,6 +47,7 @@ _OPENAPI_TOOLS = {
     "estimate_storage_cost": "Monthly Azure cost for the storage inventory (dbo.storage) - file shares (Files Premium / NetApp), DB volumes (SQL MI / Hyperscale / Flexible Server / Oracle), object (Blob). Block/managed-disk volumes are covered by estimate_compute_cost and excluded here.",
     "estimate_run_rate_extras": "Run-rate lines beyond compute + storage - backup, internet egress, monitoring (Log Analytics + Defender), support plan - plus one-time migration cost (tooling, replication, dual-run). Pass the servers and the compute+storage monthly total.",
     "design_landing_zone": "Client-specific CAF Azure Landing Zone from the application portfolio - management groups, subscriptions, hub-spoke VNets + IP plan, policy set, identity, connectivity, DR, and a dedicated regulated spoke per compliance scope. Topology is derived from the data.",
+    "build_calculator_estimate": "Drives the REAL Azure Pricing Calculator for an engagement and stores its own Excel export as the Proof of Estimate (POE) for Microsoft migration funding. Translates the published estimate (landing zone + right-sized workloads) into calculator line items - Landfall supplies quantities, the calculator supplies prices - then reconciles the calculator total against the internal run-rate. Call publish_estimate first; then point the user at the dashboard 'Pricing Calculator POE' card / the landing_zone.xlsx download.",
     "score_dispositions": "Rule-derived 6R disposition (Rehost / Replatform / Repurchase / Retire / Retain / Refactor) + rationale + confidence per application, from OS EOL, stack, criticality, internet-facing and DB engine. Repurchase / Refactor / Retire need business sign-off.",
     "plan_waves": "Risk-ordered migration wave plan - server dependency graph -> affinity move-groups -> waves (pilot first, regulated last) with entry/exit criteria and cross-wave blocking dependencies. Pass applications + servers + dependencies.",
     "assemble_estimate": "Assembles every other tool's output + an inventory summary into ONE structured estimate package: 8 sections, a stable ID + calculation appendix on every figure, an assumptions/exclusions/data-gaps register, a parametric effort + services-cost estimate, and a markdown render. Call this last.",
@@ -100,6 +101,12 @@ the customer and project before running anything data-dependent.
 - To make the estimate available as the interactive **assessment dashboard**, call
   `publish_estimate` with the `assemble_estimate` result, then give the user the
   chat-UI Container App URL with `/dashboard` (they download Excel/Word/PPT from there).
+- For a **Microsoft migration-funding Proof of Estimate (POE)**, call
+  `build_calculator_estimate` with the `engagement` AFTER `publish_estimate`. It drives
+  the real Azure Pricing Calculator and stores the calculator's own Excel export. Quote
+  its monthly total and the reconciliation delta vs the internal run-rate; if anything is
+  in `skipped`, tell the user which resources aren't in the calculator figure. The POE
+  file is `landing_zone.xlsx` on the dashboard.
 - Use `microsoft_docs` for Cloud Adoption Framework and target-service guidance.
 - Use `search_documents` for client constraints (compliance, network, DR, non-functional).
 

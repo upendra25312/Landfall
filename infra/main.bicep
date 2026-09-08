@@ -25,6 +25,9 @@ param modelCapacity int = 30
 @description('Chat-UI container image; azd populates SERVICE_WEB_IMAGE_NAME after the first deploy')
 param webImageName string = ''
 
+@description('ca-calc (Pricing Calculator driver) image; azd populates SERVICE_CALC_IMAGE_NAME after the first deploy')
+param calcImageName string = ''
+
 @description('Foundry agent name; the postprovision hook stores AGENT_ID in the azd env')
 param agentId string = ''
 
@@ -62,6 +65,7 @@ module resources './resources.bicep' = {
     embeddingModelVersion: embeddingModelVersion
     modelCapacity: modelCapacity
     webImageName: webImageName
+    calcImageName: calcImageName
     agentId: agentId
     enableFunctionAuth: enableFunctionAuth
     functionAuthClientId: functionAuthClientId

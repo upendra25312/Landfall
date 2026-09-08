@@ -189,6 +189,11 @@ function render(pkg){
     <div class="chips">${(lz.spokes||[]).map(s=>`<span class="chip">${s.name} ${s.address_space||""}</span>`).join("")}</div>
     <p style="color:var(--muted);font-size:12px;margin-top:10px">${lz.dr||""}</p>`));
 
+  // --- Azure Pricing Calculator POE (populated async from /dashboard/landing-zone)
+  const poe=card("Azure landing zone — Pricing Calculator POE",null,
+    `<p class="sub" id="poeBody">Checking for a Pricing Calculator estimate…</p>`);
+  poe.id="poeCard"; grid.append(poe);
+
   // --- disposition
   const dp=sectionBody(pkg,"disposition"), bd=dp.by_disposition||{};
   const dispColors={Rehost:"var(--c1)",Replatform:"var(--c3)",Repurchase:"var(--c4)",Retire:"var(--c5)",Retain:"var(--c2)",Refactor:"var(--bad)"};
@@ -278,11 +283,41 @@ function regList(label,items){
   </ul></details>`;
 }
 
+function renderPOE(){
+  const body=$("#poeBody"); if(!body) return;
+  fetch("/dashboard/landing-zone").then(r=> r.status===404? null : r.json()).then(d=>{
+    const cardEl=$("#poeCard");
+    if(!d){ body.innerHTML = `Not built yet. Ask the estimator for
+      <b>"Landing zone cost (Calculator POE)"</b> — it drives the real Azure Pricing
+      Calculator and stores its Excel here for your Microsoft funding submission.`; return; }
+    const rc=d.reconciliation||{}, cur=d.currency||"USD";
+    const flag = rc.delta_pct==null ? "" :
+      `<span class="ref" style="background:${rc.within_tolerance?'var(--ok,#0e7c3a)':'var(--warn)'}">
+         vs internal ${rc.delta_pct>0?"+":""}${rc.delta_pct}%</span>`;
+    if(cardEl) cardEl.querySelector("h2").innerHTML =
+      `Azure landing zone — Pricing Calculator POE ${flag}`;
+    body.innerHTML = `
+      <div style="font-size:22px;font-weight:650">${money(d.monthly_total,cur)}
+        <span style="font-size:12px;color:var(--muted)">/ month · ~${money(d.annual,cur)} / yr</span></div>
+      <div style="color:var(--muted);font-size:12px;margin:2px 0 10px">
+        ${d.line_count} line items · ${d.region||""} · created ${d.created_at||"?"} ·
+        source: Azure Pricing Calculator export</div>
+      <div class="dl" style="display:flex;gap:8px;flex-wrap:wrap">
+        <a href="/dashboard/download/landing-zone-xlsx"><b>Download Excel (POE)</b></a>
+        ${d.calculator_url?`<a href="${d.calculator_url}" target="_blank" rel="noopener">Open calculator ↗</a>`:""}
+      </div>
+      ${(d.skipped&&d.skipped.length)? `<details style="margin-top:10px"><summary>Not in the calculator estimate (${d.skipped.length})</summary>
+        <ul style="margin:6px 0 0;padding-left:18px;font-size:12px;color:var(--muted)">
+        ${d.skipped.map(s=>`<li>${(s.what||"")} — ${(s.why||"")}</li>`).join("")}</ul></details>`:""}
+      <p style="font-size:11px;color:var(--muted);margin-top:10px">${d.note||""}</p>`;
+  }).catch(()=>{ if(body) body.textContent="Could not load the Pricing Calculator estimate."; });
+}
+
 fetch("/dashboard/data").then(r=>{
   if(r.status===404) throw new Error("no-estimate");
   if(!r.ok) throw new Error("http "+r.status);
   return r.json();
-}).then(render).catch(err=>{
+}).then(pkg=>{ render(pkg); renderPOE(); }).catch(err=>{
   $("#root").innerHTML = err.message==="no-estimate"
     ? `<div class="empty"><h2 style="margin:0 0 8px">No assessment published yet</h2>
        <p>Run the estimator and call <code>publish_estimate</code> (or the operator does it once).<br>

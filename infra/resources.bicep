@@ -308,6 +308,50 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
 }
 
 // ==================================================================
+// ca-calc - Azure Pricing Calculator driver (Playwright + Chromium), scale to zero
+// Internal ingress only: called by the Function's build_calculator_estimate (E11.16).
+// ==================================================================
+@description('ca-calc container image. Empty on first provision; azd sets SERVICE_CALC_IMAGE_NAME after the first deploy.')
+param calcImageName string = ''
+
+resource calcApp 'Microsoft.App/containerApps@2024-03-01' = {
+  name: '${abbrs.appContainerApps}calc-${resourceToken}'
+  location: location
+  tags: union(tags, { 'azd-service-name': 'calc' })
+  identity: {
+    type: 'UserAssigned'
+    userAssignedIdentities: { '${uami.id}': {} }
+  }
+  properties: {
+    managedEnvironmentId: containerEnv.id
+    configuration: {
+      activeRevisionsMode: 'Single'
+      ingress: {
+        external: false
+        targetPort: 8080
+        transport: 'auto'
+      }
+      registries: [
+        { server: acr.properties.loginServer, identity: uami.id }
+      ]
+    }
+    template: {
+      containers: [
+        {
+          name: 'calc'
+          image: !empty(calcImageName) ? calcImageName : 'mcr.microsoft.com/azuredocs/containerapps-helloworld:latest'
+          resources: { cpu: json('1.0'), memory: '2Gi' } // Chromium needs headroom
+          env: [
+            { name: 'APPLICATIONINSIGHTS_CONNECTION_STRING', value: appInsights.properties.ConnectionString }
+          ]
+        }
+      ]
+      scale: { minReplicas: 0, maxReplicas: 2 }
+    }
+  }
+}
+
+// ==================================================================
 // Excel batch runner - Azure Functions (Flex Consumption), Durable
 // ==================================================================
 resource functionPlan 'Microsoft.Web/serverfarms@2023-12-01' = {
@@ -369,6 +413,8 @@ resource functionApp 'Microsoft.Web/sites@2023-12-01' = {
         { name: 'AZURE_SQL_SERVER_FQDN', value: sqlServer.properties.fullyQualifiedDomainName }
         { name: 'AZURE_SQL_DATABASE', value: sqlDatabase.name }
         { name: 'QUERY_TIMEOUT_S', value: '20' } // query_inventory statement timeout (E8.3)
+        // ca-calc (Azure Pricing Calculator driver) — internal ingress FQDN (E11.16)
+        { name: 'CALC_URL', value: 'https://${calcApp.properties.configuration.ingress.fqdn}' }
       ]
     }
   }
@@ -587,6 +633,8 @@ output functionAppName string = functionApp.name
 output eventGridSystemTopicName string = egSystemTopic.name
 output containerAppName string = containerApp.name
 output containerAppUri string = 'https://${containerApp.properties.configuration.ingress.fqdn}'
+output calcAppName string = calcApp.name
+output calcAppUri string = 'https://${calcApp.properties.configuration.ingress.fqdn}'
 output containerRegistryLoginServer string = acr.properties.loginServer
 output uamiClientId string = uami.properties.clientId
 output uamiPrincipalId string = uami.properties.principalId

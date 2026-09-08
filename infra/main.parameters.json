@@ -11,6 +11,7 @@
     "embeddingModelVersion": { "value": "${EMBEDDING_MODEL_VERSION=1}" },
     "modelCapacity": { "value": "${MODEL_CAPACITY=30}" },
     "webImageName": { "value": "${SERVICE_WEB_IMAGE_NAME}" },
+    "calcImageName": { "value": "${SERVICE_CALC_IMAGE_NAME}" },
     "agentId": { "value": "${AGENT_ID}" },
     "enableFunctionAuth": { "value": "${ENABLE_FUNCTION_AUTH=false}" },
     "functionAuthClientId": { "value": "${FUNCTION_AUTH_CLIENT_ID=}" }

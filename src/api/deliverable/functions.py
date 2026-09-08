@@ -122,6 +122,18 @@ def publish_estimate_route(req: func.HttpRequest) -> func.HttpResponse:
         payload = json.dumps(package, default=str).encode("utf-8")
         cc.upload_blob(f"{prefix}/latest.json", payload, overwrite=True)
         written.append("latest.json")
+
+        # stash the raw tool outputs so build_calculator_estimate (E11.16) can
+        # translate them into an Azure Pricing Calculator line-item spec later —
+        # the assembled package alone doesn't keep per-server / hub detail.
+        raw_keys = ("compute_cost", "storage_cost", "run_rate_extras", "landing_zone",
+                    "dispositions", "waves", "inventory_summary")
+        raw = {k: body[k] for k in raw_keys if isinstance(body.get(k), dict)}
+        if raw:
+            raw["engagement"] = engagement
+            cc.upload_blob(f"{prefix}/tools_raw.json",
+                           json.dumps(raw, default=str).encode("utf-8"), overwrite=True)
+            written.append("tools_raw.json")
         for fmt in ("xlsx", "docx", "pptx"):
             blob, _name, _mime = export(package, fmt)
             cc.upload_blob(f"{prefix}/latest.{fmt}", blob, overwrite=True)

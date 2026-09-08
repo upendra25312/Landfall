@@ -98,6 +98,13 @@ def engagements_route(req: func.HttpRequest) -> func.HttpResponse:
         "customer_slug": engagement_id.split("/", 1)[0],
         "project_slug": engagement_id.split("/", 1)[1],
         "region": body.get("region") or os.environ.get("AZURE_LOCATION") or "swedencentral",
+        # target landing-zone region(s) the end user picks on the dashboard (E11.6);
+        # `region` is kept as an alias of target_region for back-compat.
+        "target_region": (body.get("target_region") or body.get("region")
+                          or os.environ.get("AZURE_LOCATION") or "swedencentral"),
+        "dr_region": body.get("dr_region") or None,
+        "currency": (body.get("currency") or "USD").upper(),
+        "licensing_program": (body.get("licensing_program") or "MCA").upper(),
         "notes": body.get("notes") or "",
         "visibility": body.get("visibility") if body.get("visibility") in
         (None, "owner", "all") or str(body.get("visibility", "")).startswith("group:")
@@ -107,6 +114,11 @@ def engagements_route(req: func.HttpRequest) -> func.HttpResponse:
         "created_at": _dt.datetime.now(_dt.timezone.utc).isoformat(timespec="seconds"),
     }
     manifest["visibility"] = manifest["visibility"] or "owner"
+    try:
+        from lz.calculator_spec import region_is_supported
+        manifest["target_region_calculator_supported"] = region_is_supported(manifest["target_region"])
+    except Exception:                       # noqa: BLE001
+        manifest["target_region_calculator_supported"] = None
 
     try:
         raw = _raw()

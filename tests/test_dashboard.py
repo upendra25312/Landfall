@@ -114,6 +114,50 @@ def test_prompt_cards_endpoint_returns_intro_and_cards(client):
     assert all(card.get("prompt") for card in j["cards"])
 
 
+def test_chat_page_has_engagement_picker(client):
+    _webapp, c = client
+    r = c.get("/")
+    assert "engsel" in r.text and "New engagement" in r.text
+    assert "loadEngagements" in r.text and "/api/engagements" in r.text
+    # every question rides with the engagement id — the user never types it
+    assert "engagement:ENG" in r.text
+
+
+def test_calc_regions_endpoint(client):
+    _webapp, c = client
+    regs = c.get("/api/calc_regions").json()["regions"]
+    assert "swedencentral" in regs and "westeurope" in regs
+    assert "mars-central" not in regs
+
+
+def test_chat_prepends_engagement_scope(client, monkeypatch):
+    webapp, c = client
+    seen = {}
+
+    class _Resp:
+        id = "resp_1"
+        status = "completed"
+        output_text = "ok"
+        output = []
+
+    class _Responses:
+        def create(self, **kw):
+            seen.update(kw)
+            return _Resp()
+
+    class _OpenAI:
+        responses = _Responses()
+
+    monkeypatch.setattr(webapp, "_openai_client", lambda: _OpenAI())
+    monkeypatch.setattr(webapp, "AGENT_NAME", "landfall-migration-estimator")
+    r = c.post("/api/chat", json={"message": "how many prod servers?",
+                                  "engagement": "contoso/dc-exit"})
+    assert r.status_code == 200
+    assert "contoso/dc-exit" in seen["input"]
+    assert "engagement` argument for every tool call" in seen["input"]
+    assert seen["input"].strip().endswith("how many prod servers?")
+
+
 def test_dashboard_data_404_when_nothing_published(client):
     webapp, c = client
     webapp._blob_state.clear()
