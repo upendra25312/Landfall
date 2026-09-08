@@ -1,6 +1,7 @@
 # Landfall — Engagement Workspaces (multi-client, dashboard-driven)
 
-**Status:** IN PROGRESS (C18 live; C19–C25 planned) · **Raised:** 2026-09-08 ·
+**Status:** IN PROGRESS (C18 live; C24 built, `ca-calc` not yet deployed; C19–C23 + C25–C26
+planned) · **Raised:** 2026-09-08 · **Last updated:** 2026-09-08 ·
 **Owner panel:** see below · **Method:** PDCA
 **Rolls into:** the "Landfall to 5/5" PRD as **Epic E11**. Supersedes the
 "one `azd` deployment per engagement" assumption in
@@ -27,10 +28,13 @@
 > 6. get an **Azure landing-zone + target-workload cost estimate built in the real Azure
 >    Pricing Calculator**, shown on the dashboard and **downloadable as the calculator's
 >    own Excel** to submit as **Proof of Estimate (POE)** for Microsoft migration funding
->    *(added 2026-09-08)*.
+>    *(added 2026-09-08)*;
+> 7. get a **target Azure landing-zone architecture diagram** for the engagement's chosen
+>    region, on the dashboard and in the deck *(added 2026-09-08)*.
 >
-> Question: can we use the `docx`, `xlsx`, `presentation-skill` and `ppt-master` skills
-> **at the Foundry agent**?
+> Questions: can we use the `docx`, `xlsx`, `presentation-skill`, `ppt-master` and
+> `drawio-mcp-diagramming` skills **at the Foundry agent**? And how does the user get the
+> `<customer>/<project>` engagement id?
 
 ---
 
@@ -46,6 +50,8 @@
 | **FinOps** | keep it on free / near-free tiers; one deployment, many engagements |
 | **Azure Pre-Sales Architect** | target-region choice, landing-zone BoM, the Pricing Calculator line-item spec, POE fidelity |
 | **Microsoft Alliance / Partner Lead** | what each funding program (AMM, CAF, ECIF/MAP) accepts as POE; MCA/EA/CSP licensing program in the estimate |
+| **UX / Practice Director** | chat-page information architecture, engagement-first layout, the §4.9 findings |
+| **Full-stack Web Engineer** | `src/web` implementation — picker, prompt cards, Markdown rendering, the engagement rail |
 | **Delivery Lead / PMO** | PDCA cadence, acceptance, cut-over from the single-tenant build |
 
 ---
@@ -75,6 +81,7 @@ No LLM writes a spreadsheet or a slide.
 | [`anthropics/skills · docx`](https://github.com/anthropics/skills/tree/main/skills/docx) | **Design reference** for `to_docx`: US-Letter in DXA; dual table widths; numbering defs; authored so architect edits land as Word **tracked changes**, `accept_changes` → clean copy. | Rules coded into `export.py`. *(E5.4q)* |
 | [`siril9/presentation-skill`](https://github.com/siril9/presentation-skill) | **Studio deck** (E5.6): `outline.json` from `latest.json` → preset + grammar → **pptxgenjs** → `qa_gate.py`. | A **containerised OpenAPI tool** — its own Container App with the Node toolchain. The agent calls `POST /generate_studio_deck`; it never runs the skill. *(E11.9)* |
 | [`hugohe3/ppt-master`](https://github.com/hugohe3/ppt-master) | **Studio deck, design-rich variant**: SVG → native DrawingML, firm template preserved. | Same container. *(E11.9)* |
+| [`drawio-mcp-diagramming`](https://github.com/thomast1906/github-copilot-agent-skills/tree/main/.github/skills/drawio-mcp-diagramming) | **Rules** (`xml-authoring-rules`, `azure.md` — palette, swimlane nesting, cross-container edges, `search_shapes`-first, no hand-routed edges) coded into `src/api/lz/diagram.py`; its **engine** (`simonkurtz-MSFT/drawio-mcp-server` — HTTP, browserless, 700+ offline Azure icons) deployed as the `ca-drawio` Container App. | `build_landing_zone_diagram` Function replays a deterministic MCP-call plan against `ca-drawio`; `.drawio → .svg/.png` render in the same container. Agent calls one OpenAPI tool, does **not** free-draw. *(E11.22, §4.10)* |
 
 The in-Function `python-pptx` deck (rebuilt cycle 17 as a 12-slide narrative assessment)
 is the always-available default; the studio-deck container is the higher-polish option a
@@ -145,6 +152,32 @@ proven end-to-end on 2026-09-08:
 Because Playwright + Chromium cannot run in the Flex Consumption Function, this lives in a
 **scale-to-zero Container App `ca-calc`** — the same side-car pattern as `ca-deckgen`
 (E11.9). See §4.6.
+
+### 3.5 Where the engagement id comes from — the end user never types it
+
+**Problem raised (2026-09-08):** users kept being asked by the agent for an
+`<customer>/<project>` id they had no way to know, and "hard to remember" is a fair
+complaint — a slug is an implementation detail, not something a pre-sales architect
+should carry in their head.
+
+**Principle:** the engagement id is **always** `slug(customer)/slug(project)`, and it is
+computed by **one function** — `engagement.make_engagement_id()`
+(`re.sub(r"[^a-z0-9]+","-", v.lower()).strip("-")[:40]` per segment) — shared verbatim by
+the dashboard, the API, the SQL row filter and the ADLS folder layout. Because there is
+exactly one slugging rule, the id the UI computes is **byte-identical** to the folder the
+inventory was uploaded into and the `engagement_id` on the SQL rows. The user supplies
+**names**; the id is derived, never entered.
+
+Two entry paths, both deployed as of 2026-09-08 (`458d400`):
+
+| Path | How the id is set | Component |
+|---|---|---|
+| **Dashboard (primary)** | The chat header carries an **engagement `<select>`** (populated from `GET /api/engagements`) and a **"＋ New engagement"** inline form (Customer, Project, Target region, DR, licensing, currency). Creating one provisions the folders and auto-selects it; the choice is kept in `localStorage` (`landfall.eng`). Every chat message and prompt-card click sends `engagement=<id>` in the body; `/api/chat` prepends `[Active engagement: <id>. Use exactly this value …]` to the agent input. **The user picks or types names — never the slug.** | `src/web/app.py` `GET`/`POST /api/engagements`, `GET /api/calc_regions`; `src/web/index()` header + `#engform` |
+| **Agent (fallback / conversational)** | If no `[Active engagement: …]` bracket is present and the user names a customer + project in chat, the agent calls **`resolve_engagement`** (`customer`, `project` → canonical id). It fuzzy-matches on slug-token overlap against every `_engagement.json`, so "contoso" / "dc exit" still finds `contoso-ltd/dc-exit-2027` and returns it as a `candidates[]` entry with a `match_score`. The agent confirms the match with the user; on a confirmed new engagement it calls again with `create: true` to provision the skeleton. The system prompt **forbids the agent from inventing a slug**. | `src/api/engagements.py` `resolve_engagement`; `src/api/openapi/resolve_engagement.json`; `scripts/create_agent.py` system prompt + tool list |
+
+**Net effect:** the only thing a user ever names is the customer and the project (as
+free text). The slug, the folder, the SQL scope and the POE file path are all the same
+derived string, computed once.
 
 ---
 
@@ -390,6 +423,118 @@ factor the shared Dockerfile base + blob-IO helper + OpenAPI-tool Bicep into a t
 - Data residency unchanged — all in the deployment's region; `_engagement.json.region`
   is an *estimate* input, not a data-placement control.
 
+### 4.9 Chat UX — expert-panel findings + the engagement-first redesign
+
+The chat page (`src/web/index()`) got the engagement picker, prompt cards, an agent
+greeting and a "the estimator is working" indicator in C24 (`1003f55`, `458d400`). A
+panel review (AI architect / Python / pre-sales / cloud architect / practice director /
+UX / full-stack) found the page is still **chat-first with an engagement bolted on**, and
+the real fix is an engagement-first layout (E11.21):
+
+| # | Finding | Severity | Fix | Item |
+|---|---|---|---|---|
+| 1 | **No engagement context on screen** — you can't tell which client you're working on; the picker is one small `<select>` in a crowded header | High | Persistent engagement rail with the active customer/project shown as a title, not a dropdown value | E11.21 |
+| 2 | Agent still asks for "customer/project name" as free text when no engagement is active — brittle, undiscoverable | High | `resolve_engagement` + picker (done, §3.5); rail makes "no engagement selected" a blocking empty-state, not a chat message | E11.20 / E11.21 |
+| 3 | **Prompt cards + greeting vanish after the first message** and never come back; huge dark dead-space either side of a narrow chat column | Med | Cards live in the rail / a collapsible tray, always reachable; chat column widened; dashboard content shares the view | E11.21 |
+| 4 | **Agent answers render as `white-space: pre-wrap` plain text** — tables, bullet lists, headings and code from the agent look broken | High | Render assistant messages as Markdown (small, dependency-light renderer; tables + code + lists) | E11.21 |
+| 5 | No per-message affordances — no copy button, no "which tools ran", no timestamp, no way to re-run | Med | Message toolbar: copy, expand tool calls, "download this answer as Excel" (E11.14) inline | E11.21 / E11.14 |
+| 6 | Chat and `/dashboard` are **disconnected** — the dashboard isn't engagement-scoped and opens in a new page with no shared state | High | Thread `?e=<eid>` through every dashboard route + link; ideally the dashboard is a tab of the engagement view | E11.17 / E11.21 |
+| 7 | Header wraps badly on a narrow viewport — engagement `<select>` + "＋ New engagement" + "＋ New chat" + dashboard link on one line, no responsive treatment | Med | Move engagement + "new" actions into the rail; header keeps only chat-session actions | E11.21 |
+| 8 | **No visibility of engagement state** — has inventory been uploaded? has analysis run? is an estimate published? is the POE built? | High | Engagement status strip in the rail: Uploads · Analysis · Published estimate · Calculator POE, each with a state chip and a link | E11.21 |
+| 9 | Errors dead-end at `Error: …` in a chat bubble with no retry and no detail | Med | Inline error card with a Retry action and an expandable detail | E11.21 |
+| 10 | Two adjacent "＋ New…" actions ("New engagement" vs "New chat") are easy to confuse | Low | Separate by placement (engagement action in the rail, chat action in the header) + distinct icons | E11.21 |
+
+**Recommendation (panel consensus):** stop patching the header. Ship **E11.21 — an
+engagement-first chat view**: a left rail with the active engagement (customer / project
+as a heading), its status strip (§ finding 8), the region + licensing summary, and the
+prompt cards / "new engagement" action; the chat thread and a dashboard tab share the
+main pane, both scoped to the rail's engagement; Markdown-rendered answers; per-message
+toolbar. The current single-page chat becomes the "no engagement selected" empty state
+that routes the user into pick-or-create. This is a C26 build — **do not start it without
+sponsor sign-off** given the volume of C24 changes still settling.
+
+### 4.10 Target landing-zone diagram — `drawio-mcp-diagramming` in Azure (E11.22)
+
+**Ask (2026-09-08):** use the
+[`drawio-mcp-diagramming`](https://github.com/thomast1906/github-copilot-agent-skills/tree/main/.github/skills/drawio-mcp-diagramming)
+skill inside Microsoft Foundry / Azure to draw the target Azure landing-zone diagram.
+
+**The SKILL.md file cannot load into a Foundry agent** (no skill loader — §3.1); it is
+instructions + reference docs + a `drawio/search_shapes`-first workflow a *coding* agent
+runs. **But the skill's *engine* is deployable in Azure**, and that is what we use.
+
+**The three "draw.io MCP" projects are not equivalent** — only one works server-side:
+
+| Server | Transport | Browser? | Azure icons | Fit |
+|---|---|---|---|---|
+| `jgraph/drawio-mcp` (Tool Server) | stdio only | **yes** — signals a live draw.io tab | via search | unusable server-side |
+| `lgazo/drawio-mcp-server` | stdio; operates on a **connected draw.io browser tab** | **yes** | via search | unusable server-side |
+| **`simonkurtz-MSFT/drawio-mcp-server`** | **stdio + streamable HTTP** (`/mcp`, :8080) | **no** — stateless XML generator | **700+ official Azure icons, embedded, fully offline** | **✅ deployable** — ~20 MB distroless image, non-root, Docker Hub `simonkurtzmsft/drawio-mcp-server` |
+
+Foundry Agent Service **does support remote / custom MCP servers as agent tools** (out of
+preview during 2026; the Azure DevOps remote MCP server is the reference). So the engine
+can attach to `landfall-migration-estimator`. **We still do not let the agent free-draw**
+— a 40-node landing zone authored through dozens of MCP round-trips is slow, token-heavy
+and non-repeatable, unacceptable on a funding artifact.
+
+**Design — hybrid: a deterministic driver over the real MCP engine.**
+
+```
+design_landing_zone  (JSON: hub VNet, spoke VNets, subnets, shared svcs, ER/VPN, DR pair)
+        │
+        ▼
+build_landing_zone_diagram          ← ONE OpenAPI tool the agent calls (like build_calculator_estimate)
+  Function · deterministic mapping in src/api/lz/diagram.py — NOT agent reasoning:
+    • hub / spoke VNets, subnets        → MCP  create-group      (swimlane containers, startSize=24)
+    • each component (Firewall, Bastion, GW, KV, Log Analytics, AD DC, VMs …)
+                                        → MCP  browse-azure-icons + add-cell-of-shape
+    • peerings, ExpressRoute/VPN, DR     → MCP  add-edge          (colours per skill: #0078D4 / #00897B / …)
+    • layout                            → MCP  routing: libavoid  (no hand-written waypoints)
+    • MCP  export-xml                    → landing_zone.drawio
+        │
+        ▼
+  render (same container, POST /render):  .drawio → landing_zone.svg + .png   (headless Chromium via drawio-export)
+        │
+        ▼
+  answers/engagements/<c>/<p>/estimate/  landing_zone.{drawio,svg,png}
+        │
+        ▼
+  dashboard landing-zone card (SVG inline + "Download .drawio")   ·   to_pptx / to_docx embed the SVG
+```
+
+| Piece | Usable from Foundry / Azure? | How Landfall uses it |
+|---|---|---|
+| **`simonkurtz-MSFT/drawio-mcp-server` as the engine** — HTTP transport, browserless, offline Azure icon catalog, VNet/subnet group primitives, `export-xml` | **Yes.** Deploy as a scale-to-zero Container App `ca-drawio` (internal ingress, `minReplicas: 0`) — the **third** side-car on the `ca-calc` / `ca-deckgen` pattern. Optionally also register it as a **raw MCP tool** on the agent (tool allow-list) for ad-hoc "tweak the diagram" chat asks — low-stakes, off the main path. | engine for `build_landing_zone_diagram` |
+| **The skill's rules** — `xml-authoring-rules.md`, `azure.md` (colour palette, swimlane nesting, `parent="1"` cross-container edges, `search_shapes`-first, no hand-routed edges, layout-pass choice) | **Yes — vendored as our ruleset.** | coded into `src/api/lz/diagram.py`'s mapping + a one-line agent system-prompt note |
+| **The render step** — `.drawio → svg/png` always needs headless Chromium/Electron somewhere | **Yes.** Bake `drawio-export` (or draw.io desktop `--export`) into the `ca-drawio` image, expose `POST /render`. One container, two jobs. Fallback: a `/render` endpoint on `ca-calc` (already has Chromium); last resort: ship `.drawio` only + render client-side with the draw.io viewer lib. | producing the SVG/PNG the dashboard + deck show |
+
+**Components to build (E11.22):**
+- `ca-drawio` Container App — `simonkurtzmsft/drawio-mcp-server` image mirrored to our ACR,
+  started `--transport http`, port 8080, internal ingress, `minReplicas: 0`; `drawio-export`
+  layered in for `POST /render`. Bicep in `infra/resources.bicep`; `DRAWIO_MCP_URL` app
+  setting on the Function.
+- `src/api/lz/diagram.py` — pure `design_landing_zone` JSON → ordered MCP-call plan
+  (groups, cells with Azure icon keys, edges). Fully unit-tested, no network. Mirrors
+  `calculator_spec.py`.
+- `build_landing_zone_diagram` Function + `src/api/openapi/build_landing_zone_diagram.json`
+  (required `engagement`). Opens an MCP session to `ca-drawio`, replays the plan,
+  `export-xml`, `POST /render`, writes the 3 blobs. Mirrors `build_calculator_estimate`.
+- Agent — new tool in `_OPENAPI_TOOLS`; system-prompt line ("after `design_landing_zone`,
+  call `build_landing_zone_diagram`"); **"Landing-zone diagram"** prompt card. Optionally
+  the `ca-drawio` MCP connection registered as a Foundry MCP tool.
+- `docs/diagram-authoring/{xml-authoring-rules,azure,layout-antipatterns}.md` — the skill's
+  reference docs vendored, same as the xlsx/docx references in §3.1.
+
+**Output & wiring:**
+- `answers/engagements/<c>/<p>/estimate/landing_zone.{drawio,svg,png}`, regenerated
+  whenever `design_landing_zone` / the target region changes.
+- Dashboard: SVG inline on the landing-zone card; "Download .drawio" so an architect edits
+  it in draw.io desktop.
+- `to_pptx` swaps its current hand-drawn hub-spoke slide for the rendered diagram;
+  `to_docx` embeds the SVG.
+- The diagram is **labelled with the engagement's `target_region` / `dr_region`** and the
+  hub components from the actual design — not a generic template.
+
 ---
 
 ## 5. Work breakdown — Epic E11: Engagement Workspaces
@@ -415,10 +560,16 @@ factor the shared Dockerfile base + blob-IO helper + OpenAPI-tool Bicep into a t
 | **E11.17** | Dashboard — **"Azure landing zone — Pricing Calculator POE"** card ($X/mo · $Y/yr · created `<ts>`, "what's included" drawer, `internal_vs_poe` delta flag); `GET /dashboard/download/landing-zone-xlsx?e=<eid>` streams `landing_zone.xlsx`; `landing_zone.json` read path with the same fallback chain as `latest.json` | P0 | Opening the dashboard for an engagement shows the calculator monthly total and a working **Download Excel (POE)** button; the file is byte-identical to what `ca-calc` stored |
 | **E11.18** | Agent wiring — `build_calculator_estimate` OpenAPI tool (required `engagement`), system-prompt line, the **"Landing zone cost (Calculator POE)"** prompt card; optional `run_engagement` hook after `publish_estimate` | P0 | The card / a chat instruction makes the agent call the container for the open engagement and only that engagement; the dashboard card refreshes |
 | **E11.19** | CI **weekly Playwright calculator-adapter smoke** (open the calculator, assert every adapter's selectors resolve, one tiny end-to-end export); **(deferred)** authenticated Save → shared estimate link stored as `landing_zone_url` | P1 | A calculator UI change that breaks an adapter fails the weekly job with the adapter named; a broken adapter degrades to `skipped[]`, never a wrong price |
+| **E11.20** | **Engagement-id resolution — the user never types the slug** (§3.5). One shared `make_engagement_id()`; dashboard engagement `<select>` + inline "New engagement" form (names + region/licensing, not the id); `/api/chat` prepends `[Active engagement: …]`; `resolve_engagement` OpenAPI tool with fuzzy candidate matching; agent system prompt reworked to forbid inventing a slug | P0 | A user only ever enters a customer name and a project name; the id used for the ADLS folder, the SQL filter and every tool call is the same derived string; naming "contoso / dc exit" in chat resolves to the existing `contoso-ltd/dc-exit-2027` without the user knowing the slug. **Built + deployed 2026-09-08 (`458d400`); verify picker after hard refresh** |
+| **E11.21** | **Engagement-first chat view** (§4.9) — left rail with the active engagement (customer/project heading), a status strip (Uploads · Analysis · Published estimate · Calculator POE), region + licensing summary, prompt cards / "new engagement"; chat thread + a dashboard tab share the main pane, both scoped to the rail; **Markdown-rendered assistant messages**; per-message toolbar (copy, expand tool calls, "download as Excel"); inline error card with Retry; responsive header. The current single-page chat becomes the "no engagement selected" empty state | P1 | The 10 panel findings in §4.9 are closed; a reviewer can tell which client is active at a glance, see its pipeline state, read a table in an answer without it looking broken, and reach the dashboard for that engagement without losing context. **Needs sponsor sign-off before start** |
+| **E11.22** | **Target landing-zone diagram — `drawio-mcp-diagramming` engine in Azure** (§4.10). `ca-drawio` Container App (`simonkurtz-MSFT/drawio-mcp-server`, HTTP transport, browserless, 700+ offline Azure icons, `minReplicas: 0`) + `drawio-export` for `POST /render`. `src/api/lz/diagram.py` (pure, unit-tested) maps `design_landing_zone` JSON → an ordered MCP-call plan (groups, Azure-icon cells, edges, `libavoid`) using the skill's `xml-authoring-rules` + `azure.md` as the coded-in ruleset. `build_landing_zone_diagram` Function (required `engagement`) replays the plan against `ca-drawio`, `export-xml` → `.drawio`, renders `.svg`/`.png`, writes all 3 to `estimate/`. Agent tool + "Landing-zone diagram" prompt card; optional `ca-drawio` MCP tool on the agent for chat tweaks. Dashboard SVG + "Download .drawio"; `to_pptx` / `to_docx` embed the SVG. Skill refs vendored to `docs/diagram-authoring/`. **Deterministic driver — the agent does not free-draw** | P1 | Producing a landing zone for an engagement yields `landing_zone.{drawio,svg,png}` showing the hub, spokes, shared services and DR pairing for that engagement's chosen region, with correct Azure icons, editable in draw.io desktop; the same design always produces the same diagram; the PPT hub-spoke slide is the rendered diagram, not the hand-drawn one |
 
 **Infra deltas (`infra/resources.bicep`):** Event Grid subject filter; a `ca-deckgen`
-Container App (E11.9) and a **`ca-calc` Container App** (E11.16, Playwright/Chromium
-image) + their ACR images + OpenAPI-tool env vars; no new data stores for v1.
+Container App (E11.9), a **`ca-calc` Container App** (E11.16, Playwright/Chromium image)
+and a **`ca-drawio` Container App** (E11.22, `simonkurtz-MSFT/drawio-mcp-server` +
+`drawio-export`, internal ingress, `minReplicas: 0`) + their ACR images + OpenAPI-tool
+env vars (`CALC_URL`, `DRAWIO_MCP_URL`); optionally a Foundry MCP-tool connection to
+`ca-drawio`; no new data stores for v1.
 
 **Not in scope here:** changing the estimation maths, the CAF landing-zone logic, or the
 eval-harness gates — E11 is plumbing + UX + tenancy around the existing engine. The
@@ -438,8 +589,10 @@ sizing or prices.
 | **C21** | E11.7 + E11.8 + E11.14 (engagement-scoped chat + prompt cards + "ask & export to Excel"; versioned publish) | Prompt cards drive per-engagement outcomes; an architect downloads any chat answer as a workbook; dashboard shows the right engagement's estimate |
 | **C22** | E11.9 + E11.12 (studio-deck container; xlsx/docx polish + CI recalc gate) | "Studio deck" card produces a `qa_gate`-passing deck; recalc gate live |
 | **C23** | E11.10 + E11.11 (access control, audit, migration + shim, docs) | Visibility enforced; the old single-tenant deploy migrates cleanly |
-| **C24** | E11.15 + E11.16 (calculator line-item spec builder; `ca-calc` container end-to-end) | The sample estate's spec → the real Azure Pricing Calculator → a genuine `ExportedEstimate.xlsx` lands in the engagement's `estimate/` folder |
-| **C25** | E11.17 + E11.18 + E11.19 (dashboard POE card + download; agent tool + prompt card; weekly adapter smoke) | A pre-sales user opens an engagement, clicks "Landing zone cost (Calculator POE)", and downloads the calculator's own Excel for a Microsoft funding submission |
+| **C24** | E11.15 + E11.16 + E11.20 (calculator line-item spec builder; `ca-calc` container; engagement-id resolution + chat picker + prompt cards + "working" indicator) | **Partial (2026-09-08):** `calculator_spec.py` (pure, 21 tests, 54 line items on the sample estate) + `calculator_export.py` (parse + reconcile) + `build_calculator_estimate` Function + `ca-calc` scaffold (`src/calc/`, 20 adapters, 2 verified) + Bicep + dashboard POE card + E11.20 all built & committed. **Open: `ca-calc` not deployed** (`azd provision` + `azd deploy calc`), so `build_calculator_estimate` returns 503; ~14 adapters unverified against the live calculator |
+| **C25** | E11.17 + E11.18 + E11.19 (deploy `ca-calc`; verify the ~14 unverified adapters live; dashboard POE card wired to real data; agent tool + prompt card end-to-end; weekly adapter smoke; `run_engagement` → `build_calculator_estimate` hook) | A pre-sales user opens an engagement, clicks "Landing zone cost (Calculator POE)", and downloads the calculator's own Excel for a Microsoft funding submission — against a **deployed** `ca-calc` with every v1 adapter verified |
+| **C26** | E11.21 (engagement-first chat view — rail, status strip, Markdown answers, per-message toolbar, dashboard tab, responsive header) — **sponsor sign-off required first** | The §4.9 panel findings are closed; the chat page is engagement-first, not chat-first |
+| **C27** | E11.22 (`ca-drawio` Container App — `simonkurtz-MSFT/drawio-mcp-server` + `drawio-export`; `lz/diagram.py` deterministic MCP-call plan; `build_landing_zone_diagram` Function + agent tool + prompt card; dashboard + deck + doc embed; skill refs vendored) | Producing a landing zone yields an engagement-specific `.drawio` + rendered SVG for the chosen region with correct Azure icons; same design → same diagram; the deck uses it |
 
 Each cycle logged in [`pdca-log.md`](pdca-log.md) (Plan / Do / Check / Act).
 
@@ -474,7 +627,28 @@ Each cycle logged in [`pdca-log.md`](pdca-log.md) (Plan / Do / Check / Act).
    `dr_region` flow into `estimate_*`, `design_landing_zone` and the calculator spec so
    the estimate + POE are for the region the customer will deploy in. Folded into E11.6
    (form) and E11.15 (spec builder reads it).
+7. **The end user never types the engagement id (2026-09-08).** One shared slugging
+   function backs the dashboard, the API, the SQL filter and the ADLS folders; the UI
+   collects **names** (customer, project) via a picker + inline form and the agent
+   resolves names → id via the `resolve_engagement` tool with fuzzy matching. The agent
+   must not invent a slug. New work E11.20, in C24. See §3.5.
+8. **Chat page moves engagement-first, but as a gated cycle (2026-09-08).** The C24
+   picker/cards/greeting land now; the fuller redesign (rail, status strip, Markdown
+   answers, dashboard tab — §4.9) is **E11.21 / C26 and needs sponsor sign-off** before
+   it starts, to let the C24 changes settle.
+9. **Landing-zone diagram — the `drawio-mcp-diagramming` engine in Azure, driven
+   deterministically (2026-09-08).** `simonkurtz-MSFT/drawio-mcp-server` (HTTP transport,
+   browserless, 700+ offline Azure icons) is deployed as a scale-to-zero Container App
+   `ca-drawio`; `src/api/lz/diagram.py` maps `design_landing_zone` output to a fixed
+   MCP-call plan and `build_landing_zone_diagram` replays it, so the same design always
+   yields the same diagram. The skill's XML/Azure rules are vendored to
+   `docs/diagram-authoring/`. The agent calls one OpenAPI tool; it does **not** free-draw
+   via MCP (slow, non-repeatable, on the funding path) — though `ca-drawio` may also be
+   registered as a raw MCP tool for low-stakes chat tweaks. New work E11.22, PDCA C27.
+   See §4.10.
 
-**Build order:** C18 done (E11.1–E11.3, live). Continue C19 → C25 in order; C24–C25 (the
-Pricing Calculator POE) can run in parallel with C20–C21 since `ca-calc` is independent
-of the dashboard-UX cycles — sequence by reviewer availability.
+**Build order:** C18 done (E11.1–E11.3, live). C24 built except the `ca-calc` deploy.
+**Next: finish C25** — deploy `ca-calc` (`azd provision` + `azd deploy calc`), verify the
+unverified adapters against the live calculator, then wire the dashboard POE card + agent
+tool end-to-end. C19–C23 (tenancy hardening + dashboard UX) continue in parallel by
+reviewer availability. C26 (E11.21) is gated on sponsor sign-off.
