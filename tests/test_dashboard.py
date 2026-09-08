@@ -95,6 +95,25 @@ def test_dashboard_page_serves_the_html(client):
         assert f"/dashboard/download/{fmt}" in r.text
 
 
+def test_chat_page_has_new_chat_working_indicator_and_cards(client):
+    _webapp, c = client
+    r = c.get("/")
+    assert r.status_code == 200
+    assert "New chat" in r.text                       # clear / new session
+    assert "The estimator is working" in r.text       # progress indicator
+    assert "/api/prompt_cards" in r.text and "cardgrid" in r.text
+
+
+def test_prompt_cards_endpoint_returns_intro_and_cards(client):
+    _webapp, c = client
+    j = c.get("/api/prompt_cards").json()
+    assert j["intro"]["title"] and j["intro"]["body"]
+    assert isinstance(j["intro"]["capabilities"], list) and j["intro"]["capabilities"]
+    labels = [card["label"] for card in j["cards"]]
+    assert "Full estimate" in labels and "Landing zone" in labels
+    assert all(card.get("prompt") for card in j["cards"])
+
+
 def test_dashboard_data_404_when_nothing_published(client):
     webapp, c = client
     webapp._blob_state.clear()

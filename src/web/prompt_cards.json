@@ -1,0 +1,25 @@
+{
+  "intro": {
+    "title": "Landfall — Azure Migration Estimator",
+    "body": "I'm a Microsoft Foundry agent that drafts an Azure landing-zone and migration estimate from a client's on-premises inventory. I run deterministic Azure tools — inventory SQL, VM right-sizing, live retail pricing, CAF landing-zone design, 6R disposition, wave planning — and assemble the results into a traceable estimate you can publish to the dashboard or download as Excel / Word / PowerPoint.\n\nEvery figure carries its basis and a confidence rating. Output is a DRAFT for architect review, not a bid. Pick a card below or ask your own question.",
+    "capabilities": [
+      "Inventory & readiness — counts, sizing, OS end-of-support, data-quality gaps",
+      "Azure run-rate cost — compute, storage, egress, backup, monitoring; PAYG / reserved / AHB; low–expected–high",
+      "Landing zone — management groups, subscriptions, hub-spoke networking, identity, policy, DR",
+      "Disposition & waves — 6R per application, risk-ordered migration waves",
+      "Deliverables — estimate package, Excel workbook, Word doc, PowerPoint deck, live dashboard"
+    ]
+  },
+  "cards": [
+    { "label": "Full estimate",        "icon": "◴", "prompt": "Produce the full migration estimate for this engagement and publish it to the dashboard." },
+    { "label": "Landing zone",          "icon": "▦", "prompt": "Design the Azure landing zone for this engagement and walk me through the management groups, spokes, identity, connectivity, policy and DR." },
+    { "label": "Landing-zone cost (Calculator POE)", "icon": "$", "prompt": "Build the Azure Pricing Calculator estimate for this engagement's landing zone and target workloads, and publish it to the dashboard as the Proof of Estimate." },
+    { "label": "Run-rate cost",         "icon": "∑", "prompt": "Break down the Azure run-rate cost with the top cost drivers, the low-expected-high range, the reserved-instance term and the price date." },
+    { "label": "Disposition & waves",   "icon": "➤", "prompt": "Score the 6R dispositions for every application and build the risk-ordered migration wave plan. Call out the pilot wave and any regulated wave." },
+    { "label": "Right-sizing & compute","icon": "⚙", "prompt": "Right-size the servers and estimate the monthly Azure compute cost — quote the SKU mix, the range, and any servers with no performance history." },
+    { "label": "Client deck (PPT)",     "icon": "▣", "prompt": "Assemble the estimate and generate the PowerPoint assessment deck." },
+    { "label": "Excel workbook",        "icon": "▤", "prompt": "Generate the Excel workbook with the full calculation appendix and the assumptions register." },
+    { "label": "What's missing?",       "icon": "?",      "prompt": "What inventory data is missing or low-confidence, and what specifically should I ask the client for before finalising the estimate?" },
+    { "label": "Explain a figure",      "icon": "ℹ", "prompt": "Explain figure F8 — where did that number come from, which tool produced it, and under what assumptions?" }
+  ]
+}
