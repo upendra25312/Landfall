@@ -5,6 +5,60 @@ Operating model: [`landfall-5x5-prd.md` §7](landfall-5x5-prd.md). Tracker:
 
 ---
 
+## Cycle 16 — Function App EasyAuth, live (E8.2)
+
+**Date:** 2026-09-08 · **Owner:** Security · **Tracker:** E8.2 (done) · **Trigger:**
+sponsor said "yes" to the E8.2 follow-up from cycle 15.
+
+### Plan
+
+Turn on the Function App's built-in auth so no `/api/*` route answers anonymously, and
+have the agent call every tool with its managed-identity token.
+
+### Do
+
+- **App registration** `landfall-func-tmglwfatwcsa2` (`920abc3e-35f7-4eac-a2e9-b11da46eecb5`),
+  identifier URI `api://<guid>`, SP created.
+- **Bicep** (`resources.bicep`): `allowedAudiences` now `[<guid>, api://<guid>]`;
+  new `functionAuthAllowedClientIds` param → `defaultAuthorizationPolicy.allowedApplications`
+  (empty = any tenant token for the audience); `excludedPaths` corrected (see Check).
+  Threaded through `main.bicep`.
+- **`create_agent.py`**: `AGENT_TOOL_AUTH=managed` now applies `OpenApiManagedAuthDetails`
+  to **all 12** OpenAPI tools, not just `query_inventory` — EasyAuth is app-global, so
+  it's all-or-nothing. Audience from `FUNC_AUTH_AUDIENCE`.
+- `azd env set ENABLE_FUNCTION_AUTH true` / `FUNCTION_AUTH_CLIENT_ID` / `FUNC_AUTH_AUDIENCE`
+  / `AGENT_TOOL_AUTH=managed`; `azd provision` (×2 — see Check).
+- **DEPLOY.md** step 3 rewritten ("Harden the Function App").
+
+### Check
+
+| # | Result |
+|---|---|
+| C1 | Anonymous `curl` → **401** on `/api/vm_rightsize`, `/api/query_inventory`, `/api/azure_retail_prices`, `/api/publish_estimate` |
+| C2 | Agent (Responses API, MSI) → calls `query_inventory` ×4 + `estimate_compute_cost` ×2, `status: completed`, sourced answer |
+| C3 | Event Grid ingestion still fires — re-uploaded `raw/inventory/*`, DQ reports refreshed, 250 servers in SQL |
+| C4 | Durable `start` unaffected (same `/runtime/webhooks/blobs` exclusion) |
+
+**Bug found:** EasyAuth matches `excludedPaths` as **literal prefixes** — `"/runtime"`
+alone did **not** exclude `/runtime/webhooks/blobs`, so the first provision broke the
+Event Grid webhook (validation → 401). Fixed to
+`["/runtime/webhooks/blobs", "/runtime/webhooks/durabletask"]`.
+**Also:** a hand `az rest PUT` of `authsettingsV2` with only `globalValidation` wiped
+`identityProviders` (PUT replaces the whole resource) → re-ran `azd provision` to
+restore it declaratively. Lesson: only change `authsettingsV2` through Bicep.
+
+### Act
+
+- E8.2 **done and verified live.** E8 security epic now: E8.1/E8.3/E8.4 done, E8.2 done;
+  E8.5–8.7 (private endpoints, thread-principal binding, signed data-handling statement)
+  remain in Phase 2.
+- **Follow-ups:** (1) set `functionAuthAllowedClientIds` to the Foundry MSI client id to
+  restrict callers (Stage 2). (2) `schema.sql` drops+recreates every table on each
+  `azd provision` — wipes loaded inventory; needs idempotent `IF NOT EXISTS` + a real
+  migration path. (3) move `create_agent.py` to the postdeploy hook.
+
+---
+
 ## Cycle 15 — first live deployment + verification pass (E1.6, E5.5, E5.4)
 
 **Date:** 2026-09-08 · **Owner:** SWE · **Tracker:** E1.6 (done), E5.5 (verified),

@@ -11,11 +11,11 @@ Companion to [`prd/landfall-5x5-prd.md`](landfall-5x5-prd.md). Delivery log:
 
 | Phase | Items | Done | In review | In progress | Backlog |
 |---|---|---|---|---|---|
-| 1 — Engine | 36 | 5 | 30 | 0 | 1 |
+| 1 — Engine | 36 | 6 | 29 | 0 | 1 |
 | 2 — Evidence | 11 | 0 | 0 | 0 | 11 |
 | 3 — Sustain | 3 | 0 | 0 | 0 | 3 |
 
-_Last updated: 2026-09-08 (PDCA cycles 1–15). Cycle 15 = first live deployment to `rg-landfall`/swedencentral + verification pass: E1.1 / E1.5 / E1.6 / E5.4 / E5.5 **verified live and marked done**; E2–E8 remain in review pending their own live checks. Phase 1 engine complete bar E1.7 / E4.3 / full E6.2. **Still open: E8.2** (Function App EasyAuth — needs an Entra app reg; routes anonymous today, guarded by `sqlguard`). Live sample in SQL: 250 servers / 31 apps; agent smoke test (query_inventory → estimate_compute_cost) returns a sourced answer. Cycle 15 fixed 3 deploy bugs — see pdca-log. 127 pytest + 32 golden SQL + 8 scenarios + 26 fault cases green._
+_Last updated: 2026-09-08 (PDCA cycles 1–16). Cycle 15 = first live deploy to `rg-landfall`/swedencentral + verification: E1.1 / E1.5 / E1.6 / E5.4 / E5.5 **done**. Cycle 16 = **E8.2 done** — Function App EasyAuth on, anon `/api/*` → 401, agent calls tools via managed identity, Event Grid path intact. Phase 1 engine complete bar E1.7 / E4.3 / full E6.2. Live sample in SQL: 250 servers / 31 apps. Cycle 15 fixed 3 deploy bugs (see pdca-log). 127 pytest + 32 golden SQL + 8 scenarios + 26 fault cases green. Known gap: `schema.sql` drops+recreates tables on every `azd provision` (wipes loaded inventory) — needs idempotent migrations._
 
 ---
 
@@ -92,7 +92,7 @@ _Last updated: 2026-09-08 (PDCA cycles 1–15). Cycle 15 = first live deployment
 | ID | Item | Pri | Status | Owner | Cycle | Acceptance |
 |---|---|---|---|---|---|---|
 | E8.1 | One deployment per engagement + reliable fast `azd up`/`down` | P0 | in-review | SRE | 12 | Two engagements never share a datastore; clean `azd up` in CI, no manual steps. _`resourceToken` makes every resource env-unique; DEPLOY.md isolation note added. Clean-machine CI is E9.2 (Phase 2)._ |
-| E8.2 | `query_inventory` auth on by default | P0 | in-progress | Security | 12 | Anonymous `curl` → 401; agent still works via managed identity. _Bicep `enableFunctionAuth` param + `authsettingsV2` (excludedPaths /runtime), `AGENT_TOOL_AUTH=managed` recipe in DEPLOY. **Live on `rg-landfall`: still OFF** — func routes answer anonymously (guarded only by `sqlguard`). Next step: create the Entra app reg, `azd provision` with `enableFunctionAuth=true`, re-run `create_agent.py` with `AGENT_TOOL_AUTH=managed`, confirm anon → 401._ |
+| E8.2 | Function App auth on by default | P0 | done | Security | 12,16 | Anonymous `curl` → 401; agent still works via managed identity. _**Verified live on `rg-landfall`.** App reg `landfall-func-tmglwfatwcsa2` (`920abc3e…`, audiences `<guid>` + `api://<guid>`); `authsettingsV2` requireAuthentication + Return401, `excludedPaths` = `/runtime/webhooks/blobs` + `/runtime/webhooks/durabletask` (EasyAuth prefix-matches — `/runtime` alone is NOT enough). All 12 OpenAPI tools switched to `OpenApiManagedAuthDetails`. Anon → 401 on every `/api/*`; agent calls `query_inventory` + `estimate_compute_cost` via MSI; Event Grid ingestion still works (250 rows). Principal allow-list (`functionAuthAllowedClientIds`) wired but not yet set — Stage 2._ |
 | E8.3 | Allow-list SQL parse + statement timeout | P0 | in-review | Applied Sci + Security | 12 | `WAITFOR`, `sys.*`, cartesian joins rejected or bounded. _Done — `src/api/sqlguard.py` (single SELECT/WITH, 6-table allow-list, comment strip, keyword deny) + `QUERY_TIMEOUT_S` / `cur.timeout`; 20 tests._ |
 | E8.4 | Keep client SQL text out of logs | P0 | in-review | Security | 12 | Logs contain a hash/template, never the question or SQL. _Done — `sqlguard.signature()` (sha256[:12] + tables + shape); every `query_inventory` log call scrubbed._ |
 
@@ -154,3 +154,4 @@ _Last updated: 2026-09-08 (PDCA cycles 1–15). Cycle 15 = first live deployment
 | 13 | E5.4 — client-ready exports: assembled package → Excel / Word / PowerPoint | [pdca-log.md](pdca-log.md) · **done** |
 | 14 | E5.5 — assessment dashboard web app on the Container App (Azure Migrate–style) with in-page export | [pdca-log.md](pdca-log.md) · **done** |
 | 15 | First live deploy to `rg-landfall` (cycles 5–14) + verification pass — E1.1 / E1.5 / E1.6 / E5.4 / E5.5 verified live; fixed `apply_sql.py` (db_datawriter), `eventgrid.sh` (MSYS path mangling), text-to-SQL enum hints; agent v4 (12 OpenAPI tools) | [pdca-log.md](pdca-log.md) · **done** |
+| 16 | E8.2 — Function App EasyAuth on live: app reg + `authsettingsV2` (Return401, `excludedPaths` blobs/durabletask), all 12 OpenAPI tools → managed-identity auth, `functionAuthClientId`/`functionAuthAllowedClientIds` Bicep params, DEPLOY.md recipe rewritten. Verified: anon → 401, agent works via MSI, ingestion intact | [pdca-log.md](pdca-log.md) · **done** |

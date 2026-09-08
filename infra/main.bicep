@@ -34,6 +34,9 @@ param enableFunctionAuth bool = false
 @description('Entra client id the Function App accepts tokens for when auth is on (azd env set FUNCTION_AUTH_CLIENT_ID ...)')
 param functionAuthClientId string = ''
 
+@description('Optional: restrict Function App EasyAuth to these caller client ids, e.g. the Foundry MSI (azd env set FUNCTION_AUTH_ALLOWED_CLIENT_IDS ...)')
+param functionAuthAllowedClientIds array = []
+
 var abbrs = loadJsonContent('./abbreviations.json')
 var resourceToken = toLower(uniqueString(subscription().id, environmentName, location))
 var tags = { 'azd-env-name': environmentName }
@@ -62,6 +65,7 @@ module resources './resources.bicep' = {
     agentId: agentId
     enableFunctionAuth: enableFunctionAuth
     functionAuthClientId: functionAuthClientId
+    functionAuthAllowedClientIds: functionAuthAllowedClientIds
   }
 }
 

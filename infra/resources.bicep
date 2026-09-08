@@ -16,8 +16,11 @@ param webImageName string = ''
 @description('Turn on Function App built-in auth (EasyAuth) so query_inventory is not anonymous. When true, set AGENT_TOOL_AUTH=managed and re-run create_agent.py so the agent calls it with its managed identity. /runtime is excluded so the Event Grid webhook + durable endpoints keep working.')
 param enableFunctionAuth bool = false
 
-@description('Entra app registration (client) id the Function App accepts tokens for, when enableFunctionAuth is true. Usually api://<function-app-name>.')
+@description('Entra app registration (client) id the Function App accepts tokens for, when enableFunctionAuth is true. A GUID; the Function App accepts both it and api://<guid> as the token audience.')
 param functionAuthClientId string = ''
+
+@description('Optional: restrict EasyAuth to specific caller client ids (e.g. the Foundry project managed identity). Empty = any valid token for the audience from this tenant.')
+param functionAuthAllowedClientIds array = []
 
 @description('Foundry agent name. Empty on first provision; the postprovision hook creates the agent and stores AGENT_ID in the azd env so re-provisioning keeps it wired to both services.')
 param agentId string = ''
@@ -382,7 +385,10 @@ resource functionAuth 'Microsoft.Web/sites/config@2023-12-01' = if (enableFuncti
     globalValidation: {
       requireAuthentication: true
       unauthenticatedClientAction: 'Return401'
-      excludedPaths: [ '/runtime' ]
+      // EasyAuth matches these as literal path prefixes ('/runtime' alone does NOT
+      // cover '/runtime/webhooks/blobs'). Keep the Event Grid blob webhook (drives
+      // ingest_blob + the durable 'start' function) and the durable task APIs open.
+      excludedPaths: [ '/runtime/webhooks/blobs', '/runtime/webhooks/durabletask' ]
     }
     identityProviders: {
       azureActiveDirectory: {
@@ -392,7 +398,10 @@ resource functionAuth 'Microsoft.Web/sites/config@2023-12-01' = if (enableFuncti
           clientId: functionAuthClientId
         }
         validation: {
-          allowedAudiences: [ functionAuthClientId ]
+          allowedAudiences: [ functionAuthClientId, 'api://${functionAuthClientId}' ]
+          defaultAuthorizationPolicy: empty(functionAuthAllowedClientIds) ? null : {
+            allowedApplications: functionAuthAllowedClientIds
+          }
         }
       }
     }

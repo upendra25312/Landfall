@@ -162,7 +162,9 @@ def main() -> None:
 def _openapi_tools() -> list:
     """One OpenApiTool per spec in src/api/openapi, with servers[0].url pointed at the
     deployed Function app. Anonymous auth by default; set AGENT_TOOL_AUTH=managed to make
-    query_inventory use the Foundry managed identity (see DEPLOY.md 'Harden query_inventory')."""
+    every tool call carry the Foundry managed-identity token (needed once the Function App
+    has EasyAuth on — see DEPLOY.md 'Harden the Function App'). EasyAuth is app-global, so
+    it's all tools or none, not query_inventory alone."""
     func_name = os.environ.get("SERVICE_API_NAME", "")
     if not func_name:
         print(
@@ -175,6 +177,8 @@ def _openapi_tools() -> list:
     host = f"{func_name}.azurewebsites.net"
     managed = os.environ.get("AGENT_TOOL_AUTH") == "managed"
     audience = os.environ.get("FUNC_AUTH_AUDIENCE", f"api://{func_name}")
+    if managed:
+        print(f"   OpenAPI tools: managed-identity auth (audience {audience})", file=sys.stderr)
 
     out = []
     for name, description in _OPENAPI_TOOLS.items():
@@ -183,7 +187,7 @@ def _openapi_tools() -> list:
             spec = json.load(fh)
         spec["servers"] = [{"url": f"https://{host}/api"}]
 
-        if managed and name == "query_inventory":
+        if managed:
             auth = OpenApiManagedAuthDetails(
                 security_scheme=OpenApiManagedSecurityScheme(audience=audience)
             )

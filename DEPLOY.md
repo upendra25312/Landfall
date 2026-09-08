@@ -124,35 +124,41 @@ These need the portal or a couple of CLI calls once, after the first `azd up`:
    `azd env get-values`). This publishes a new agent version; the services reference the
    agent by name, so they pick it up with no redeploy.
 
-3. **Harden `query_inventory`** *(strongly recommended)*. The OpenAPI tools ship as
-   **anonymous** HTTP functions on the Function app so the first deploy works.
-   `vm_rightsize`, `estimate_compute_cost`, `estimate_storage_cost`,
-   `estimate_run_rate_extras`, `design_landing_zone`, `score_dispositions`,
-   `plan_waves`, `assemble_estimate` and `azure_retail_prices` hold no client data
-   (they take their inputs in the request body). `query_inventory` returns
-   inventory rows — its SQL is a single `SELECT`/`WITH` against the six inventory
-   tables only, no comments, no admin/timing keywords, 200-row cap, 20 s statement
-   timeout (`src/api/sqlguard.py`, E8.3); the question and SQL text never reach the
-   logs, only a hash + the table list (E8.4). Still, put Entra auth in front of it:
+3. **Harden the Function App** *(strongly recommended)*. The OpenAPI tools ship as
+   **anonymous** HTTP functions so the first deploy works. Even the low-risk tools
+   (`vm_rightsize`, `estimate_compute_cost`, …, `azure_retail_prices`) take their inputs
+   in the request body and hold no client data; `query_inventory` returns inventory rows
+   — its SQL is a single `SELECT`/`WITH` against the six inventory tables only, no
+   comments, no admin/timing keywords, 200-row cap, 20 s statement timeout
+   (`src/api/sqlguard.py`, E8.3); the question and SQL text never reach the logs, only a
+   hash + the table list (E8.4). EasyAuth is **app-global** (it can't protect one route
+   and not another), so turning it on moves *every* tool call behind an Entra token and
+   the agent must use its managed identity for all of them:
    ```bash
-   # provision-time (preferred): turn EasyAuth on via the template
-   APPID=$(az ad app create --display-name "landfall-func ($(azd env get-value SERVICE_API_NAME))" \
-     --identifier-uris "api://$(azd env get-value SERVICE_API_NAME)" --query appId -o tsv)
+   # 1. an app registration whose token audience the Function App will accept
+   APPID=$(az ad app create --display-name "landfall-$(azd env get-value SERVICE_API_NAME)" \
+     --sign-in-audience AzureADMyOrg --query appId -o tsv)
+   az ad app update --id "$APPID" --identifier-uris "api://$APPID"
+   az ad sp create --id "$APPID"
+
+   # 2. turn EasyAuth on through the template and re-provision
    azd env set ENABLE_FUNCTION_AUTH true
    azd env set FUNCTION_AUTH_CLIENT_ID "$APPID"
-   azd provision            # applies authsettingsV2 with excludedPaths ["/runtime"]
-   AGENT_TOOL_AUTH=managed FUNC_AUTH_AUDIENCE="api://$(azd env get-value SERVICE_API_NAME)" \
-     python scripts/create_agent.py     # agent now calls it with its managed identity
+   azd env set FUNC_AUTH_AUDIENCE  "api://$APPID"
+   azd env set AGENT_TOOL_AUTH     managed
+   azd provision      # applies authsettingsV2; postprovision re-runs create_agent.py
+                      # so all 12 OpenAPI tools switch to managed-identity auth
    ```
-   Or, on an already-running app, the CLI path:
-   ```bash
-   RG=$(azd env get-value AZURE_RESOURCE_GROUP); FUNC=$(azd env get-value SERVICE_API_NAME)
-   az webapp auth set -g "$RG" -n "$FUNC" --body @scripts/funcapp-auth.json
-   AGENT_TOOL_AUTH=managed python scripts/create_agent.py
-   ```
-   `excludedPaths: ["/runtime"]` keeps the Event Grid webhook and durable
-   endpoints reachable. Skip this only if the agent must call `query_inventory` and you
-   accept the public endpoint for the life of the engagement.
+   `excludedPaths: ["/runtime/webhooks/blobs", "/runtime/webhooks/durabletask"]` keeps
+   the Event Grid blob webhook (ingestion + the durable `start` function) and the
+   durable-task APIs reachable — note EasyAuth matches `excludedPaths` as literal
+   prefixes, so `/runtime` alone does **not** cover `/runtime/webhooks/blobs`.
+   **Verify:** an anonymous `curl` to any `/api/*` route returns `401`; the agent still
+   answers (it calls the tools with its MSI token). Optionally tighten to just the
+   Foundry identity by setting `functionAuthAllowedClientIds` (Bicep param) to the
+   project's managed-identity client id.
+   Roll back with `azd env set ENABLE_FUNCTION_AUTH false` (+ `AGENT_TOOL_AUTH` unset)
+   then `azd provision`.
 
 4. **Load client data.**
    - **Inventory** → drop the client's exports (RVTools workbook, CMDB extract,
