@@ -5,6 +5,95 @@ Operating model: [`landfall-5x5-prd.md` §7](landfall-5x5-prd.md). Tracker:
 
 ---
 
+## Cycle 25 — POE pipeline live (async) + engagement upload panel (E11.16, E11.6 part, E11.24)
+
+**Date:** 2026-09-08 · **Owner:** App Eng + Azure Pre-Sales Architect + Platform Eng ·
+**Tracker:** E11.16 (async — done, live), E11.20 (done), E11.6 (upload panel — done),
+E11.24 (upload confirmation — done); E11.19 (adapter accuracy — open) ·
+**Decisions:** [`engagement-workspaces-prd.md`](engagement-workspaces-prd.md) §4.5a
+(upload: server-side, content-sniffed, per-engagement-isolated, visible confirmation),
+§4.6 + decision 10 (ca-calc is queue-decoupled), decision 12 (upload).
+
+### Plan
+
+Two things. **(1)** Get the Pricing Calculator POE actually working: C24 built the
+pieces but a live smoke showed the agent's `build_calculator_estimate` call returning
+502. **(2)** A pre-sales architect with no CLI must be able to upload the client's
+server + application inventory (`.csv`, `.xlsx`, …) from the dashboard into a **dedicated
+per-customer/project ADLS folder**, with a **visual indication** each file landed, and
+outputs kept in a separate folder for the same engagement.
+
+### Do
+
+**POE async (E11.16).** Root cause of the 502: the Flex Consumption Function App shares
+no VNet with the Container Apps Environment, so it can't reach `ca-calc`'s internal
+ingress at all — *and* a ~55-line Playwright drive overruns the ~230 s Functions HTTP
+limit regardless. Rebuilt around a **storage queue**:
+
+- new `calc-jobs` queue (Bicep). `build_calculator_estimate` POST now stages the spec
+  to `{prefix}/_calc_spec.json`, writes `landing_zone.json` status `building`, drops one
+  `calc-jobs` message, and returns **202**. New `GET ?engagement=` status route +
+  `get_calculator_estimate` OpenAPI tool for polling; agent system-prompt reworked
+  ("the POE builds in the background — watch the dashboard").
+- `src/calc/worker.py` — `consume_forever()`: `DefaultAzureCredential(uami)` +
+  `QueueClient`, drains a message, reads the spec, `build_estimate`, parse + reconcile,
+  writes `landing_zone.{xlsx,json,png}` (ready|failed) to the engagement folder itself,
+  deletes the message either way. `asyncio.wait_for(..., 1500 s)` budget. `app.py`
+  lifespan starts it; `minReplicas: 1` (KEDA queue-scale-to-zero deferred — the MI
+  scale-rule auth shape isn't in this Bicep type version and shared-key auth is off).
+- Dashboard POE card renders `building` (auto-refresh) / `failed` / `ready`.
+- `azure` SDK HTTP logging → WARNING (it was drowning the worker's own logs).
+
+**Upload panel (E11.6 / E11.24).**
+
+- `src/web/uploads.py` (pure, 5 tests) — `classify(name, head)` checks type by **magic
+  bytes + structure**, not extension: `.csv/.tsv/.json/.xlsx/.xls/.zip` → `inventory/`,
+  `.pdf/.docx/.md/.txt/.png/.jpg` → `docs/`; rejects `.xlsm/.docm`/exe/other archives
+  with a reason. `peek(name, data)` — best-effort header + row count + a profile hint
+  (RVTools vInfo / CMDB / server inventory / …). Caps: 100 MB/file, 250 MB/request,
+  2 GB/engagement.
+- `src/web/app.py` — `POST /api/engagements/{customer}/{project}/upload` (multipart,
+  **streamed in 4 MB blocks** via `stage_block`/`commit_block_list`, slug-validated so a
+  file can't be written outside its engagement prefix, magic-byte checked on the first
+  8 KB before any block is committed, `peek` metadata stamped on the blob),
+  `GET …/files` (manifest: name, kind, size, uploaded-at/by, profile, rows),
+  `DELETE …/files/{name}`. New deps `python-multipart`, `openpyxl`.
+- Chat page — an **Upload panel** appears whenever an engagement is selected: drag-drop
+  or browse, auto/data/docs toggle, per-file rows that go
+  `uploading NN%` → `checking…` → **✓ inventory · RVTools vInfo · 412 rows · 152 KB**
+  (or `✗ <reason>`), a toast, and a **persisted manifest** that re-lists the folder on
+  load with a remove button. Welcome copy points the user at it.
+- Wrote the missing `_engagement.json` for the seed `_default_/_default_` engagement
+  (`Sample Estate — Reference Migration`, `visibility: all`) so it shows in the picker.
+
+### Check
+
+| # | Result |
+|---|---|
+| POE end-to-end, live | agent → **202 in 10 s** → `calc-jobs` → `ca-calc` drove the real calculator (55 products) → genuine `ExportedEstimate.xlsx` (56 KB) + `.png` + `.json` at `answers/engagements/_default_/_default_/estimate/landing_zone.*` |
+| POE reconciliation | **−73 %** ($26,314 calc vs $97,624 internal) — the ~14 unverified adapters added the products but didn't set quantities, so the calculator used defaults. Flagged `within_tolerance: false`. → **E11.19 is the open work** |
+| queue consumer auth | `ca-calc` polls `calc-jobs` with the workload identity, HTTP 200, no shared key |
+| upload — isolation | test: `servers.csv` → only `raw/engagements/contoso-ltd/dc-exit/inventory/servers.csv`, nowhere else; `../../etc/passwd` path → 404 |
+| upload — validation | `.xlsm` → 415 "re-save as .xlsx"; `<html>` renamed `.xlsx` → 415 "doesn't look like a real .xlsx"; binary `.csv` → 415 |
+| upload — confirmation | `peek` returns `RVTools vInfo · 412 rows` from a real vInfo header; xlsx row count via openpyxl |
+| tests | **202 pytest** (+10 new: `test_upload.py`, `test_calc_service.py`, rewritten `test_build_calculator_estimate.py`) + 32/8/30 evals green |
+
+### Act
+
+- Committed + pushed: `c96be46` (queue decouple) → `3bc6ff7` (PRD) → this cycle's web
+  upload commit. Deployed: `azd provision` + `azd deploy calc` + `azd deploy api` +
+  `azd deploy web` + `create_agent.py` (16 OpenAPI tools).
+- **Carry to C25b / next:** **E11.19** — verify every `ca-calc` product adapter against
+  the live calculator so the reconciliation delta closes (the POE isn't submittable until
+  it does). Then KEDA queue-scale-to-zero for `ca-calc`, the weekly adapter smoke, and
+  `run_engagement` → `build_calculator_estimate` hook.
+- **Carry:** wire the upload panel's manifest to a **"Start analysis"** button
+  (`run_engagement`, E11.4) so uploaded files get ingested + DQ-reported per file;
+  `.zip` expansion; the discovery questionnaire round-trip (E11.25).
+- No maths, CAF logic or eval-gate changes — plumbing + UX only.
+
+---
+
 ## Cycle 24 — Azure Pricing Calculator POE + chat engagement scoping (E11.15–E11.18, part E11.6/E11.7)
 
 **Date:** 2026-09-08 · **Owner:** Azure Pre-Sales Architect + App Eng ·

@@ -1,5 +1,7 @@
 fastapi==0.115.*
 uvicorn[standard]==0.32.*
+python-multipart==0.0.19
 azure-identity==1.19.*
 azure-ai-projects==2.6.0
 azure-storage-blob==12.23.*
+openpyxl==3.1.*

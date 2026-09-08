@@ -7,15 +7,18 @@ response id so the conversation keeps its memory. Authentication in front of thi
 app is handled by the Container App's built-in Entra ID (Easy Auth) - configure it
 after first deploy.
 """
+import base64
 import os
 import json
 import pathlib
 import logging
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, UploadFile, Form
 from fastapi.responses import HTMLResponse, JSONResponse, Response
 from azure.identity import DefaultAzureCredential
 from azure.ai.projects import AIProjectClient
+
+import uploads as _up
 
 logging.basicConfig(level=logging.INFO)
 
@@ -258,6 +261,152 @@ async def engagements_create(request: Request):
     return JSONResponse(manifest, status_code=201)
 
 
+def _seg(v: str) -> str | None:
+    v = (v or "").strip().lower()
+    return v if _SEG_RE.match(v) else None
+
+
+def _engagement(customer: str, project: str) -> tuple[str, str] | None:
+    """Validate the path pair -> ('<c>/<p>', 'engagements/<c>/<p>'). None if malformed
+    or the engagement doesn't exist (no `_engagement.json`)."""
+    c, p = _seg(customer), _seg(project)
+    if not c or not p:
+        return None
+    eid = f"{c}/{p}"
+    try:
+        _raw_container().download_blob(f"engagements/{eid}/_engagement.json").readall()
+    except Exception:  # noqa: BLE001
+        return None
+    return eid, f"engagements/{eid}"
+
+
+def _list_files(base: str) -> list[dict]:
+    cc = _raw_container()
+    out = []
+    for sub in ("inventory", "docs"):
+        for b in cc.list_blobs(name_starts_with=f"{base}/{sub}/"):
+            fn = b.name.rsplit("/", 1)[-1]
+            if not fn or fn == ".keep":
+                continue
+            md = getattr(b, "metadata", None) or {}
+            out.append({
+                "name": fn, "kind": sub, "size": b.size,
+                "uploaded_at": (b.last_modified.isoformat() if b.last_modified else None),
+                "uploaded_by": md.get("uploaded_by"),
+                "profile": md.get("profile") or "",
+                "rows": int(md.get("rows") or 0), "columns": int(md.get("columns") or 0),
+            })
+    out.sort(key=lambda x: x.get("uploaded_at") or "", reverse=True)
+    return out
+
+
+@app.get("/api/engagements/{customer}/{project}/files")
+def engagement_files(customer: str, project: str):
+    """Manifest of what's been uploaded for this engagement (E11.24)."""
+    eng = _engagement(customer, project)
+    if not eng:
+        return JSONResponse({"error": "unknown or malformed engagement"}, status_code=404)
+    eid, base = eng
+    files = _list_files(base)
+    total = sum(f["size"] for f in files)
+    return JSONResponse({"engagement": eid, "files": files, "count": len(files),
+                         "bytes": total, "over_soft_cap": total > _up.MAX_ENGAGEMENT})
+
+
+@app.post("/api/engagements/{customer}/{project}/upload")
+async def engagement_upload(customer: str, project: str, request: Request,
+                            file: UploadFile, kind: str = Form("auto")):
+    """Stream one file into `raw/engagements/<c>/<p>/inventory|docs/` (E11.6/E11.24).
+    Server-side only — no SAS to the browser. Slug-validated: a file cannot be
+    written outside its engagement's prefix."""
+    eng = _engagement(customer, project)
+    if not eng:
+        return JSONResponse({"error": "unknown or malformed engagement — create it first"},
+                            status_code=404)
+    eid, base = eng
+    try:
+        clen = int(request.headers.get("content-length") or 0)
+    except ValueError:
+        clen = 0
+    if clen and clen > _up.MAX_REQUEST:
+        return JSONResponse({"error": f"upload too large (limit {_up.MAX_REQUEST // 1024 // 1024} MB)"},
+                            status_code=413)
+
+    name = _up.safe_name(file.filename)
+    from azure.storage.blob import BlobBlock, ContentSettings
+    PEEK_CAP = 12 * 1024 * 1024
+    CHUNK = 4 * 1024 * 1024
+    buf = bytearray()
+    total = 0
+    checked = False
+    kind_folder = None
+    blocks: list = []
+    bc = None
+
+    while True:
+        chunk = await file.read(CHUNK)
+        if not chunk:
+            break
+        total += len(chunk)
+        if total > _up.MAX_FILE:
+            return JSONResponse(
+                {"error": f"{name} is over the {_up.MAX_FILE // 1024 // 1024} MB per-file limit"},
+                status_code=413)
+        if len(buf) < PEEK_CAP:
+            buf.extend(chunk[: PEEK_CAP - len(buf)])
+        if not checked:
+            ok, detected, reason = _up.classify(name, bytes(buf[:8192]))
+            if not ok:
+                return JSONResponse({"error": f"{name}: {reason}", "name": name}, status_code=415)
+            kind_folder = detected if kind in ("auto", "", None) else (
+                "docs" if kind == "docs" else "inventory")
+            dest = f"{base}/{kind_folder}/{name}"
+            bc = _raw_container().get_blob_client(dest)
+            checked = True
+        bid = base64.b64encode(f"blk-{len(blocks):06d}".encode()).decode()
+        bc.stage_block(bid, bytes(chunk))
+        blocks.append(BlobBlock(block_id=bid))
+
+    if total == 0:
+        return JSONResponse({"error": f"{name} is empty"}, status_code=400)
+
+    info = _up.peek(name, bytes(buf)) if total <= PEEK_CAP else {"profile": "", "rows": 0, "columns": 0}
+    meta = {"uploaded_by": _principal_name(request),
+            "profile": info.get("profile") or "", "rows": str(info.get("rows") or 0),
+            "columns": str(info.get("columns") or 0), "kind": kind_folder}
+    ctype = {"csv": "text/csv", "json": "application/json"}.get(
+        name.rsplit(".", 1)[-1].lower(), "application/octet-stream")
+    try:
+        bc.commit_block_list(blocks, metadata=meta, content_settings=ContentSettings(content_type=ctype))
+    except Exception as exc:  # noqa: BLE001
+        logging.exception("upload commit failed")
+        return JSONResponse({"error": f"could not store {name}: {exc}"}, status_code=500)
+
+    return JSONResponse({
+        "name": name, "kind": kind_folder, "size": total, "engagement": eid,
+        "profile": info.get("profile") or "", "rows": info.get("rows") or 0,
+        "columns": info.get("columns") or 0,
+        "path": f"raw/{base}/{kind_folder}/{name}",
+    }, status_code=201)
+
+
+@app.delete("/api/engagements/{customer}/{project}/files/{name}")
+def engagement_file_delete(customer: str, project: str, name: str):
+    eng = _engagement(customer, project)
+    if not eng:
+        return JSONResponse({"error": "unknown engagement"}, status_code=404)
+    _eid, base = eng
+    safe = _up.safe_name(name)
+    cc = _raw_container()
+    for sub in ("inventory", "docs"):
+        try:
+            cc.delete_blob(f"{base}/{sub}/{safe}")
+            return JSONResponse({"deleted": safe, "kind": sub})
+        except Exception:  # noqa: BLE001
+            continue
+    return JSONResponse({"error": f"{safe} not found"}, status_code=404)
+
+
 @app.get("/api/prompt_cards")
 def prompt_cards():
     """Intro + capability list + the clickable prompt cards for the chat UI (E11.7).
@@ -364,6 +513,23 @@ def index():
  .mini form{position:static;border:0;padding:0;display:grid;grid-template-columns:1fr 1fr;gap:8px;background:none;max-width:none}
  .mini .full{grid-column:1/-1}
  .warn{color:#f0a35e;font-size:12px}
+ #uploadpanel{max-width:820px;margin:14px auto 0;padding:0 20px}
+ .utabs{display:flex;align-items:center;gap:12px;margin:0 0 8px;font-size:12px;color:var(--muted)}
+ .utabs label{cursor:pointer}
+ .uz{border:1.5px dashed var(--line);border-radius:12px;padding:16px;text-align:center;background:var(--panel);cursor:pointer;color:var(--muted);font-size:12.5px;line-height:1.7}
+ .uz.drag{border-color:#7fd3dd;color:var(--ink);background:#152430}
+ .uz b{color:#7fd3dd}
+ #filerows{list-style:none;margin:8px 0 0;padding:0}
+ .frow{display:flex;align-items:center;gap:10px;padding:8px 10px;border:1px solid var(--line);border-radius:8px;margin-top:8px;font-size:13px}
+ .frow .nm{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+ .frow .st{color:var(--muted);font-size:12px;white-space:nowrap}
+ .frow.ok{border-color:#1f6f43}.frow.ok .st{color:#6fce9a}
+ .frow.err{border-color:#7a3b2e}.frow.err .st{color:#f0a35e}
+ .frow .pbar{width:74px;height:6px;border-radius:3px;background:#152430;overflow:hidden;flex:none}
+ .frow .pbar i{display:block;height:100%;background:#7fd3dd;width:0;transition:width .2s}
+ .frow .x{color:var(--muted);cursor:pointer;background:none;border:0;font:inherit;flex:none}
+ .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:84px;background:#152430;border:1px solid var(--line);border-radius:8px;padding:10px 16px;font-size:13px;z-index:20;opacity:0;pointer-events:none;transition:opacity .3s}
+ .toast.show{opacity:1}
 </style></head><body>
 <header>
  <span>Landfall &mdash; Migration Estimator</span>
@@ -385,6 +551,23 @@ def index():
    <button class=link type=button id=engcancel style="margin-left:10px">cancel</button></div>
  </form>
 </div>
+<div id=uploadpanel hidden>
+ <div class=utabs>
+  <span style="color:var(--ink)">Inventory &amp; documents for <b id=upeng></b></span>
+  <span style="flex:1"></span>
+  <label><input type=radio name=ukind value=auto checked> auto</label>
+  <label><input type=radio name=ukind value=inventory> data</label>
+  <label><input type=radio name=ukind value=docs> docs</label>
+ </div>
+ <label class=uz id=uz>
+  <input type=file id=ufile multiple hidden>
+  Drop files here or <b>browse</b><br>
+  CSV · Excel · TSV · JSON &mdash; server / application inventory &nbsp;·&nbsp; PDF · Word · PNG &mdash; diagrams, DR, compliance<br>
+  <span style="font-size:11px">up to 100&nbsp;MB each &mdash; lands in this engagement's private folder</span>
+ </label>
+ <ul id=filerows></ul>
+</div>
+<div id=toast class=toast></div>
 <div id=log><div id=welcome></div></div>
 <form id=f>
  <input id=q placeholder="Ask about the client inventory, sizing, waves, cost..." autocomplete=off>
@@ -419,8 +602,8 @@ function renderWelcome(){
  const caps=(i.capabilities||[]).map(c=>'<li>'+esc(c)+'</li>').join('');
  const cards=CARDS.map((c,ix)=>'<button class=pc data-i="'+ix+'"><span class=ic>'+esc(c.icon||'▸')+'</span><span>'+esc(c.label)+'</span></button>').join('');
  const engnote = ENG
-  ? '<p class=sub style="color:#7fd3dd">Active engagement: <b>'+esc(ENG)+'</b> — every answer is scoped to it.</p>'
-  : '<p class="sub warn">No engagement selected. Pick one top-left, or click <b>+ New engagement</b> — the estimate stays that customer/project\\'s.</p>';
+  ? '<p class=sub style="color:#7fd3dd">Active engagement: <b>'+esc(engLabel(ENG))+'</b> — every answer, upload and estimate is scoped to it. Add the client inventory in the panel above, then ask for the estimate.</p>'
+  : '<p class="sub warn">No engagement selected. Pick one top-left, or click <b>+ New engagement</b> to start a customer / project — then upload their server &amp; application inventory.</p>';
  w.innerHTML='<div class=intro><h2>'+esc(i.title||'Landfall — Migration Estimator')+'</h2>'
   +engnote
   +'<p>'+esc(i.body||'').replace(/\\n/g,'<br>')+'</p>'
@@ -451,9 +634,64 @@ async function loadEngagements(){
  });
  if(ENG && list.some(e=>e.engagement===ENG)) engsel.value=ENG;
  else { ENG=engsel.value||''; localStorage.setItem('landfall.eng',ENG); }
- renderWelcome();
+ renderWelcome();showUpload();
 }
-engsel.onchange=()=>{ENG=engsel.value;localStorage.setItem('landfall.eng',ENG);};
+engsel.onchange=()=>{ENG=engsel.value;localStorage.setItem('landfall.eng',ENG);renderWelcome();showUpload();};
+
+// --- Upload panel (E11.6 / E11.24) ---------------------------------------
+const upanel=document.getElementById('uploadpanel'),uz=document.getElementById('uz'),
+      ufile=document.getElementById('ufile'),frows=document.getElementById('filerows'),
+      toastEl=document.getElementById('toast');
+const enc=encodeURIComponent;
+function toast(m){toastEl.textContent=m;toastEl.classList.add('show');setTimeout(()=>toastEl.classList.remove('show'),3200);}
+function ukind(){return (document.querySelector('input[name=ukind]:checked')||{}).value||'auto';}
+function fmtSize(n){return n>=1048576?(n/1048576).toFixed(1)+' MB':n>=1024?Math.round(n/1024)+' KB':n+' B';}
+function engLabel(eid){const o=[...engsel.options].find(o=>o.value===eid);return o?o.textContent.split('  ·  ')[0]:eid;}
+function showUpload(){
+ if(!ENG){upanel.hidden=true;return;}
+ upanel.hidden=false;document.getElementById('upeng').textContent=engLabel(ENG);loadFiles();
+}
+async function loadFiles(){
+ frows.innerHTML='';if(!ENG)return;
+ const [c,p]=ENG.split('/');
+ try{
+  const j=await (await fetch('/api/engagements/'+enc(c)+'/'+enc(p)+'/files')).json();
+  (j.files||[]).forEach(f=>frows.appendChild(doneRow(f)));
+  if(j.over_soft_cap)toast('This engagement is over the 2 GB soft cap.');
+ }catch(e){}
+}
+function delFile(nm){
+ return async()=>{if(!confirm('Remove '+nm+'?'))return;const [c,p]=ENG.split('/');
+  await fetch('/api/engagements/'+enc(c)+'/'+enc(p)+'/files/'+enc(nm),{method:'DELETE'});loadFiles();};
+}
+function doneRow(f){
+ const li=document.createElement('li');li.className='frow ok';
+ const prof=f.profile?(' · '+esc(f.profile)):'',rows=f.rows?(' · '+f.rows+' rows'):'';
+ li.innerHTML='<span class=nm>'+esc(f.name)+'</span><span class=st>✓ '+esc(f.kind)+prof+rows+' · '+fmtSize(f.size)+'</span><button class=x title=Remove>✕</button>';
+ li.querySelector('.x').onclick=delFile(f.name);return li;
+}
+function uploadOne(file){
+ const li=document.createElement('li');li.className='frow';
+ li.innerHTML='<span class=nm>'+esc(file.name)+'</span><span class=pbar><i></i></span><span class=st>uploading…</span>';
+ frows.prepend(li);
+ const bar=li.querySelector('.pbar i'),st=li.querySelector('.st'),[c,p]=ENG.split('/');
+ const fd=new FormData();fd.append('kind',ukind());fd.append('file',file);
+ const xhr=new XMLHttpRequest();
+ xhr.open('POST','/api/engagements/'+enc(c)+'/'+enc(p)+'/upload');
+ xhr.upload.onprogress=e=>{if(e.lengthComputable){const pct=Math.round(e.loaded/e.total*100);bar.style.width=pct+'%';st.textContent=pct<100?('uploading '+pct+'%'):'checking…';}};
+ xhr.onload=()=>{let j={};try{j=JSON.parse(xhr.responseText);}catch(e){}
+  if(xhr.status===201){li.replaceWith(doneRow(j));toast(j.name+' added to '+engLabel(ENG));}
+  else{li.className='frow err';
+   li.innerHTML='<span class=nm>'+esc(file.name)+'</span><span class=st>✗ '+esc(j.error||('error '+xhr.status))+'</span><button class=x>✕</button>';
+   li.querySelector('.x').onclick=()=>li.remove();}};
+ xhr.onerror=()=>{li.className='frow err';st.textContent='✗ network error';};
+ xhr.send(fd);
+}
+uz.onclick=()=>ufile.click();
+ufile.onchange=()=>{[...ufile.files].forEach(uploadOne);ufile.value='';};
+uz.ondragover=e=>{e.preventDefault();uz.classList.add('drag');};
+uz.ondragleave=()=>uz.classList.remove('drag');
+uz.ondrop=e=>{e.preventDefault();uz.classList.remove('drag');[...e.dataTransfer.files].forEach(uploadOne);};
 
 async function loadRegions(){
  try{const r=await fetch('/api/calc_regions');const regs=(await r.json()).regions||[];
@@ -474,7 +712,8 @@ document.getElementById('ef').onsubmit=async ev=>{
   const j=await r.json();
   if(j.error){alert('Could not create: '+j.error);}
   else{ENG=j.engagement;localStorage.setItem('landfall.eng',ENG);engform.hidden=true;ev.target.reset();
-       await loadEngagements();engsel.value=ENG;newChat();}
+       await loadEngagements();engsel.value=ENG;showUpload();newChat();
+       toast('Engagement created — now upload the client inventory below.');}
  }catch(e){alert('Error: '+e);}
  btn.disabled=false;btn.textContent='Create engagement';
 };
