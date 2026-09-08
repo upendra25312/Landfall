@@ -15,5 +15,6 @@ Deterministic and pure — no network, tool outputs are injected.
 """
 from .effort import estimate_effort
 from .assemble import assemble_estimate, render_markdown
+from .export import export
 
-__all__ = ["estimate_effort", "assemble_estimate", "render_markdown"]
+__all__ = ["estimate_effort", "assemble_estimate", "render_markdown", "export"]

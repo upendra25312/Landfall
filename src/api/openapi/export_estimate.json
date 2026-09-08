@@ -1,0 +1,52 @@
+{
+  "openapi": "3.0.1",
+  "info": {
+    "title": "export_estimate",
+    "description": "Renders an assembled estimate package into a client-ready file: an Excel workbook (.xlsx — cover, headline figures, a sheet per section, the calculation appendix, the register), a Word document (.docx — proposal-ready narrative), or a PowerPoint deck (.pptx — executive readout). Every figure keeps its F* reference; all three carry the DRAFT watermark. Returns the binary file as an attachment.",
+    "version": "1.0.0"
+  },
+  "servers": [{ "url": "https://REPLACE/api" }],
+  "paths": {
+    "/export_estimate": {
+      "post": {
+        "operationId": "export_estimate",
+        "summary": "Estimate package -> Excel / Word / PowerPoint file",
+        "description": "Pass either {\"package\": <assemble_estimate output>, \"format\": \"xlsx|docx|pptx\"} or the assemble_estimate inputs directly plus a format. Returns the file (Content-Disposition: attachment).",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["format"],
+                "properties": {
+                  "format": { "type": "string", "enum": ["xlsx", "docx", "pptx"] },
+                  "package": { "type": "object", "nullable": true, "description": "an assemble_estimate result; if omitted, the other fields are assembled first" },
+                  "inventory_summary": { "type": "object", "nullable": true },
+                  "data_quality": { "type": "object", "nullable": true },
+                  "compute_cost": { "type": "object", "nullable": true },
+                  "storage_cost": { "type": "object", "nullable": true },
+                  "run_rate_extras": { "type": "object", "nullable": true },
+                  "landing_zone": { "type": "object", "nullable": true },
+                  "dispositions": { "type": "object", "nullable": true },
+                  "waves": { "type": "object", "nullable": true },
+                  "config": { "type": "object", "nullable": true }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The rendered file",
+            "content": {
+              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": { "schema": { "type": "string", "format": "binary" } },
+              "application/vnd.openxmlformats-officedocument.wordprocessingml.document": { "schema": { "type": "string", "format": "binary" } },
+              "application/vnd.openxmlformats-officedocument.presentationml.presentation": { "schema": { "type": "string", "format": "binary" } }
+            }
+          }
+        }
+      }
+    }
+  }
+}

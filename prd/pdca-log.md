@@ -5,6 +5,60 @@ Operating model: [`landfall-5x5-prd.md` §7](landfall-5x5-prd.md). Tracker:
 
 ---
 
+## Cycle 13 — client-ready exports: Excel / Word / PowerPoint
+
+**Date:** 2026-09-08 · **Owner:** SWE + Staff Writer · **Tracker:** E5.4 (done) ·
+**New scope** from the sponsor: the deliverable must ship as `.xlsx` / `.docx` / `.pptx`.
+
+### Plan
+
+`deliverable/export.py` — `export(package, fmt) -> (bytes, filename, mime)`:
+- **xlsx** (openpyxl): Cover, Headline, a sheet per section, Calculation appendix,
+  Register — styled headers, frozen panes, auto widths.
+- **docx** (python-docx): title page + DRAFT watermark, headline table, every section,
+  the appendix table, the register lists.
+- **pptx** (python-pptx): title, headline numbers, one slide per section, assumptions.
+
+Every figure keeps its `F*` ref; all three carry the watermark. `POST /api/export_estimate`
+(`{format, package}` or the assemble inputs). Deterministic from the package.
+
+**Acceptance**
+
+| # | Criterion | Check |
+|---|---|---|
+| C1 | unknown format → ValueError / 400 | `test_export` |
+| C2 | xlsx opens; one sheet per section + Cover + Appendix + Register; every `F*` in the appendix | `test_export` |
+| C3 | docx opens; carries "DRAFT"; has the appendix; every register id present | `test_export` |
+| C4 | pptx opens; title + headline + one slide per section + assumptions | `test_export` |
+| C5 | content is deterministic (parsed, ignoring the zip timestamp) | `test_export` |
+| C6 | a degraded package (a failed tool) still exports all three | `test_export` |
+
+### Do
+
+- `src/api/deliverable/export.py` — new. `deliverable/functions.py` —
+  `POST /api/export_estimate`. `__init__.py` exports `export`.
+- `src/api/requirements.txt` + `tests/requirements-dev.txt` — `python-docx`,
+  `python-pptx`. `src/api/openapi/export_estimate.json` + `create_agent.py` tool #11.
+- `tests/test_export.py` — 6 cases (120 total). `DEPLOY.md`, `README.md`,
+  `tests/README.md` updated.
+
+### Check
+
+`pytest tests -q` → **120 passed**. Sample pipeline → `landfall-estimate.xlsx` (18 KB,
+12 sheets), `.docx` (41 KB, 85 paras / 3 tables), `.pptx` (40 KB, 11 slides); all three
+re-open cleanly and every figure id appears in the workbook's appendix.
+
+### Act
+
+- **E5.4 done.** The estimate is now downloadable in the three Office formats.
+- **Next — Cycle 14:** E5.5 — the Azure Migrate–style assessment dashboard on the
+  `src/web` Container App: read the assembled package (written to blob by the assemble
+  step), render the interactive panels, wire the "Download Excel / Word / PPT" buttons
+  to `export_estimate`. Needs an assemble→blob "publish" step + the dashboard page +
+  vendoring or an API call for the render.
+
+---
+
 ## Cycle 12 — security & isolation, self-contained hooks (Phase 1 close)
 
 **Date:** 2026-09-08 · **Owner:** Security & Compliance Architect + SRE · **Tracker:**

@@ -71,8 +71,9 @@ What `azd up` does:
      the Microsoft Learn MCP tool, the AI Search tool, and the OpenAPI tools
      (`query_inventory`, `vm_rightsize`, `estimate_compute_cost`,
      `estimate_storage_cost`, `estimate_run_rate_extras`, `design_landing_zone`,
-     `score_dispositions`, `plan_waves`, `assemble_estimate`, `azure_retail_prices`)
-     pointed at the Function app. The agent is addressed by **name**
+     `score_dispositions`, `plan_waves`, `assemble_estimate`, `export_estimate`,
+     `azure_retail_prices`) pointed at the Function app. The agent is addressed
+     by **name**
      (`landfall-migration-estimator`), not an `asst_` id; that name is written to
      `AGENT_ID` in the azd env and pushed to both running services.
 3. **deploy** — zip-deploys `src/api` to the Function app and builds + pushes the

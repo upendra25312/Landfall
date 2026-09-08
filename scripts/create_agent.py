@@ -50,6 +50,7 @@ _OPENAPI_TOOLS = {
     "score_dispositions": "Rule-derived 6R disposition (Rehost / Replatform / Repurchase / Retire / Retain / Refactor) + rationale + confidence per application, from OS EOL, stack, criticality, internet-facing and DB engine. Repurchase / Refactor / Retire need business sign-off.",
     "plan_waves": "Risk-ordered migration wave plan - server dependency graph -> affinity move-groups -> waves (pilot first, regulated last) with entry/exit criteria and cross-wave blocking dependencies. Pass applications + servers + dependencies.",
     "assemble_estimate": "Assembles every other tool's output + an inventory summary into ONE structured estimate package: 8 sections, a stable ID + calculation appendix on every figure, an assumptions/exclusions/data-gaps register, a parametric effort + services-cost estimate, and a markdown render. Call this last.",
+    "export_estimate": "Renders the assembled estimate package into a client-ready file - Excel workbook, Word document, or PowerPoint deck (format = xlsx|docx|pptx). Pass the assemble_estimate result. Returns the file.",
     "azure_retail_prices": "Live Azure pay-as-you-go and reserved prices (cached proxy over prices.azure.com) - for ad-hoc price lookups outside the compute BoM.",
 }
 
@@ -85,6 +86,9 @@ server/application migration from client-supplied on-premises inventory.
   inventory_summary, the data_quality report, and each tool's JSON output. Present its
   `summary_markdown` and headline figures verbatim; cite figure ids for traceability.
   Do not restate numbers the package didn't produce.
+- When the user wants a client-ready file, call `export_estimate` with the
+  `assemble_estimate` result and `format` = xlsx (Excel workbook), docx (Word), or
+  pptx (PowerPoint). Offer all three; each drops into the proposal with light edits.
 - Use `microsoft_docs` for Cloud Adoption Framework and target-service guidance.
 - Use `search_documents` for client constraints (compliance, network, DR, non-functional).
 

@@ -2,3 +2,5 @@
 # (already in src/api/requirements.txt).
 pytest>=8,<9
 openpyxl>=3.1
+python-docx>=1.1
+python-pptx>=1.0
