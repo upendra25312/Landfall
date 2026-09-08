@@ -11,11 +11,11 @@ Companion to [`prd/landfall-5x5-prd.md`](landfall-5x5-prd.md). Delivery log:
 
 | Phase | Items | Done | In review | In progress | Backlog |
 |---|---|---|---|---|---|
-| 1 — Engine | 24 | 1 | 10 | 1 | 12 |
+| 1 — Engine | 24 | 1 | 13 | 1 | 9 |
 | 2 — Evidence | 11 | 0 | 0 | 0 | 11 |
 | 3 — Sustain | 3 | 0 | 0 | 0 | 3 |
 
-_Last updated: 2026-09-07 (PDCA cycles 1–6; D1 done; E2.1–E2.4 / E6.1 in review; E2.5 drivers still open; live checks pending E1.6). Sample estate full Azure run-rate now ~$119k/mo / $1.43M/yr (compute+disk ~$86k, storage ~$16.5k, extras ~$16.3k) + ~$77k one-time, fully traceable._
+_Last updated: 2026-09-08 (PDCA cycles 1–7; D1 done; E2.1–E2.4 / E3.1–E3.3 / E6.1 in review; E2.5 drivers still open; live checks pending E1.6). Cost engine + landing-zone deliverable both built. Sample estate full Azure run-rate ~$119k/mo / $1.43M/yr + ~$77k one-time; ALZ = 9 spokes / 12 subs / HIPAA + PCI regulated._
 
 ---
 
@@ -47,9 +47,9 @@ _Last updated: 2026-09-07 (PDCA cycles 1–6; D1 done; E2.1–E2.4 / E6.1 in rev
 
 | ID | Item | Pri | Status | Owner | Cycle | Acceptance |
 |---|---|---|---|---|---|---|
-| E3.1 | `design_landing_zone` — ALZ from the portfolio + compliance scope | P0 | backlog | Architect | 6 | Platform engineer says "buildable from this"; PCI spoke + connectivity are data-derived. |
-| E3.2 | Spoke count / regulated-spoke flag derived from data | P0 | backlog | Architect | 6 | Swapping the portfolio changes the topology. |
-| E3.3 | Criticality → RTO/RPO resiliency tier mapping | P1 | backlog | Architect | — | Output carries a resiliency tier per app tier. |
+| E3.1 | `design_landing_zone` — ALZ from the portfolio + compliance scope | P0 | in-review | Architect | 7 | Platform engineer says "buildable from this"; PCI spoke + connectivity are data-derived. _Done — `src/api/lz/design.py`, 8 tests; MGs + subs + 9 spokes + IP plan + policy overlay + DR on the sample; feeds `azure-enterprise-infra-planner` for Bicep._ |
+| E3.2 | Spoke count / regulated-spoke flag derived from data | P0 | in-review | Architect | 7 | Swapping the portfolio changes the topology. _Done — zone rules + per-scope regulated spoke; `test_swapping_portfolio_changes_topology`._ |
+| E3.3 | Criticality → RTO/RPO resiliency tier mapping | P1 | in-review | Architect | 7 | Output carries a resiliency tier per app tier. _Done — `resiliency_tiers` config + per-app tier + DR rollup._ |
 
 ### E4 — Wave / Move-Group Engine
 
@@ -143,4 +143,5 @@ _Last updated: 2026-09-07 (PDCA cycles 1–6; D1 done; E2.1–E2.4 / E6.1 in rev
 | 4 | E2.2 `estimate_compute_cost` (compute BoM + PAYG/RI/AHB + per-VM disk, low/expected/high); closes audit FIN-3 | [pdca-log.md](pdca-log.md) · **done** |
 | 5 | E2.3 — `estimate_storage_cost` over the `storage` table (file / DB / object); block volumes stay in the compute BoM | [pdca-log.md](pdca-log.md) · **done** |
 | 6 | E2.4 — run-rate extras (backup / egress / monitoring / support) + one-time migration cost | [pdca-log.md](pdca-log.md) · **done** |
-| 7 | E3.1 / E3.2 — `design_landing_zone` (ALZ topology, spoke count, regulated-spoke flag from the portfolio) | planned |
+| 7 | E3.1 / E3.2 / E3.3 — `design_landing_zone` (CAF ALZ topology, spoke count, regulated-spoke flag, resiliency tiers — all portfolio-derived) | [pdca-log.md](pdca-log.md) · **done** |
+| 8 | E4.1 / E4.2 — `plan_waves` (dependency graph → move groups → risk-ordered waves) + deterministic 6R disposition scorer | planned |

@@ -16,7 +16,7 @@ Client: Meridian Retail Group (MRG). Driver: Ashburn data-centre lease exit by 2
 | Servers / VMs | 150 | **250** (150 Windows, 100 Linux; all VMware vSphere 7.0) |
 | Applications | 45 | **31** (30 business + 1 infrastructure-services bucket) |
 | Migration waves | 6 | **7** (~4–6 apps / ~35 servers each; affinity-grouped, low-risk first) |
-| App landing zones (spokes) | 12 | **11** (Retail/Ecommerce, Finance/ERP, Corporate/HR, Data/Analytics, Integration/API, Customer-web, **PCI-regulated spoke**, Identity, Shared-infra, File-services, Dev/test) |
+| App landing zones (spokes) | 12 | **11** business-domain spokes for effort sizing (Retail/Ecommerce, Finance/ERP, Corporate/HR, Data/Analytics, Integration/API, Customer-web, **PCI-regulated spoke**, Identity, Shared-infra, File-services, Dev/test). The `design_landing_zone` tool instead emits the **CAF archetype** topology — 9 spokes: online-prod/nonprod, corp-prod/nonprod, pcidss-prod/nonprod, hipaa-prod/nonprod, sandbox — with the MG hierarchy, subscriptions and IP plan. |
 | Distinct architecture patterns | 6 | **6** (3-tier IaaS · single-VM IaaS · IaaS + PaaS-DB · AKS · regulated 3-tier · file-services/ANF) |
 
 | Dimension | Value |

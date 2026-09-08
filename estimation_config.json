@@ -107,5 +107,33 @@
   "rates": {
     "blended_day_rate": 780,
     "currency": "USD"
+  },
+
+  "landing_zone": {
+    "$comment": "design_landing_zone — the engagement's platform choices. The ALZ topology (spokes, subscriptions, regulated spoke) is DERIVED from the application portfolio; these are the inputs that derivation needs.",
+    "org_id": "mrg",
+    "primary_region": "swedencentral",
+    "dr_region": "westeurope",
+    "ip_supernet": "10.100.0.0/14",
+    "dr_ip_supernet": "10.104.0.0/14",
+    "hub_prefix": 22,
+    "spoke_prefix": 22,
+    "connectivity": "expressroute+vpn",
+    "identity_model": "extend_ad",
+    "forced_tunnel_egress": true,
+    "prod_availability_zones": true,
+    "environments": ["prod", "nonprod"],
+    "regulated_scopes": ["PCI-DSS", "PCI", "HIPAA", "HITRUST", "IRAP", "FedRAMP", "CJIS", "ITAR"],
+    "policy_baseline": [
+      "Azure Landing Zones default",
+      "Microsoft Cloud Security Benchmark",
+      "CIS Azure Foundations Benchmark v2.0"
+    ],
+    "resiliency_tiers": {
+      "1": { "rpo": "15 min", "rto": "2 h", "pattern": "zone-redundant + cross-region replication (ASR / native DB)" },
+      "2": { "rpo": "1 h", "rto": "8 h", "pattern": "zone-redundant + cross-region ASR" },
+      "3": { "rpo": "24 h", "rto": "48 h", "pattern": "zonal + Azure Backup restore" },
+      "4": { "rpo": "24 h", "rto": "5 d", "pattern": "Azure Backup restore only" }
+    }
   }
 }

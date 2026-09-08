@@ -5,6 +5,94 @@ Operating model: [`landfall-5x5-prd.md` §7](landfall-5x5-prd.md). Tracker:
 
 ---
 
+## Cycle 7 — design_landing_zone (CAF ALZ from the portfolio)
+
+**Date:** 2026-09-08 · **Owner:** Architect (CAF/Landing Zones) + SWE · **Tracker:**
+E3.1 / E3.2 / E3.3 (done) · **Closes audit** P0-3 / LZ-1..3 (no landing-zone output —
+the biggest "toy → real" gap).
+
+### Plan
+
+**Objective.** A deterministic tool that turns the application portfolio + a server
+summary into a **client-specific** CAF Azure Landing Zone: management-group hierarchy,
+subscriptions, hub-spoke VNets + IP plan, policy set, identity, connectivity, DR, and a
+**dedicated regulated spoke** (+ Confidential MG + CMK/private-endpoint overlay) for
+every distinct compliance scope in the portfolio. The topology must be *derived* — swap
+the portfolio and the spoke count / regulated flag change (E3.2). Resiliency tier per
+app from criticality 1–4 (E3.3).
+
+**Why a tool and not the `azure-enterprise-infra-planner` skill:** that skill is a
+7-phase interactive IaC-generation pipeline (Bicep/Terraform + deploy, MCP-tool driven)
+— it's what a delivery architect runs *after* the estimate. Landfall needs the
+deterministic design the agent quotes during pre-sales. The tool's output is shaped as a
+requirements document to hand to that skill downstream (`next_step` field).
+
+**Acceptance this cycle**
+
+| # | Criterion | Check |
+|---|---|---|
+| C1 | Zone rules: internet_facing→Online; regulated scope→Regulated; else Corp | unit test |
+| C2 | No regulated app ⇒ no regulated spoke, no Confidential MG, no overlay | unit test |
+| C3 | A regulated app ⇒ dedicated spoke pair + Confidential MG + CMK/PE + built-in initiative | unit test |
+| C4 | Swapping the portfolio changes the spoke count and the zone set | unit test |
+| C5 | IP plan blocks are inside the supernet and non-overlapping | unit test |
+| C6 | criticality → resiliency tier; DR rollup counts | unit test |
+| C7 | identity_model switch changes the hub (DCs vs none) | unit test |
+| C8 | Deterministic over the full sample portfolio | unit test |
+
+**Design.** `src/api/lz/design.py` — pure. `lz/functions.py` —
+`POST /api/design_landing_zone`. New `landing_zone` block in `cost/config.py` DEFAULTS +
+`estimation_config.json`. OpenAPI spec + agent tool #7 + prompt line. Wired into
+`function_app.py` (`lz_bp`).
+
+**Deferred.** Business-domain spoke grouping (the tool uses CAF archetype grouping —
+zone × env; a per-app-affinity spoke map is an E4 wave-engine concern). Bicep
+generation (hand off to the skill). Cost of the LZ platform itself (fixed services —
+commercial line).
+
+### Do
+
+- `src/api/lz/{__init__,design,functions}.py` — new package. `function_app.py` —
+  `lz_bp` registered. `cost/config.py` — `landing_zone` block.
+- `src/api/openapi/design_landing_zone.json` — new. `scripts/create_agent.py` —
+  `_OPENAPI_TOOLS` (now 7) + `SYSTEM_PROMPT` LZ line.
+- `tests/test_landing_zone.py` — 8 cases. `estimation_config.json`, `DEPLOY.md`,
+  `README.md`, `sample-estate/effort-inputs.md`, `tests/README.md` updated.
+
+### Check
+
+`pytest tests -q` → **66 passed**. C1–C8 pass (see test names).
+
+Full sample portfolio (31 apps) + server summary:
+```
+CAF ALZ, swedencentral (DR westeurope). 9 spokes: 16 corp / 10 online / 5 regulated.
+regulated: HIPAA, PCI-DSS  -> dedicated spoke pair + alz-confidential MG + policy overlay
+  (CMK, deny public access, private endpoints, PCI DSS v4 + HIPAA HITRUST initiatives)
+MGs:  platform{connectivity,identity,management} / landingzones{corp,online,confidential}
+      / sandbox / decommissioned
+subs: 3 platform + 8 LZ + sandbox = 12
+IP:   hub 10.100.0.0/22 ; spokes 10.100.4.0/22 .. 10.100.36.0/22 ; DR supernet 10.104.0.0/14
+hub:  ExpressRoute GW + backup VPN GW + Azure Firewall Premium (forced tunnel) + Bastion
+      + Private DNS Resolver + 2x AD DC (extend AD)
+DR:   region pair; ASR + native DB replication for tiers 1-2; tiers 3-4 from GRS backup
+tiers: 13 T1 / 8 T2 / 6 T3 / 4 T4  (= criticality mix)
+```
+Matches the discovery answers (SC2 CMK, ID3 extend-AD, N2 ER+VPN, N7 forced tunnel,
+B4/R3 Sweden Central + West Europe + AZs) — but derived from `applications.csv`, not the
+discovery doc.
+
+### Act
+
+- **E3.1/E3.2/E3.3 done.** The landing-zone deliverable — the audit's #1 gap — now
+  exists as a deterministic, portfolio-driven tool.
+- **Watch:** HIPAA (1 app) gets its own spoke pair + subs. That's the correct
+  conservative default (isolate per compliance boundary); a firm that folds HIPAA into
+  the PCI segment edits `landing_zone.regulated_scopes`.
+- **Next — Cycle 8:** E4.1/E4.2 — `plan_waves` (dependency graph → move groups →
+  risk-ordered waves) + the deterministic 6R disposition scorer.
+
+---
+
 ## Cycle 6 — estimate_run_rate_extras (run-rate + one-time migration cost)
 
 **Date:** 2026-09-07 · **Owner:** FinOps + SWE · **Tracker:** E2.4 (done).

@@ -1,0 +1,94 @@
+{
+  "openapi": "3.0.1",
+  "info": {
+    "title": "design_landing_zone",
+    "description": "Turns the client application portfolio + a server summary into a client-specific CAF Azure Landing Zone: management-group hierarchy, subscription topology, hub-spoke VNets with an IP plan, policy set, identity, connectivity, DR strategy, and a dedicated regulated spoke (+ Confidential management group + CMK/private-endpoint policy overlay) for every distinct compliance scope in the portfolio. Deterministic — the topology is derived from the data, so swapping the portfolio changes the spoke count and the regulated-spoke flag. Output is a design document to hand to azure-enterprise-infra-planner for Bicep, not IaC itself.",
+    "version": "1.0.0"
+  },
+  "servers": [{ "url": "https://REPLACE/api" }],
+  "paths": {
+    "/design_landing_zone": {
+      "post": {
+        "operationId": "design_landing_zone",
+        "summary": "Client-specific CAF Azure Landing Zone from the app portfolio",
+        "description": "Pass every application (app_id, app_name, criticality 1-4, internet_facing, compliance_scope, db_engine, disposition) and a server_summary (counts by env, total vcpu/ram, OS families). Returns the management groups, subscriptions, spokes, IP plan, hub components, identity + connectivity model, policy baseline + regulated overlay, DR strategy, and a per-application zone + resiliency-tier placement. Quote the summary, the spoke list, and whether regulated workloads were found.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["applications"],
+                "properties": {
+                  "applications": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "required": ["app_id"],
+                      "properties": {
+                        "app_id": { "type": "string" },
+                        "app_name": { "type": "string", "nullable": true },
+                        "criticality": { "type": "number", "nullable": true },
+                        "internet_facing": { "type": "number", "nullable": true },
+                        "compliance_scope": { "type": "string", "nullable": true },
+                        "db_engine": { "type": "string", "nullable": true },
+                        "disposition": { "type": "string", "nullable": true }
+                      }
+                    }
+                  },
+                  "server_summary": {
+                    "type": "object",
+                    "nullable": true,
+                    "properties": {
+                      "total_servers": { "type": "number" },
+                      "by_env": { "type": "object" },
+                      "total_vcpu": { "type": "number" },
+                      "total_ram_gb": { "type": "number" },
+                      "os_families": { "type": "object" }
+                    }
+                  },
+                  "config": {
+                    "type": "object",
+                    "nullable": true,
+                    "description": "Overrides merged over estimation_config.json (e.g. {\"landing_zone\":{\"primary_region\":\"australiaeast\",\"identity_model\":\"greenfield_entra\"}})"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The landing-zone design document",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "region": { "type": "string" },
+                    "dr_region": { "type": "string" },
+                    "regulated": { "type": "boolean" },
+                    "regulated_scopes_present": { "type": "array", "items": { "type": "string" } },
+                    "zone_counts": { "type": "object" },
+                    "applications_placed": { "type": "array", "items": { "type": "object" } },
+                    "management_groups": { "type": "object" },
+                    "subscriptions": { "type": "array", "items": { "type": "string" } },
+                    "spokes": { "type": "array", "items": { "type": "object" } },
+                    "ip_plan": { "type": "object" },
+                    "hub": { "type": "object" },
+                    "identity": { "type": "object" },
+                    "connectivity": { "type": "object" },
+                    "policy": { "type": "object" },
+                    "dr": { "type": "object" },
+                    "summary": { "type": "string" },
+                    "assumptions": { "type": "array", "items": { "type": "string" } }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

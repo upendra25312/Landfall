@@ -77,8 +77,9 @@ blob events.
 | `src/api/function_app.py` | Durable Functions RFP-question-sheet batch runner (fan-out / fan-in) |
 | `src/api/ingest/` | inventory ingestion — `raw/inventory/*` → detect source (RVTools / CMDB / native) → map to the schema → load Azure SQL → data-quality report in `answers/_ingest/` |
 | `src/api/tools.py` | agent HTTP tools — `query_inventory` (text-to-SQL), `azure_retail_prices` |
-| `src/api/cost/` | deterministic cost engine — `vm_rightsize` (RAM-aware, config-driven), SKU catalogue, `estimation_config.json` loader |
-| `estimation_config.json` | your firm's estimation inputs (rates, right-sizing targets, uplifts) |
+| `src/api/cost/` | deterministic cost engine — `vm_rightsize`, `estimate_compute_cost`, `estimate_storage_cost`, `estimate_run_rate_extras`, SKU catalogue, `estimation_config.json` loader |
+| `src/api/lz/` | `design_landing_zone` — CAF Azure Landing Zone (MGs, subs, hub-spoke + IP plan, policy, identity, DR) derived from the app portfolio + compliance scope |
+| `estimation_config.json` | your firm's estimation inputs — pricing, right-sizing, storage/extras rates, and the `landing_zone` platform choices |
 | `src/api/openapi/` | OpenAPI 3.0 specs for those tools; `create_agent.py` points them at the deployed Function app |
 | `src/web/` | FastAPI chat UI container |
 | `samples/smoke-questions.xlsx` | two-question sheet for a first end-to-end test of the batch runner |
@@ -98,10 +99,12 @@ self-contained, theme-aware page.
 ## Before you run a real estimate
 
 Edit **[`estimation_config.json`](estimation_config.json)** with your firm's numbers — the
-cost tools apply these rather than inventing rates. Anything you omit falls back to the
-documented defaults in `src/api/cost/config.py`. Currently consumed by `vm_rightsize`
-(target utilisation, retain floors, no-perf-data policy); the pricing / effort blocks are
-wired as the cost engine lands (see `prd/tracker.md`).
+estimation tools apply these rather than inventing rates. Anything you omit falls back to
+the documented defaults in `src/api/cost/config.py`. Consumed by `vm_rightsize` (target
+utilisation, retain floors), `estimate_compute_cost` / `estimate_storage_cost` /
+`estimate_run_rate_extras` (pricing, reserved term, storage rates, backup / egress /
+monitoring), and `design_landing_zone` (region, IP supernet, connectivity, identity
+model, regulated compliance scopes, criticality→RPO/RTO tiers).
 
 - right-sizing targets and retain floors, how to treat servers with no perf data
 - pricing: region, reserved-instance term, Azure Hybrid Benefit, dev/test pricing

@@ -1,10 +1,10 @@
 # tests/
 
-Unit tests for Landfall — pure logic that runs without Azure (58 cases):
-the ingestion pipeline (`src/api/ingest/`) and the cost engine (`src/api/cost/`
-— right-sizer, `estimate_compute_cost`, `estimate_storage_cost`,
-`estimate_run_rate_extras`), each exercised with injected price/rate books so no
-network is touched.
+Unit tests for Landfall — pure logic that runs without Azure (66 cases):
+the ingestion pipeline (`src/api/ingest/`), the cost engine (`src/api/cost/` —
+right-sizer, `estimate_compute_cost`, `estimate_storage_cost`,
+`estimate_run_rate_extras`), each with injected price/rate books, and the
+landing-zone designer (`src/api/lz/` — `design_landing_zone`).
 
 ```bash
 .venv2/Scripts/python -m pip install -r tests/requirements-dev.txt

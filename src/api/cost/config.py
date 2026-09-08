@@ -121,6 +121,33 @@ DEFAULTS: dict = {
         "blended_day_rate": 780,
         "currency": "USD",
     },
+    "landing_zone": {
+        # design_landing_zone (E3) — the ALZ is derived from the app portfolio; these
+        # are the engagement's platform choices, not the topology itself.
+        "org_id": "alz",                       # intermediate-root MG / naming prefix
+        "primary_region": "swedencentral",
+        "dr_region": "westeurope",
+        "ip_supernet": "10.100.0.0/14",
+        "dr_ip_supernet": "10.104.0.0/14",
+        "hub_prefix": 22,                       # hub VNet size within the supernet
+        "spoke_prefix": 22,                     # each spoke VNet size
+        "connectivity": "expressroute+vpn",    # expressroute | vpn | expressroute+vpn
+        "identity_model": "extend_ad",          # extend_ad | greenfield_entra | entra_domain_services
+        "forced_tunnel_egress": True,           # spoke 0.0.0.0/0 -> hub Azure Firewall
+        "prod_availability_zones": True,
+        "environments": ["prod", "nonprod"],   # env spokes built per zone
+        # compliance scopes that earn a dedicated spoke + Confidential MG + policy overlay
+        "regulated_scopes": ["PCI-DSS", "PCI", "HIPAA", "HITRUST", "IRAP",
+                             "FedRAMP", "CJIS", "ITAR"],
+        "policy_baseline": ["Azure Landing Zones default", "Microsoft Cloud Security Benchmark",
+                            "CIS Azure Foundations Benchmark v2.0"],
+        "resiliency_tiers": {
+            "1": {"rpo": "15 min", "rto": "2 h",  "pattern": "zone-redundant + cross-region replication (ASR / native DB)"},
+            "2": {"rpo": "1 h",   "rto": "8 h",  "pattern": "zone-redundant + cross-region ASR"},
+            "3": {"rpo": "24 h",  "rto": "48 h", "pattern": "zonal + Azure Backup restore"},
+            "4": {"rpo": "24 h",  "rto": "5 d",  "pattern": "Azure Backup restore only"},
+        },
+    },
 }
 
 

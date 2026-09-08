@@ -46,6 +46,7 @@ _OPENAPI_TOOLS = {
     "estimate_compute_cost": "Monthly Azure compute + managed-disk cost (bill of materials, PAYG/reserved/AHB, per-environment, low/expected/high) for a set of servers. Right-sizes and prices in one call.",
     "estimate_storage_cost": "Monthly Azure cost for the storage inventory (dbo.storage) - file shares (Files Premium / NetApp), DB volumes (SQL MI / Hyperscale / Flexible Server / Oracle), object (Blob). Block/managed-disk volumes are covered by estimate_compute_cost and excluded here.",
     "estimate_run_rate_extras": "Run-rate lines beyond compute + storage - backup, internet egress, monitoring (Log Analytics + Defender), support plan - plus one-time migration cost (tooling, replication, dual-run). Pass the servers and the compute+storage monthly total.",
+    "design_landing_zone": "Client-specific CAF Azure Landing Zone from the application portfolio - management groups, subscriptions, hub-spoke VNets + IP plan, policy set, identity, connectivity, DR, and a dedicated regulated spoke per compliance scope. Topology is derived from the data.",
     "azure_retail_prices": "Live Azure pay-as-you-go and reserved prices (cached proxy over prices.azure.com) - for ad-hoc price lookups outside the compute BoM.",
 }
 
@@ -68,7 +69,11 @@ server/application migration from client-supplied on-premises inventory.
   (used_disk_gb, net_out_gb_30d, powerstate) and monthly_infra_cost = the compute +
   storage total. It adds backup, egress, monitoring, support and the one-time
   migration cost. Report run_rate_monthly.total_monthly and one_time.total separately.
-- Use `microsoft_docs` for landing-zone, Cloud Adoption Framework, and target-service guidance.
+- For the landing-zone design call `design_landing_zone` with the full applications
+  list (criticality, internet_facing, compliance_scope) and a server_summary. Present
+  its management groups, subscription list, spokes, IP plan, identity + connectivity
+  model, policy overlay and DR strategy. Never hand-design the topology — quote the tool.
+- Use `microsoft_docs` for Cloud Adoption Framework and target-service guidance.
 - Use `search_documents` for client constraints (compliance, network, DR, non-functional).
 
 Every estimate must end with these labelled lines:
