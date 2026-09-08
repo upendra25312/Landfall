@@ -7,7 +7,7 @@ Operating model: [`landfall-5x5-prd.md` §7](landfall-5x5-prd.md). Tracker:
 
 ## Cycle 18 — engagement tenancy foundation (E11.1 / E11.2 / E11.3)
 
-**Date:** 2026-09-08 · **Owner:** App + Data Eng · **Tracker:** E11.1–E11.3 (in-review),
+**Date:** 2026-09-08 · **Owner:** App + Data Eng · **Tracker:** E11.1–E11.3 (done, live),
 E11.4 / E11.5 (partial) · **Decisions:** [`engagement-workspaces-prd.md` §7](engagement-workspaces-prd.md)
 (engagement_id column + RLS; creator+group visibility; studio-deck container deferred).
 
@@ -67,11 +67,28 @@ E11.4 / E11.5 (partial) · **Decisions:** [`engagement-workspaces-prd.md` §7](e
 
 ### Act
 
-- **Not deployed yet.** Deploy order for C18: `azd deploy api` (new `query_inventory` sets
-  context, safe against the old schema) → `azd provision` (RLS schema; wipes + recreates —
-  known `schema.sql` behaviour) → re-ingest the sample estate as `_default_/_default_` via
-  the new path → re-publish. The Event Grid subscription must be recreated for the new
-  subject filter (postdeploy hook).
+- **Deployed & verified live in rg-landfall (2026-09-08).**
+  1. `azd deploy api` — new `query_inventory` / `publish_estimate` code live on `func-tmglwfatwcsa2`.
+  2. `schema.sql` applied direct (mssql-python + `AzureCliCredential`) — the DROP+CREATE
+     wiped the RLS-free tables and rebuilt all 6 with `engagement_id`, composite PKs, the
+     `dbo.fn_engagement_predicate` TVF and the `dbo.EngagementFilter` `SECURITY POLICY`
+     (`STATE = ON`); `id-landfall-tmglwfatwcsa2` re-granted `db_datareader + db_datawriter`.
+     (`apply_sql.py` via `azd` hung on the serverless resume; ran the batches directly instead.)
+  3. Sample estate re-loaded as `_default_/_default_` — servers 250 / applications 31 /
+     dependencies 461 / storage 566 / performance 5190, every row stamped `engagement_id`.
+  4. Estimate re-published to `answers/engagements/_default_/_default_/estimate/latest.{json,xlsx,docx,pptx}`.
+  5. `azd deploy web` — dashboard now reads the engagement-scoped prefix (was pre-C18 code).
+  6. Event Grid `landfall-inventory` subscription recreated with subject
+     `/blobServices/default/containers/raw/blobs/engagements/`.
+  7. `create_agent.py` re-run (managed auth) — agent picks up the ENGAGEMENT SCOPE prompt
+     + the `engagement` arg on the 4 specs.
+- **Live checks:**
+  - RLS fail-closed: no session context → 0 rows; `acme/other` → 0 rows; `_default_/_default_` → 250 servers.
+  - Live agent, `engagement=_default_/_default_`: "173 prod servers, 1,436 vCPU" (matches the local repro).
+  - Live agent, `engagement=acme-corp/pilot`: "0 servers" — same `dbo.servers` table, isolated by context.
+  - First agent call 502'd (Function cold start, 23 s); the retry and all subsequent calls succeed.
+- **`schema.sql` still DROPs+recreates on every apply** — fine for `_default_` today, unacceptable
+  once real engagements hold data. Tracked for C23 (migration + additive-only schema changes).
 - **C19:** `run_engagement` bulk-ingest Function; tighten `engagement` to required + a
   run/publish audit line; `test_evals` per-engagement isolation cases (E11.13).
 - **C20:** the dashboard UX (engagements home, new-engagement form, upload panel, start
