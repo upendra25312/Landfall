@@ -1,0 +1,32 @@
+{
+  "_comment": "PRD E7.2 — full-estimate scenarios. Each runs the whole tool chain (evals/pipeline.py, deterministic synthetic price books) and asserts the assembled package's headline figures land inside the expected band, that every figure is traceable (has a calculation-appendix formula), and that a re-run is identical. Bands are ~+/-8% around the committed baseline; a change outside the band is a regression to investigate.",
+  "price_books": "synthetic (evals/fixtures.py) — not live prices",
+  "scenarios": [
+    {"id": "SC1", "name": "Full estate, house defaults",
+     "servers": "all", "expect": {
+       "run_rate_monthly": [104800, 123000], "run_rate_annual": [1257000, 1477000],
+       "one_time_cost": [67300, 79100], "effort_pd": [792, 875], "services_cost": [618000, 683000],
+       "wave_count": [6, 8]}},
+    {"id": "SC2", "name": "Production servers only",
+     "servers": "env=prod", "expect": {
+       "run_rate_monthly": [80200, 94200], "effort_pd": [721, 797], "services_cost": [562000, 622000]}},
+    {"id": "SC3", "name": "3-year reserved instances at 100% coverage",
+     "servers": "all", "overrides": {"pricing": {"reserved_term": "3yr", "reservation_coverage_pct": 100}},
+     "expect": {"run_rate_monthly": [89900, 105600], "run_rate_annual": [1079000, 1267000]}},
+    {"id": "SC4", "name": "Dev/test pricing on non-production",
+     "servers": "all", "overrides": {"pricing": {"dev_test_pricing_nonprod": true}},
+     "expect": {"run_rate_monthly": [99500, 116800]}},
+    {"id": "SC5", "name": "Aggressive disposition appetite",
+     "servers": "all", "overrides": {"disposition": {"appetite": "aggressive"}},
+     "expect": {"effort_pd": [890, 1046], "services_cost": [694000, 816000]}},
+    {"id": "SC6", "name": "Low data-quality confidence",
+     "servers": "all", "dq_confidence": "Low",
+     "expect": {"effort_pd": [821, 965], "run_rate_monthly": [104800, 123000]}},
+    {"id": "SC7", "name": "No Azure Hybrid Benefit",
+     "servers": "all", "overrides": {"pricing": {"azure_hybrid_benefit_windows": false}},
+     "expect": {"run_rate_monthly": [121900, 143100], "one_time_cost": [80200, 94300]}},
+    {"id": "SC8", "name": "Small 10-server slice",
+     "servers": "first=10", "expect": {
+       "run_rate_monthly": [17600, 20700], "effort_pd": [536, 593], "services_cost": [418000, 463000]}}
+  ]
+}

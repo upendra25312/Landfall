@@ -5,6 +5,75 @@ Operating model: [`landfall-5x5-prd.md` §7](landfall-5x5-prd.md). Tracker:
 
 ---
 
+## Cycle 10 — eval harness (golden SQL + full-estimate scenarios)
+
+**Date:** 2026-09-08 · **Owner:** Applied Scientist + FinOps + SRE · **Tracker:**
+E7.1 / E7.2 (done) · **Closes audit** P0-7 / AI-1..8 (nothing proved the tools stay
+correct as the agent, prices, or SKUs change).
+
+### Plan
+
+**Objective.** An offline harness that gates correctness:
+- **E7.1** a golden text-to-SQL set (≥30 `question → T-SQL → expected` cases) run
+  against a SQLite copy of the sample estate; each SQL must pass `tools._safe_select`
+  and match its expected result exactly. Gate: ≥95%.
+- **E7.2** ≥8 full-estimate scenarios — run the whole tool chain + `assemble_estimate`
+  with deterministic synthetic price books and assert every headline figure lands in an
+  expected band, every figure is traceable, and a re-run is byte-identical.
+
+**Acceptance this cycle**
+
+| # | Criterion | Check |
+|---|---|---|
+| C1 | ≥30 golden cases; ≥95% exact match over the sample | `runner.run_golden` / `test_evals` |
+| C2 | every golden SQL passes the read-only SELECT guard | `test_evals` |
+| C3 | ≥8 scenarios, all pass (figures in band + traceable + deterministic) | `runner.run_scenarios` / `test_evals` |
+| C4 | scenarios exercise real levers (RI term, AHB, dev/test, appetite, DQ, slice) | scenarios.json |
+| C5 | `python evals/runner.py` exits non-zero on any failure; writes SCORECARD.md | manual |
+
+**Design.** `evals/` — `sample_db.py` (CSV → in-memory SQLite + a small test-only
+T-SQL→SQLite shim: `TOP`→`LIMIT`, `GETDATE()`→fixed date, `DATEDIFF`, `ISNULL`…),
+`fixtures.py` (synthetic price/rate books), `pipeline.py` (run every tool → assemble),
+`runner.py` (golden + scenarios + scorecard + exit code), `golden_sql.json` (32 cases),
+`scenarios.json` (8). `tests/test_evals.py` wraps it so `pytest` catches regressions.
+
+**Deferred.** E7.3 fault-injection (each tool 5xx → agent reports, never invents),
+E7.4 output guard (reject un-sourced numeric claims), E7.5 CI gate on every
+`create_agent.py` change — next cycle. The live "model generates matching SQL" gate
+needs credentials and belongs in CI.
+
+### Do
+
+- `evals/{sample_db,fixtures,pipeline,runner}.py`, `evals/{golden_sql,scenarios}.json`,
+  `evals/README.md`, `evals/SCORECARD.md` (generated).
+- `tests/test_evals.py` — 4 wrapper cases. `README.md`, `tests/README.md` updated.
+
+### Check
+
+`pytest tests -q` → **91 passed**. `python evals/runner.py` → **PASS**:
+```
+Golden text-to-SQL (E7.1)        32/32 (100%)   gate ≥95%   ✅
+Full-estimate scenarios (E7.2)   8/8                        ✅
+```
+The 32 golden queries span servers / apps / storage / dependencies / performance —
+counts, sums, group-bys, top-N, EOL date logic, distinct scopes. The 8 scenarios move
+the RI term, AHB, dev/test pricing, disposition appetite, DQ confidence, and the estate
+slice, and each lands in-band (e.g. no-AHB run-rate $132.6k vs house $113.9k;
+aggressive-appetite effort 968 PD vs 834).
+
+### Act
+
+- **E7.1 / E7.2 done.** `SCORECARD.md` is committed as the evidence artifact; the runner
+  regenerates it and any purposeful maths change re-commits it with adjusted expecteds.
+- **Watch:** the SQLite shim is deliberately narrow — a golden query using a T-SQL
+  construct it doesn't cover will error in the runner (not silently pass). Keep golden
+  SQL within the documented shim surface or extend `sample_db.to_sqlite`.
+- **Next — Cycle 11:** E7.3 / E7.4 / E7.5 — fault-injection harness, the un-sourced-
+  number output guard, and the CI scorecard gate. Then E8 / E9 (security + ops), which
+  finishes Phase 1.
+
+---
+
 ## Cycle 9 — assemble_estimate (the structured deliverable)
 
 **Date:** 2026-09-08 · **Owner:** PM + Staff Writer + SWE · **Tracker:** E5.1 / E5.2 /

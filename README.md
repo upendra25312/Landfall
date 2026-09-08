@@ -92,7 +92,8 @@ blob events.
 | `prompts/production-readiness-audit.md` | reusable expert-panel audit prompt — "toy → production" review against the pre-sales scenario |
 | `audits/` | recorded runs of that audit — observations, prioritized backlog, rubric scores, the path to 5/5 |
 | `prd/` | the "Landfall to 5/5" PRD, work tracker, and PDCA delivery log |
-| `tests/` | unit tests (`pytest`) — starts with the ingestion pipeline |
+| `tests/` | unit tests (`pytest`) — ingestion, cost engine, landing zone, wave engine, deliverable |
+| `evals/` | offline eval harness (`python evals/runner.py`) — 32 golden text-to-SQL cases + 8 full-estimate scenarios + `SCORECARD.md` |
 
 Read them online at **[upendra25312.github.io/Landfall](https://upendra25312.github.io/Landfall/)**
 (GitHub Pages, served from `docs/`), or open the `docs/*.html` files locally — each is a

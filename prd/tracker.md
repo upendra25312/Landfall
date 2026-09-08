@@ -11,11 +11,11 @@ Companion to [`prd/landfall-5x5-prd.md`](landfall-5x5-prd.md). Delivery log:
 
 | Phase | Items | Done | In review | In progress | Backlog |
 |---|---|---|---|---|---|
-| 1 — Engine | 24 | 1 | 20 | 1 | 2 |
+| 1 — Engine | 34 | 0 | 23 | 1 | 10 |
 | 2 — Evidence | 11 | 0 | 0 | 0 | 11 |
 | 3 — Sustain | 3 | 0 | 0 | 0 | 3 |
 
-_Last updated: 2026-09-08 (PDCA cycles 1–9; D1 done; E2.1–E2.5 / E3.1–E3.3 / E4.1–E4.2 / E5.1–E5.3 / E6.1–E6.2 in review; E4.3 + E1.7 open; live check pending E1.6). Full engine built end-to-end: ingest → cost → landing zone → dispositions → waves → **assemble_estimate** (8-section package, calc appendix, register). Sample: run-rate ~$119k/mo + ~$77k one-time; effort ~834 PD / ~$650k services; 87 tests green._
+_Last updated: 2026-09-08 (PDCA cycles 1–10; D1 done; E2.1–E2.5 / E3.1–E3.3 / E4.1–E4.2 / E5.1–E5.3 / E6.1–E6.3 / E7.1–E7.2 in review. Backlog: E1.7, E4.3, E7.3–E7.5, E8.*, E9.1. Live check pending E1.6). Full engine end-to-end + eval harness. Sample: run-rate ~$119k/mo + ~$77k one-time; effort ~834 PD / ~$650k services. 91 pytest + 32 golden SQL + 8 scenarios all green (`evals/SCORECARD.md`)._
 
 ---
 
@@ -73,14 +73,14 @@ _Last updated: 2026-09-08 (PDCA cycles 1–9; D1 done; E2.1–E2.5 / E3.1–E3.3
 |---|---|---|---|---|---|---|
 | E6.1 | Implement `estimation_config.json` (rates, bands, uplifts, overheads) | P0 | in-review | PM + SWE | 3 | Changing the config visibly changes cost + effort output. _File + `cost/config.py` loader done + consumed by `vm_rightsize`; pricing/effort blocks wired in E2.2/E6.2; `ESTIMATION_CONFIG` app setting still to add._ |
 | E6.2 | Parametric effort model as a deterministic step | P0 | in-review | PMO | 9 | Client counts + disposition mix → PD / PM / peak FTE / loading curve. _Basic model done — `src/api/deliverable/effort.py` (assessment + LZ + per-disposition execution + testing + cutover + hypercare + PM/gov/contingency → PD + services cost range). Full wave-by-wave resource loading + peak FTE + loading curve still to do._ |
-| E6.3 | Contingency tied to the DQ score | P1 | backlog | PMO | — | Poorer data quality → higher contingency, automatically. |
+| E6.3 | Contingency tied to the DQ score | P1 | in-review | PMO | 9 | Poorer data quality → higher contingency, automatically. _Done — `effort.contingency_by_confidence` {High 8, Medium 12, Low 20}; `estimate_effort` picks the rate from the DQ confidence when `contingency_pct` is null._ |
 
 ### E7 — Evaluation Harness (build)
 
 | ID | Item | Pri | Status | Owner | Cycle | Acceptance |
 |---|---|---|---|---|---|---|
-| E7.1 | Golden text-to-SQL set (30+) + runner | P0 | backlog | Applied Sci | 10 | `≥95%` exact-match on the sample estate. |
-| E7.2 | Full-estimate scenarios (8+) with expected ranges | P0 | backlog | Applied Sci + FinOps | 10 | Portfolio numbers within band; 0 un-sourced numbers; identical on re-run. |
+| E7.1 | Golden text-to-SQL set (30+) + runner | P0 | in-review | Applied Sci | 10 | `≥95%` exact-match on the sample estate. _Done — `evals/golden_sql.json` (32 cases) + `evals/runner.py`; runs against a SQLite copy of the sample; 32/32. Live model-generation gate is CI._ |
+| E7.2 | Full-estimate scenarios (8+) with expected ranges | P0 | in-review | Applied Sci + FinOps | 10 | Portfolio numbers within band; 0 un-sourced numbers; identical on re-run. _Done — `evals/scenarios.json` (8) + `evals/pipeline.py`; every figure in band + traceable + deterministic; 8/8. `evals/SCORECARD.md` committed._ |
 | E7.3 | Fault-injection harness | P0 | backlog | Applied Sci | 11 | Each tool fails → agent reports, never invents (100%). |
 | E7.4 | Output guard — reject un-sourced numeric claims | P0 | backlog | Applied Sci | 11 | A planted un-sourced number is blocked in test. |
 | E7.5 | CI gate — version + scorecard on every `create_agent.py` change | P0 | backlog | SRE | 11 | A seeded regression fails the build. |
@@ -146,4 +146,5 @@ _Last updated: 2026-09-08 (PDCA cycles 1–9; D1 done; E2.1–E2.5 / E3.1–E3.3
 | 7 | E3.1 / E3.2 / E3.3 — `design_landing_zone` (CAF ALZ topology, spoke count, regulated-spoke flag, resiliency tiers — all portfolio-derived) | [pdca-log.md](pdca-log.md) · **done** |
 | 8 | E4.1 / E4.2 — `plan_waves` (dependency graph → move-groups → risk-ordered waves) + deterministic 6R disposition scorer | [pdca-log.md](pdca-log.md) · **done** |
 | 9 | E5.1 / E5.2 / E5.3 — `assemble_estimate`: one structured deliverable + calculation appendix + assumptions/exclusions register (E2.5 + E6.2-basic folded in) | [pdca-log.md](pdca-log.md) · **done** |
-| 10 | E7.1 / E7.2 — eval harness: golden text-to-SQL set (30+) + full-estimate scenarios (8+) with expected ranges | planned |
+| 10 | E7.1 / E7.2 — eval harness: 32 golden text-to-SQL cases + 8 full-estimate scenarios + `SCORECARD.md` | [pdca-log.md](pdca-log.md) · **done** |
+| 11 | E7.3 / E7.4 / E7.5 — fault-injection harness + un-sourced-number output guard + CI scorecard gate | planned |
