@@ -52,6 +52,7 @@ from cost.functions import cost_bp  # deterministic cost engine (right-size + co
 from ingest.functions import ingest_bp  # raw/inventory/* -> normalize -> Azure SQL + DQ report
 from lz.functions import lz_bp  # design_landing_zone (CAF ALZ from the portfolio)
 from waves.functions import waves_bp  # score_dispositions + plan_waves (E4 wave engine)
+from deliverable.functions import deliverable_bp  # assemble_estimate (E5 structured package)
 
 app = df.DFApp()
 app.register_functions(bp)
@@ -59,6 +60,7 @@ app.register_functions(cost_bp)
 app.register_functions(ingest_bp)
 app.register_functions(lz_bp)
 app.register_functions(waves_bp)
+app.register_functions(deliverable_bp)
 
 # Lazily built on first use - keep module import (and worker function indexing) fast
 # and free of network/token calls.

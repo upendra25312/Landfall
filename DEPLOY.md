@@ -70,8 +70,8 @@ What `azd up` does:
      the Microsoft Learn MCP tool, the AI Search tool, and the OpenAPI tools
      (`query_inventory`, `vm_rightsize`, `estimate_compute_cost`,
      `estimate_storage_cost`, `estimate_run_rate_extras`, `design_landing_zone`,
-     `score_dispositions`, `plan_waves`, `azure_retail_prices`) pointed at the
-     Function app. The agent is addressed by **name**
+     `score_dispositions`, `plan_waves`, `assemble_estimate`, `azure_retail_prices`)
+     pointed at the Function app. The agent is addressed by **name**
      (`landfall-migration-estimator`), not an `asst_` id; that name is written to
      `AGENT_ID` in the azd env and pushed to both running services.
 3. **deploy** — zip-deploys `src/api` to the Function app and builds + pushes the
@@ -122,8 +122,8 @@ These need the portal or a couple of CLI calls once, after the first `azd up`:
    **anonymous** HTTP functions on the Function app so the first deploy works.
    `vm_rightsize`, `estimate_compute_cost`, `estimate_storage_cost`,
    `estimate_run_rate_extras`, `design_landing_zone`, `score_dispositions`,
-   `plan_waves` and `azure_retail_prices` hold no client data (they take their
-   inputs in the request body). `query_inventory` returns
+   `plan_waves`, `assemble_estimate` and `azure_retail_prices` hold no client data
+   (they take their inputs in the request body). `query_inventory` returns
    inventory rows (SELECT-only, read-only DB user, 200-row cap), so put Entra auth in
    front of it:
    ```bash
@@ -177,8 +177,9 @@ These need the portal or a couple of CLI calls once, after the first `azd up`:
    / support run-rate and the one-time migration knobs; `landing_zone` = region, IP
    supernet, connectivity, identity model, regulated compliance scopes and the
    criticality→RPO/RTO tiers; `disposition` = 6R appetite and the marker lists;
-   `waves` = confidence / staleness filters, per-wave caps, commodity protocols).
-   The deployed Function uses the
+   `waves` = confidence / staleness filters, per-wave caps, commodity protocols;
+   `effort` = person-day bands and the contingency-by-confidence table; `deliverable`
+   = the 8 section keys, watermark and cost-driver count). The deployed Function uses the
    built-in defaults (`src/api/cost/config.py`) unless you set an **`ESTIMATION_CONFIG`**
    app setting — a path inside the package, or the JSON inline:
    ```bash

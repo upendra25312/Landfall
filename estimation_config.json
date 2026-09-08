@@ -120,13 +120,32 @@
   },
 
   "effort": {
+    "$comment": "estimate_effort (used by assemble_estimate). contingency_pct null => derived from the data-quality confidence via contingency_by_confidence.",
     "bands_pd": { "S": 8, "M": 14, "L": 22, "XL": 40 },
     "assessment_pd_per_server": 0.15,
     "assessment_pd_per_app": 1.5,
     "rehost_pd_per_server": 0.5,
+    "execution_pd_per_app": { "Rehost": 4, "Replatform": 16, "Repurchase": 6, "Retire": 1, "Retain": 0, "Refactor": 30 },
+    "mobilisation_pd": 10,
+    "landing_zone_pd": 45,
+    "landing_zone_pd_per_spoke": 3,
+    "regulated_spoke_controls_pd": 20,
+    "testing_pd_per_app": 2.5,
+    "cutover_pd_per_wave": 3,
+    "hypercare_pd_per_month": 15,
+    "hypercare_months": 2,
     "pm_pct": 15,
     "governance_pct": 10,
-    "contingency_pct": null
+    "contingency_pct": null,
+    "contingency_by_confidence": { "High": 8, "Medium": 12, "Low": 20 }
+  },
+
+  "deliverable": {
+    "$comment": "assemble_estimate — the estimate package.",
+    "firm_name": null,
+    "watermark": "DRAFT — architect review required before external issue",
+    "sections": ["current_state", "landing_zone", "disposition", "waves", "run_rate_cost", "migration_effort", "assumptions_register", "next_steps"],
+    "top_cost_drivers": 3
   },
 
   "rates": {

@@ -152,17 +152,39 @@ DEFAULTS: dict = {
         },
     },
     "effort": {
+        # estimate_effort (E6.2, used by assemble_estimate) — parametric person-days.
         "bands_pd": {"S": 8, "M": 14, "L": 22, "XL": 40},
         "assessment_pd_per_server": 0.15,
         "assessment_pd_per_app": 1.5,
         "rehost_pd_per_server": 0.5,
+        "execution_pd_per_app": {              # disposition -> PD per application
+            "Rehost": 4, "Replatform": 16, "Repurchase": 6,
+            "Retire": 1, "Retain": 0, "Refactor": 30,
+        },
+        "mobilisation_pd": 10,
+        "landing_zone_pd": 45,                 # base ALZ build
+        "landing_zone_pd_per_spoke": 3,
+        "regulated_spoke_controls_pd": 20,     # added when the portfolio has a regulated scope
+        "testing_pd_per_app": 2.5,
+        "cutover_pd_per_wave": 3,
+        "hypercare_pd_per_month": 15,
+        "hypercare_months": 2,
         "pm_pct": 15,
         "governance_pct": 10,
-        "contingency_pct": None,                # None => derive from the data-quality score
+        "contingency_pct": None,               # None => derive from the data-quality confidence
+        "contingency_by_confidence": {"High": 8, "Medium": 12, "Low": 20},
     },
     "rates": {
         "blended_day_rate": 780,
         "currency": "USD",
+    },
+    "deliverable": {
+        # assemble_estimate (E5) — the estimate package.
+        "firm_name": None,                     # optional, printed on the cover
+        "watermark": "DRAFT — architect review required before external issue",
+        "sections": ["current_state", "landing_zone", "disposition", "waves",
+                     "run_rate_cost", "migration_effort", "assumptions_register", "next_steps"],
+        "top_cost_drivers": 3,                 # E2.5 — how many drivers to surface per cost total
     },
     "landing_zone": {
         # design_landing_zone (E3) — the ALZ is derived from the app portfolio; these

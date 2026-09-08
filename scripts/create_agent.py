@@ -49,6 +49,7 @@ _OPENAPI_TOOLS = {
     "design_landing_zone": "Client-specific CAF Azure Landing Zone from the application portfolio - management groups, subscriptions, hub-spoke VNets + IP plan, policy set, identity, connectivity, DR, and a dedicated regulated spoke per compliance scope. Topology is derived from the data.",
     "score_dispositions": "Rule-derived 6R disposition (Rehost / Replatform / Repurchase / Retire / Retain / Refactor) + rationale + confidence per application, from OS EOL, stack, criticality, internet-facing and DB engine. Repurchase / Refactor / Retire need business sign-off.",
     "plan_waves": "Risk-ordered migration wave plan - server dependency graph -> affinity move-groups -> waves (pilot first, regulated last) with entry/exit criteria and cross-wave blocking dependencies. Pass applications + servers + dependencies.",
+    "assemble_estimate": "Assembles every other tool's output + an inventory summary into ONE structured estimate package: 8 sections, a stable ID + calculation appendix on every figure, an assumptions/exclusions/data-gaps register, a parametric effort + services-cost estimate, and a markdown render. Call this last.",
     "azure_retail_prices": "Live Azure pay-as-you-go and reserved prices (cached proxy over prices.azure.com) - for ad-hoc price lookups outside the compute BoM.",
 }
 
@@ -80,6 +81,10 @@ server/application migration from client-supplied on-premises inventory.
   (applications + servers + dependencies). Present the disposition mix and the wave
   table with the pilot wave, the regulated wave, and blocking dependencies. The 6R
   call and the wave order are the tool's — you explain them, you don't invent them.
+- To produce the estimate, run the tools above then call `assemble_estimate` with an
+  inventory_summary, the data_quality report, and each tool's JSON output. Present its
+  `summary_markdown` and headline figures verbatim; cite figure ids for traceability.
+  Do not restate numbers the package didn't produce.
 - Use `microsoft_docs` for Cloud Adoption Framework and target-service guidance.
 - Use `search_documents` for client constraints (compliance, network, DR, non-functional).
 

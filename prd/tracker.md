@@ -11,11 +11,11 @@ Companion to [`prd/landfall-5x5-prd.md`](landfall-5x5-prd.md). Delivery log:
 
 | Phase | Items | Done | In review | In progress | Backlog |
 |---|---|---|---|---|---|
-| 1 — Engine | 24 | 1 | 15 | 1 | 7 |
+| 1 — Engine | 24 | 1 | 20 | 1 | 2 |
 | 2 — Evidence | 11 | 0 | 0 | 0 | 11 |
 | 3 — Sustain | 3 | 0 | 0 | 0 | 3 |
 
-_Last updated: 2026-09-08 (PDCA cycles 1–8; D1 done; E2.1–E2.4 / E3.1–E3.3 / E4.1–E4.2 / E6.1 in review; E2.5 + E4.3 open; live checks pending E1.6). Cost engine + landing zone + wave engine all built. Sample: run-rate ~$119k/mo + ~$77k one-time; ALZ 9 spokes / 12 subs; 7 waves; 6R = Rehost 25 / Replatform 3 / Repurchase 2 / Retire 1._
+_Last updated: 2026-09-08 (PDCA cycles 1–9; D1 done; E2.1–E2.5 / E3.1–E3.3 / E4.1–E4.2 / E5.1–E5.3 / E6.1–E6.2 in review; E4.3 + E1.7 open; live check pending E1.6). Full engine built end-to-end: ingest → cost → landing zone → dispositions → waves → **assemble_estimate** (8-section package, calc appendix, register). Sample: run-rate ~$119k/mo + ~$77k one-time; effort ~834 PD / ~$650k services; 87 tests green._
 
 ---
 
@@ -41,7 +41,7 @@ _Last updated: 2026-09-08 (PDCA cycles 1–8; D1 done; E2.1–E2.4 / E3.1–E3.3
 | E2.2 | `estimate_compute_cost` — BoM, PAYG + 1yr/3yr RI + AHB, per-env, region + term + price date, low/expected/high | P0 | in-review | FinOps + SWE | 4 | Re-running gives identical figures; independent hand-calc matches within band. _Done — `src/api/cost/compute_cost.py` + `pricing.py`, 8 tests; live retail prices parse; $86k/mo on the sample. Agent end-to-end with E1.6._ |
 | E2.3 | Storage cost from the `storage` table (file/DB/object; disjoint from per-VM disk) | P0 | in-review | FinOps | 5 | Disk GB → tier → price; file/DB priced to the right service. _Done — `src/api/cost/storage_cost.py` + `fetch_storagebook`, 10 tests; live rates sanity-clamped; $16.5k/mo (file + PaaS-DB) on the sample, 522 block volumes excluded (in the compute BoM)._ |
 | E2.4 | Run-rate extras + one-time migration cost modules | P1 | in-review | FinOps | 6 | Backup/monitoring/egress/support + replication egress/dual-run are line items. _Done — `src/api/cost/run_rate.py`, 9 tests; ~$16.3k/mo extras + ~$77k one-time on the sample. Full run-rate ~$119k/mo._ |
-| E2.5 | low/expected/high + top-3 drivers on every cost result | P1 | backlog | FinOps | — | Every cost answer carries a range and a sensitivity. |
+| E2.5 | low/expected/high + top-3 drivers on every cost result | P1 | in-review | FinOps | 9 | Every cost answer carries a range and a sensitivity. _Range ships on every cost tool; top-3 drivers surfaced in `assemble_estimate` (`_top_drivers`)._ |
 
 ### E3 — Landing-Zone Design Output
 
@@ -63,16 +63,16 @@ _Last updated: 2026-09-08 (PDCA cycles 1–8; D1 done; E2.1–E2.4 / E3.1–E3.3
 
 | ID | Item | Pri | Status | Owner | Cycle | Acceptance |
 |---|---|---|---|---|---|---|
-| E5.1 | "Assemble estimate" → one structured package, 8 sections | P0 | backlog | PM + SWE | 8 | Package needs editing, not authoring (architect board sign-off). |
-| E5.2 | Stable IDs + calculation appendix on every figure | P0 | backlog | SWE | 8 | 10 random figures each traceable using only the delivered doc. |
-| E5.3 | Machine-tracked assumptions & exclusions register | P0 | backlog | PM | 8 | Register is generated across the run, not merged by hand. |
+| E5.1 | "Assemble estimate" → one structured package, 8 sections | P0 | in-review | PM + SWE | 9 | Package needs editing, not authoring (architect board sign-off). _Done — `src/api/deliverable/assemble.py`; 8 sections + markdown render; full-pipeline test._ |
+| E5.2 | Stable IDs + calculation appendix on every figure | P0 | in-review | SWE | 9 | 10 random figures each traceable using only the delivered doc. _Done — `F*` ids + `calculation_appendix` (formula, inputs, assumptions_applied, confidence) per figure._ |
+| E5.3 | Machine-tracked assumptions & exclusions register | P0 | in-review | PM | 9 | Register is generated across the run, not merged by hand. _Done — `_Reg`: collects every tool's caveats + standing exclusions, deduped + categorised (A/X/G ids). Sample: 28/6/8._ |
 
 ### E6 — Firm Config & Effort Model
 
 | ID | Item | Pri | Status | Owner | Cycle | Acceptance |
 |---|---|---|---|---|---|---|
 | E6.1 | Implement `estimation_config.json` (rates, bands, uplifts, overheads) | P0 | in-review | PM + SWE | 3 | Changing the config visibly changes cost + effort output. _File + `cost/config.py` loader done + consumed by `vm_rightsize`; pricing/effort blocks wired in E2.2/E6.2; `ESTIMATION_CONFIG` app setting still to add._ |
-| E6.2 | Parametric effort model as a deterministic step | P0 | backlog | PMO | 9 | Client counts + disposition mix → PD / PM / peak FTE / loading curve. |
+| E6.2 | Parametric effort model as a deterministic step | P0 | in-review | PMO | 9 | Client counts + disposition mix → PD / PM / peak FTE / loading curve. _Basic model done — `src/api/deliverable/effort.py` (assessment + LZ + per-disposition execution + testing + cutover + hypercare + PM/gov/contingency → PD + services cost range). Full wave-by-wave resource loading + peak FTE + loading curve still to do._ |
 | E6.3 | Contingency tied to the DQ score | P1 | backlog | PMO | — | Poorer data quality → higher contingency, automatically. |
 
 ### E7 — Evaluation Harness (build)
@@ -145,4 +145,5 @@ _Last updated: 2026-09-08 (PDCA cycles 1–8; D1 done; E2.1–E2.4 / E3.1–E3.3
 | 6 | E2.4 — run-rate extras (backup / egress / monitoring / support) + one-time migration cost | [pdca-log.md](pdca-log.md) · **done** |
 | 7 | E3.1 / E3.2 / E3.3 — `design_landing_zone` (CAF ALZ topology, spoke count, regulated-spoke flag, resiliency tiers — all portfolio-derived) | [pdca-log.md](pdca-log.md) · **done** |
 | 8 | E4.1 / E4.2 — `plan_waves` (dependency graph → move-groups → risk-ordered waves) + deterministic 6R disposition scorer | [pdca-log.md](pdca-log.md) · **done** |
-| 9 | E5.1 / E5.2 / E5.3 — assemble estimate into one structured deliverable + calculation appendix + assumptions/exclusions register (E2.5 folds in) | planned |
+| 9 | E5.1 / E5.2 / E5.3 — `assemble_estimate`: one structured deliverable + calculation appendix + assumptions/exclusions register (E2.5 + E6.2-basic folded in) | [pdca-log.md](pdca-log.md) · **done** |
+| 10 | E7.1 / E7.2 — eval harness: golden text-to-SQL set (30+) + full-estimate scenarios (8+) with expected ranges | planned |

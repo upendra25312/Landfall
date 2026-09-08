@@ -5,6 +5,90 @@ Operating model: [`landfall-5x5-prd.md` §7](landfall-5x5-prd.md). Tracker:
 
 ---
 
+## Cycle 9 — assemble_estimate (the structured deliverable)
+
+**Date:** 2026-09-08 · **Owner:** PM + Staff Writer + SWE · **Tracker:** E5.1 / E5.2 /
+E5.3 (done), E2.5 (done), E6.2 (basic) · **Closes audit** P0-5 / PS-2..4 (output was a
+chat transcript, figures had no provenance, the assumptions register was hand-merged).
+
+### Plan
+
+**Objective.** `assemble_estimate` — stitch the other tools' outputs + an inventory
+summary into ONE package:
+- **E5.1** 8 sections (config-driven list).
+- **E5.2** a stable ID on every headline figure + a calculation-appendix entry per
+  figure (source tool, inputs, formula, assumptions applied, confidence).
+- **E5.3** a machine-built assumptions / exclusions / data-gaps register, collected from
+  every tool's own `assumptions` / `caveats` / `not_costed` / `missing_prices` /
+  `needs_human_decision` arrays + the DQ report + standing exclusions — deduped, ID'd,
+  categorised.
+- **E2.5** top-3 cost drivers on the run-rate total.
+- **E6.2 (basic)** a parametric person-day + services-cost estimate (contingency tied to
+  the DQ confidence — E6.3).
+
+**Acceptance this cycle**
+
+| # | Criterion | Check |
+|---|---|---|
+| C1 | Assembles from inventory alone; a tool not run leaves its section marked, not dropped | unit test |
+| C2 | Every figure has a calculation-appendix entry with a non-empty formula + source | unit test |
+| C3 | Register collects each tool's caveats + standing exclusions; deduped and ID'd | unit test |
+| C4 | Run-rate figures reconcile (compute + storage + extras); top-3 drivers ranked | unit test |
+| C5 | Effort contingency = 8/12/20% for High/Medium/Low DQ confidence | unit test |
+| C6 | Effort range + services cost reconcile | unit test |
+| C7 | Overall confidence = worst of the figure confidences | unit test |
+| C8 | Full pipeline (6 tools → assemble) is deterministic over the sample estate | unit test |
+
+**Design.** `src/api/deliverable/{effort,assemble}.py` — pure, tool outputs injected.
+`deliverable/functions.py` — `POST /api/assemble_estimate`. New `effort` (extended) +
+`deliverable` config blocks. OpenAPI spec + agent tool #10 + prompt line.
+`deliverable_bp` in `function_app.py`. Markdown render built in.
+
+**Deferred.** Full effort model (wave-by-wave resource loading, peak FTE, the loading
+curve) = a later E6.2 cycle. A rendered PDF/DOCX export = out of scope (the markdown
+drops into the proposal template).
+
+### Do
+
+- `src/api/deliverable/{__init__,effort,assemble,functions}.py` — new package.
+  `function_app.py` — `deliverable_bp`. `cost/config.py` — `effort` extended + new
+  `deliverable` block.
+- `src/api/openapi/assemble_estimate.json` — new. `scripts/create_agent.py` —
+  `_OPENAPI_TOOLS` (now 10) + `SYSTEM_PROMPT` line.
+- `tests/test_deliverable.py` — 7 cases incl. the full-pipeline test. `estimation_config.json`,
+  `DEPLOY.md`, `README.md`, `tests/README.md` updated.
+
+### Check
+
+`pytest tests -q` → **87 passed**. C1–C8 pass (see test names).
+
+Full pipeline over the sample estate (real prices + live storage rates):
+```
+HEADLINE       run-rate  $119,181 /mo   $1,430,167 /yr   (confidence Low)
+               one-time  $77,170
+               effort    834 PD (709–959)   services ~$650,286 ($553k–$748k)
+SECTIONS       8 (current state / LZ / 6R / waves / run-rate / effort / register / next steps)
+FIGURES        14, each with a formula + inputs + confidence in the appendix
+REGISTER       28 assumptions · 6 exclusions · 8 data gaps  (all source-tagged)
+TOP DRIVERS    compute effective 47% · managed disk 25% · monitoring 10%
+```
+
+### Act
+
+- **E5.1/E5.2/E5.3 + E2.5 done. E6.2 partial** (basic parametric; full resource-loading
+  model is a later cycle — tracker E6.2 stays `in-review` with that note).
+- The deliverable is the audit's review-drill target: "hand it to an uninvolved
+  architect; they answer 'where did this come from?' for 10 random figures using only
+  the document." The calculation appendix + register are built for exactly that.
+- **Watch:** effort execution-PD-per-disposition and the LZ/testing/hypercare constants
+  are first-pass — a firm calibrates them against `sample-estate/effort-inputs.md`
+  (which lands EAC ~775 PD; the tool gives ~834 for Medium confidence — same ballpark).
+- **Next — Cycle 10:** E7.1/E7.2 — the eval harness: a golden text-to-SQL set (30+) with
+  a runner, and full-estimate scenarios (8+) with expected ranges, 0 un-sourced numbers,
+  identical on re-run. Uses the `microsoft-foundry` skill.
+
+---
+
 ## Cycle 8 — score_dispositions + plan_waves (the wave engine)
 
 **Date:** 2026-09-08 · **Owner:** Architect + PM + SWE · **Tracker:** E4.1 / E4.2 (done) ·
