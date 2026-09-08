@@ -53,16 +53,25 @@ def test_docx_opens_and_carries_the_watermark_and_appendix(package):
     assert all(any(rid in p.text for p in d.paragraphs) for rid in reg_ids[:5])
 
 
-def test_pptx_opens_and_has_title_headline_and_section_slides(package):
+def test_pptx_opens_and_has_narrative_deck(package):
     from pptx import Presentation
     blob, name, mime = export(package, "pptx")
     assert name.endswith(".pptx") and "presentation" in mime
     prs = Presentation(io.BytesIO(blob))
-    # title + headline + one per section + assumptions
-    assert len(prs.slides) == 1 + 1 + len(package["sections"]) + 1
+    # fixed narrative: cover + 11 numbered content slides
+    assert len(prs.slides) == 12
     all_text = " ".join(sh.text_frame.text for sl in prs.slides for sh in sl.shapes
                         if sh.has_text_frame)
-    assert "Migration estimate" in all_text and "Headline numbers" in all_text
+    for expect in ("MIGRATION ASSESSMENT", "Executive summary",
+                   "Migration wave plan", "Traceability"):
+        assert expect in all_text
+    # every content slide carries the DRAFT watermark (not just the cover)
+    drafted = sum("architect review" in sh.text_frame.text
+                  for sl in prs.slides for sh in sl.shapes if sh.has_text_frame)
+    assert drafted >= 11
+    # native charts + a wave table, not just text
+    assert sum(sh.has_chart for sl in prs.slides for sh in sl.shapes) >= 3
+    assert any(sh.has_table for sl in prs.slides for sh in sl.shapes)
 
 
 def test_exports_are_deterministic_byte_for_byte(package):
