@@ -1,8 +1,9 @@
 # Landfall — Engagement Workspaces (multi-client, dashboard-driven)
 
-**Status:** IN PROGRESS (C18 live; C24 done; C25 `ca-calc` deployed — async redesign
-blocker open; C19–C23 + C26–C28 planned) · **Raised:** 2026-09-08 ·
-**Last updated:** 2026-09-08 · **Owner panel:** see below · **Method:** PDCA
+**Status:** IN PROGRESS (C18 live; C24 done; **C25 async POE pipeline live end-to-end**
+— adapter accuracy is the open follow-up; C19–C23 + C26–C28 planned) ·
+**Raised:** 2026-09-08 · **Last updated:** 2026-09-08 ·
+**Owner panel:** see below · **Method:** PDCA
 **Rolls into:** the "Landfall to 5/5" PRD as **Epic E11**. Supersedes the
 "one `azd` deployment per engagement" assumption in
 [`audits/2026-09-07-production-readiness-review.md`](../audits/2026-09-07-production-readiness-review.md)
@@ -267,15 +268,16 @@ Route model: `/` = engagements home · `/e/<customer>/<project>` = one engagemen
    writes `_engagement.json` (incl. `target_region` / `dr_region` / `currency` /
    `licensing_program`) + creates the folder skeleton → redirects to `/e/<c>/<p>`. The
    Entra user id is recorded as `created_by`.
-2. **Upload** — a drag-and-drop panel on the engagement page. The **Target region**
+2. **Upload** — a drag-and-drop panel on the engagement page (**E11.6 — not built yet**;
+   today the chat page only has "+ New engagement", no upload). The **Target region**
    (and DR region) picker sits **on this panel too**, pre-filled from `_engagement.json`
    and editable while uploading — the sponsor's ask is that the user sets where the
    landing zone will be deployed *at the point they upload the on-prem inventory*.
    Changing it here `PATCH`es `_engagement.json` and marks any existing estimate stale.
-   Files `POST` to `/api/engagements/<c>/<p>/upload` (multipart); the web app streams each
-   to `raw/engagements/<c>/<p>/inventory/` (or `/docs/` by a toggle). Server-side upload
-   keeps auth server-side — no SAS handed to the browser. A manifest panel lists what's
-   been uploaded, size, and detected source profile.
+   Files `POST` to `/api/engagements/<c>/<p>/upload` (multipart); the web app (its MSI)
+   streams each to `raw/engagements/<c>/<p>/inventory/` (data) or `/docs/` (narrative), a
+   per-file toggle. **No SAS to the browser** — the upload is server-side. See §4.5a for
+   accepted types, size caps, folder isolation and the upload-confirmation UX.
 3. **Start analysis** — a button → `POST /api/engagements/<c>/<p>/run` → a new Function
    `run_engagement` ingests every file in the folder (detect → map → load, scoped by
    `engagement_id`), writes the DQ reports, then returns a status the page polls. A
@@ -310,6 +312,103 @@ Route model: `/` = engagements home · `/e/<customer>/<project>` = one engagemen
    answer** sheet, one sheet per returned table, and a **Provenance** sheet (the SQL /
    tool call, the engagement, timestamp, the DRAFT disclaimer) — and streams it back.
    Same openpyxl standards as E5.4q (formulas where derived, `$#,##0`, recalc-clean).
+
+### 4.5a Upload — accepted files, size, folder isolation, confirmation (E11.6 + E11.24)
+
+**Where the user uploads (today vs target).** *Today:* the chat page has only
+**"+ New engagement"**, which creates the customer/project and its ADLS skeleton — there
+is **no upload control yet**. *Target (E11.6):* on the engagement page, an **Upload**
+panel directly under the engagement header: drag-and-drop or file-picker, a
+**Data / Documents** toggle, the region pickers, and a live file manifest.
+
+**How a customer's files reach their own dedicated folder.** The engagement id is
+`slug(customer)/slug(project)` (§3.5) — one function, shared by UI, API, SQL and ADLS.
+The upload route is `POST /api/engagements/<customer>/<project>/upload`; the web app
+resolves that pair through the **same** `make_engagement_id()`, checks the caller may
+write to it (`created_by` / `visibility`, §4.8), and streams each file to
+**`raw/engagements/<customer>/<project>/inventory/<filename>`** (or `/docs/`). The
+customer/project segments are slug-validated on every request (`^[a-z0-9][a-z0-9-]{0,39}$`,
+reject `.` `/` `..`), so a file physically cannot be written outside that engagement's
+prefix. Filenames are sanitised (basename only, collision-suffixed). The blob path *is*
+the isolation boundary — Event Grid's subject filter and the loader's `engagement_id`
+key both derive from it, and SQL Row-Level Security (§7.1) fails closed on it.
+
+**Inputs vs outputs are separate containers, already.** Inputs → `raw/…`; everything the
+solution produces for that same customer/project → **`answers/engagements/<customer>/<project>/`**
+— `estimate/` (`latest.{json,xlsx,docx,pptx}`, `landing_zone.{xlsx,json,png}`),
+`_ingest/` (data-quality reports), `history/<utc-ts>/` (immutable publish snapshots).
+The dashboard's **Downloads** section and the agent's `publish_estimate` /
+`build_calculator_estimate` only ever read/write under that `answers/…/` prefix. `raw` is
+never written by the generation path; `answers` is never the upload target.
+
+**Accepted file types (expert-panel recommendation).** The importer already fingerprints
+RVTools / CMDB / native-schema content, so accept the formats those actually arrive in:
+
+| Group | Types | Lands in | Notes |
+|---|---|---|---|
+| **Inventory data** (required) | `.csv`, `.xlsx` (`.xls` converted), `.tsv`, `.json` | `inventory/` | RVTools export, Azure Migrate assessment export, CMDB/ServiceNow extract, `az`/`Get-VM` dumps, hand-filled templates |
+| **Inventory data** (nice-to-have) | `.zip` of the above | `inventory/` | server-side unzip, each member validated; RVTools is often zipped |
+| **Narrative / evidence** | `.pdf`, `.docx`, `.md`, `.txt`, `.png` / `.jpg` (diagrams) | `docs/` | network diagrams, DR runbooks, compliance scope, NFRs, the filled discovery questionnaire (§4.5b) |
+| **Rejected** | executables, archives other than `.zip`, Office files with macros (`.xlsm`/`.docm`), anything > the size cap | — | 415 with the reason; macro-Office is re-saved by the user as `.xlsx`/`.docx` |
+
+Validation is **content-sniffed, not extension-trusted** (magic bytes + a structural
+probe: a "data" file must parse as a table with ≥1 recognised column; a `.pdf` must start
+`%PDF`). A file that passes type-check but matches no importer profile is still stored and
+listed as **"unrecognised — will be skipped by analysis"** rather than rejected.
+
+**Size limits.** Per file **100 MB** (RVTools for ~10k VMs is < 20 MB; this is generous),
+per upload request **250 MB**, per engagement **2 GB** soft cap (dashboard warns, support
+can raise). Enforced at three points: an HTML `accept` + client-side pre-check for instant
+feedback, a `Content-Length` gate on the route (413 before the body is read), and a
+hard byte-ceiling on the stream copy. Uploads are **streamed** to blob in 4 MB blocks —
+never buffered whole in the web container (which has ~1 GB RAM).
+
+**Visual confirmation of upload (E11.24 — the sponsor's explicit ask).** Each file shows
+its own row with a state that changes as it goes:
+
+```
+  network-inventory.xlsx    ⟳ uploading… 40%        (determinate bar from the fetch upload-progress)
+  network-inventory.xlsx    · 152 KB · checking…      (server validating type + profile)
+  network-inventory.xlsx    ✓ uploaded · RVTools vInfo · 412 rows        [remove]
+  macro-sheet.xlsm          ✗ not accepted — re-save as .xlsx           [dismiss]
+```
+
+- Optimistic row appears the instant a file is chosen; a determinate progress bar tracks
+  the actual PUT.
+- On the server's `201` the row flips to **✓ uploaded** with a green check, the detected
+  **source profile** and **row/record count**, and a toast *"network-inventory.xlsx added
+  to Contoso / DC-Exit"*.
+- The **manifest panel** (persisted — it re-lists `raw/…/inventory/` + `/docs/` on load)
+  is the durable proof: filename, size, uploaded-at, uploader, detected profile, and an
+  **"analysis will use this / will skip this"** badge.
+- After **Start analysis**, each manifest row gains an ingest badge (rows loaded, DQ
+  findings) linking to that file's `_ingest/` report — so "did my file land and get
+  used?" is answerable at a glance.
+
+### 4.5b Discovery questionnaire — delivered through the solution (E11.25)
+
+`docs/discovery-questionnaire.html` is currently a static file with no route. Make it
+first-class in the pre-sales flow:
+
+1. **Serve it** at `GET /questionnaire` (also linked from the engagement page and the
+   chat welcome card) — a pre-sales architect sends the client that URL, or exports it.
+2. **Export to fill offline** — a button renders the questionnaire to **`.docx`** and
+   **`.xlsx`** (the same `export.py` toolchain) so the client can complete it in Word /
+   Excel and email it back.
+3. **Upload the answers** — the completed questionnaire (`.docx` / `.xlsx` / `.pdf`) goes
+   through the **same upload panel** into `docs/`; the importer recognises the
+   questionnaire template and writes the structured answers to
+   `raw/engagements/<c>/<p>/_discovery.json`.
+4. **Feed the estimate** — `_discovery.json` supplies the assumptions the inventory can't:
+   compliance scope, DR RTO/RPO, licensing program, growth, change-freeze windows,
+   internet-facing lists, data-residency constraints. `assemble_estimate` reads it into
+   the assumptions register (each answer cited), and `design_landing_zone` uses the
+   compliance + DR answers instead of its defaults.
+5. **Gap list** — unanswered questions surface on the dashboard as
+   *"Ask the client: …"* and in the agent's **"What's missing?"** card.
+
+New work: **E11.24** (upload confirmation UX — folds into E11.6), **E11.25** (questionnaire
+as a served + round-trippable artifact). PDCA: with **C20** (E11.6) and **C21**.
 
 ### 4.6 Azure Pricing Calculator estimate for POE (E11.15–E11.19)
 
@@ -623,6 +722,8 @@ design.
 | **E11.19** | CI **weekly Playwright calculator-adapter smoke** (open the calculator, assert every adapter's selectors resolve, one tiny end-to-end export); **(deferred)** authenticated Save → shared estimate link stored as `landing_zone_url` | P1 | A calculator UI change that breaks an adapter fails the weekly job with the adapter named; a broken adapter degrades to `skipped[]`, never a wrong price |
 | **E11.20** | **Engagement-id resolution — the user never types the slug** (§3.5). One shared `make_engagement_id()`; dashboard engagement `<select>` + inline "New engagement" form (names + region/licensing, not the id); `/api/chat` prepends `[Active engagement: …]`; `resolve_engagement` OpenAPI tool with fuzzy candidate matching; agent system prompt reworked to forbid inventing a slug | P0 | A user only ever enters a customer name and a project name; the id used for the ADLS folder, the SQL filter and every tool call is the same derived string; naming "contoso / dc exit" in chat resolves to the existing `contoso-ltd/dc-exit-2027` without the user knowing the slug. **Built + deployed 2026-09-08 (`458d400`); verify picker after hard refresh** |
 | **E11.21** | **Engagement-first chat view** (§4.9) — left rail with the active engagement (customer/project heading), a status strip (Uploads · Analysis · Published estimate · Calculator POE), region + licensing summary, prompt cards / "new engagement"; chat thread + a dashboard tab share the main pane, both scoped to the rail; **Markdown-rendered assistant messages**; per-message toolbar (copy, expand tool calls, "download as Excel"); inline error card with Retry; responsive header. The current single-page chat becomes the "no engagement selected" empty state | P1 | The 10 panel findings in §4.9 are closed; a reviewer can tell which client is active at a glance, see its pipeline state, read a table in an answer without it looking broken, and reach the dashboard for that engagement without losing context. **Needs sponsor sign-off before start** |
+| **E11.24** | **Upload panel + visual upload confirmation** (§4.5, §4.5a) — the engagement-page Upload panel (drag-drop, data/docs toggle, region pickers), `POST /api/engagements/<c>/<p>/upload` (server-side streamed to `raw/…/inventory` or `/docs`, slug-checked, 4 MB blocks), content-sniffed type + size gates (100 MB/file, 250 MB/request, 2 GB/engagement), per-file progress → ✓ uploaded row with detected profile + row count + toast, a persisted manifest panel that re-lists the folder and shows an analysis-will-use badge, ingest badges after Start analysis | P0 | A pre-sales user with no CLI drops `RVTools.xlsx` + a CMDB `.csv` on the Contoso/DC-Exit page, watches each file go uploading → ✓ uploaded (RVTools vInfo · 412 rows), sees them in the manifest, and the files are in `raw/engagements/contoso/dc-exit/inventory/` and nowhere else; a `.xlsm` is rejected with a clear reason |
+| **E11.25** | **Discovery questionnaire as a served, round-trippable artifact** (§4.5b) — `GET /questionnaire`; export to `.docx`/`.xlsx`; the completed file uploads through E11.24 into `docs/`, the importer recognises the template → `raw/…/_discovery.json`; `assemble_estimate` cites its answers in the assumptions register, `design_landing_zone` uses its compliance + DR answers; unanswered items become dashboard "ask the client" + the agent's "What's missing?" | P1 | A pre-sales architect opens `/questionnaire`, exports the Word version for the client, uploads the returned file, and its answers drive the estimate's assumptions with per-answer citations; blank answers show as client-ask items |
 | **E11.23** | **`design_landing_zone` checklist conformance** (§4.11) — vendor the Azure ALZ + [AI-LZ design checklist](https://azure.github.io/AI-Landing-Zones/architecture/design-checklist/) to `docs/lz-design/`; `src/api/lz/design.py` emits `checklist_conformance[]` (10 domains, `met`/`partial`/`gap`/`n/a` + evidence + recommendation) deterministically from the existing design output; AI-LZ overlay (Foundry hub/project, AI Search + Content Safety private, APIM gen-AI gateway, PTU+PAYG, Responsible-AI dashboard) when the inventory has AI/ML workloads; `assemble_estimate` + `to_docx`/`to_pptx` + dashboard card get a "design conformance" section; agent system-prompt line. No new tool | P1 | The landing-zone deliverable for an engagement lists every ALZ/AI-LZ checklist item as met/partial/gap with evidence + a recommendation for each gap; the dashboard shows `N/M items met`; the agent surfaces gaps when asked about the target architecture |
 | **E11.22** | **Target landing-zone diagram — `drawio-mcp-diagramming` engine in Azure** (§4.10). `ca-drawio` Container App (`simonkurtz-MSFT/drawio-mcp-server`, HTTP transport, browserless, 700+ offline Azure icons, `minReplicas: 0`) + `drawio-export` for `POST /render`. `src/api/lz/diagram.py` (pure, unit-tested) maps `design_landing_zone` JSON → an ordered MCP-call plan (groups, Azure-icon cells, edges, `libavoid`) using the skill's `xml-authoring-rules` + `azure.md` as the coded-in ruleset. `build_landing_zone_diagram` Function (required `engagement`) replays the plan against `ca-drawio`, `export-xml` → `.drawio`, renders `.svg`/`.png`, writes all 3 to `estimate/`. Agent tool + "Landing-zone diagram" prompt card; optional `ca-drawio` MCP tool on the agent for chat tweaks. Dashboard SVG + "Download .drawio"; `to_pptx` / `to_docx` embed the SVG. Skill refs vendored to `docs/diagram-authoring/`. **Deterministic driver — the agent does not free-draw** | P1 | Producing a landing zone for an engagement yields `landing_zone.{drawio,svg,png}` showing the hub, spokes, shared services and DR pairing for that engagement's chosen region, with correct Azure icons, editable in draw.io desktop; the same design always produces the same diagram; the PPT hub-spoke slide is the rendered diagram, not the hand-drawn one |
 
@@ -647,12 +748,12 @@ sizing or prices.
 |---|---|---|
 | **C18** | E11.1 + E11.2 + E11.3 (engagement model, ADLS layout, SQL `engagement_id` + migration) | `create_engagement` works; two engagements' data is isolated in SQL and blob; tests |
 | **C19** | E11.4 + E11.5 + E11.13 (ingestion + every tool scoped; isolation evals) | `run_engagement` ingests one folder; every tool rejects a missing `engagement`; isolation eval green |
-| **C20** | E11.6 (dashboard: home, new-engagement, upload, start analysis) | A no-CLI user creates an engagement, uploads, and runs analysis from the browser |
+| **C20** | E11.6 + E11.24 + E11.25 (dashboard: home, new-engagement, **upload panel + visual upload confirmation**, start analysis; discovery questionnaire served + round-trippable) | A no-CLI user creates an engagement, drags in `RVTools.xlsx` + a CMDB `.csv`, sees each go uploading → ✓ uploaded with its detected profile + row count, and runs analysis — all from the browser; the files are only under that engagement's `raw/…` prefix |
 | **C21** | E11.7 + E11.8 + E11.14 (engagement-scoped chat + prompt cards + "ask & export to Excel"; versioned publish) | Prompt cards drive per-engagement outcomes; an architect downloads any chat answer as a workbook; dashboard shows the right engagement's estimate |
 | **C22** | E11.9 + E11.12 (studio-deck container; xlsx/docx polish + CI recalc gate) | "Studio deck" card produces a `qa_gate`-passing deck; recalc gate live |
 | **C23** | E11.10 + E11.11 (access control, audit, migration + shim, docs) | Visibility enforced; the old single-tenant deploy migrates cleanly |
 | **C24** | E11.15 + E11.16(build) + E11.20 (calculator line-item spec builder; `ca-calc` container; engagement-id resolution + chat picker + prompt cards + "working" indicator) | **Done (2026-09-08, `3c44b5e`):** `calculator_spec.py` (pure, 21 tests; **verified against real `_default_/_default_` data → 55 line items, internal ~$97.6k/mo**) + `calculator_export.py` + `build_calculator_estimate` Function + `ca-calc` scaffold + Bicep + dashboard POE card + E11.20 built, committed, api+agent deployed |
-| **C25** | E11.16 **async redesign** + deploy + E11.17 + E11.18 + E11.19 | **In progress (2026-09-08):** `ca-calc` Container App **provisioned + image deployed** (`azd provision` skipping the SQL hook + `azd deploy calc`); `CALC_URL` wired on the Function; `tools_raw.json` published for `_default_/_default_`. **BLOCKER found:** the sync `Function → ca-calc → wait` call **502s at ~230 s** (Functions HTTP limit) for a 55-item calculator drive → **must go async** (Function 202 + `ca-calc` writes the blobs with its own MSI + status polling — see §4.6). Then: verify the ~14 unverified adapters live, wire the dashboard card + agent tool end-to-end, weekly smoke, `run_engagement` hook |
+| **C25** | E11.16 **async redesign** + deploy + E11.17 + E11.18 | **Async DONE + verified live end-to-end (2026-09-08).** `ca-calc` Container App deployed; the sync `Function → ca-calc` call was found to 502 (no shared VNet to the internal ingress **and** the ~230 s Functions HTTP limit), so it's now **queue-decoupled**: `build_calculator_estimate` stages the spec + drops a `calc-jobs` message + returns 202; `ca-calc` (minReplicas 1, background consumer) drains it, drives the real calculator, and writes `landing_zone.{xlsx,json,png}` with the workload identity. Proven: agent → 202 in 10 s → 55-line calculator run → genuine `ExportedEstimate.xlsx` stored. `get_calculator_estimate` poll tool + dashboard `building/ready/failed` card shipped. **Remaining → C25b:** reconciliation delta was −73 % (unverified adapters fell back to calculator defaults) — verify the ~14 adapters live (E11.19), then KEDA queue-scale-to-zero, weekly smoke, `run_engagement` hook |
 | **C26** | E11.21 (engagement-first chat view — rail, status strip, Markdown answers, per-message toolbar, dashboard tab, responsive header) — **sponsor sign-off required first** | The §4.9 panel findings are closed; the chat page is engagement-first, not chat-first |
 | **C27** | E11.22 (`ca-drawio` Container App — `simonkurtz-MSFT/drawio-mcp-server` + `drawio-export`; `lz/diagram.py` deterministic MCP-call plan; `build_landing_zone_diagram` Function + agent tool + prompt card; dashboard + deck + doc embed; skill refs vendored) | Producing a landing zone yields an engagement-specific `.drawio` + rendered SVG for the chosen region with correct Azure icons; same design → same diagram; the deck uses it |
 | **C28** | E11.23 (`design_landing_zone` checklist conformance — vendor the ALZ + AI-LZ design checklist; `checklist_conformance[]` + AI-LZ overlay; deliverable section + dashboard chip + agent prompt line) | The LZ deliverable proves alignment to Microsoft's own ALZ/AI-LZ guidance item by item, with the gaps explicit |
@@ -709,16 +810,36 @@ Each cycle logged in [`pdca-log.md`](pdca-log.md) (Plan / Do / Check / Act).
    via MCP (slow, non-repeatable, on the funding path) — though `ca-drawio` may also be
    registered as a raw MCP tool for low-stakes chat tweaks. New work E11.22, PDCA C27.
    See §4.10.
-10. **`ca-calc` runs async (2026-09-08 C25 finding).** A synchronous
-    `Function → ca-calc → wait` call for a multi-minute Playwright calculator drive 502s
-    at the ~230 s Functions HTTP limit. E11.16 is therefore fire-and-forget: the Function
-    returns 202, `ca-calc` writes `landing_zone.{xlsx,json,png}` to the engagement folder
-    with its own managed identity, and the dashboard/agent poll a status route. See §4.6.
+10. **`ca-calc` is queue-decoupled, not called directly (2026-09-08 C25 finding).** The
+    Flex Consumption Function App shares no VNet with the Container Apps Environment, so
+    it can't reach `ca-calc`'s internal ingress at all; and a multi-minute Playwright
+    drive overruns the ~230 s Functions HTTP limit regardless. So
+    `build_calculator_estimate` stages the spec to blob + drops a `calc-jobs` storage
+    queue message + returns **202**; `ca-calc` runs a background queue consumer
+    (`minReplicas: 1` for now; KEDA queue-scale-to-zero is the follow-up) that drains the
+    message, drives the calculator, and writes `landing_zone.{xlsx,json,png}` with the
+    shared workload identity. The dashboard card + `get_calculator_estimate` poll the
+    `building/ready/failed` status. Verified live end-to-end. See §4.6.
 11. **`design_landing_zone` is checked against Microsoft's ALZ / AI-LZ design checklist
     (2026-09-08).** The checklist is vendored as a design reference; `design.py` emits a
     deterministic `checklist_conformance[]` + an AI-LZ overlay for AI/ML estates; the
     deliverable, dashboard and agent surface met/partial/gap. New work E11.23, PDCA C28.
     See §4.11.
+12. **Upload: server-side, content-sniffed, per-engagement-isolated, with visible
+    confirmation (2026-09-08).** The engagement page gets an Upload panel (E11.6/E11.24):
+    `.csv/.xlsx/.tsv/.json`(+`.zip`) → `raw/…/inventory/`, `.pdf/.docx/.md/.txt/.png` →
+    `raw/…/docs/`; types are magic-byte + structure checked, not extension-trusted;
+    macro-Office and executables rejected. Caps: 100 MB/file, 250 MB/request, 2 GB/
+    engagement; streamed in 4 MB blocks, never a browser SAS. The customer/project slug
+    (one shared function) is the isolation boundary — a file cannot be written outside its
+    engagement prefix; **outputs stay in the separate `answers/engagements/<c>/<p>/`
+    tree.** Every file shows uploading → ✓ uploaded (detected profile + row count) + a
+    toast, and a persisted manifest panel is the durable proof. See §4.5a.
+13. **The discovery questionnaire is delivered through the solution (2026-09-08).**
+    `docs/discovery-questionnaire.html` becomes `GET /questionnaire` + a Word/Excel export
+    the client fills offline + an upload that the importer parses to
+    `raw/…/_discovery.json`, which feeds `assemble_estimate`'s assumptions register and
+    `design_landing_zone`. New work E11.25, PDCA C20. See §4.5b.
 
 **Build order:** C18 done (E11.1–E11.3, live). C24 done. **C25 in progress** — `ca-calc`
 deployed; **next concrete step = the E11.16 async redesign** (Function 202 + `ca-calc`
