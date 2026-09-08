@@ -71,11 +71,14 @@ servers(server_id, hostname, env /* prod|nonprod|dev|dr */, os_name, os_version,
         os_eol_date, vcpu, ram_gb, provisioned_disk_gb, used_disk_gb,
         cpu_avg_pct, cpu_peak_pct, cpu_p95_pct, ram_avg_pct, ram_p95_pct /* 30-day rollups; p95 = right-sizing signal */,
         disk_iops_avg, disk_iops_peak, net_in_gb_30d, net_out_gb_30d /* 30-day totals */,
-        cluster, datacenter, powerstate, app_id /* -> applications.app_id */, notes)
+        cluster, datacenter, powerstate /* poweredOn|poweredOff */,
+        app_id /* -> applications.app_id */, notes)
 applications(app_id, app_name, business_owner, criticality /* 1 high..4 */, users,
-        tech_stack, db_engine, internet_facing /* bit */, compliance_scope,
+        tech_stack, db_engine, internet_facing /* bit */,
+        compliance_scope /* e.g. PCI-DSS, HIPAA, GDPR, SOX; 'None' or NULL if unscoped */,
         disposition, complexity /* S|M|L|XL */, wave)
-dependencies(dep_id, src_id, dst_id, port, protocol, direction, confidence,
+dependencies(dep_id, src_id, dst_id, port, protocol, direction /* inbound|outbound */,
+        confidence /* high|medium|low */,
         bytes_30d_gb, flows_30d, last_seen /* observed over the 30-day window */)
 storage(storage_id, server_id /* -> servers.server_id */, type /* block|file|object|db */,
         size_gb, iops, target_service)

@@ -11,11 +11,11 @@ Companion to [`prd/landfall-5x5-prd.md`](landfall-5x5-prd.md). Delivery log:
 
 | Phase | Items | Done | In review | In progress | Backlog |
 |---|---|---|---|---|---|
-| 1 — Engine | 36 | 0 | 33 | 1 | 2 |
+| 1 — Engine | 36 | 5 | 30 | 0 | 1 |
 | 2 — Evidence | 11 | 0 | 0 | 0 | 11 |
 | 3 — Sustain | 3 | 0 | 0 | 0 | 3 |
 
-_Last updated: 2026-09-08 (PDCA cycles 1–14; D1 done; E2–E8 + E5.4 + E5.5 in review. Phase 1 engine complete bar E1.7 / E4.3 / full E6.2. Live checks pending: E1.6 ingestion, E8.2 EasyAuth, E5.5 dashboard). Full engine + eval harness + CI gate + security + Excel/Word/PPT exports + Azure Migrate–style assessment dashboard on the Container App. Sample: run-rate ~$119k/mo + ~$77k one-time; effort ~834 PD / ~$650k services. 127 pytest + 32 golden SQL + 8 scenarios + 26 fault cases green._
+_Last updated: 2026-09-08 (PDCA cycles 1–15). Cycle 15 = first live deployment to `rg-landfall`/swedencentral + verification pass: E1.1 / E1.5 / E1.6 / E5.4 / E5.5 **verified live and marked done**; E2–E8 remain in review pending their own live checks. Phase 1 engine complete bar E1.7 / E4.3 / full E6.2. **Still open: E8.2** (Function App EasyAuth — needs an Entra app reg; routes anonymous today, guarded by `sqlguard`). Live sample in SQL: 250 servers / 31 apps; agent smoke test (query_inventory → estimate_compute_cost) returns a sourced answer. Cycle 15 fixed 3 deploy bugs — see pdca-log. 127 pytest + 32 golden SQL + 8 scenarios + 26 fault cases green._
 
 ---
 
@@ -25,12 +25,12 @@ _Last updated: 2026-09-08 (PDCA cycles 1–14; D1 done; E2–E8 + E5.4 + E5.5 in
 
 | ID | Item | Pri | Status | Owner | Cycle | Acceptance (this item is done when…) |
 |---|---|---|---|---|---|---|
-| E1.1 | Event Grid Normalize function on `raw/inventory/{name}` — detect, map, normalise, upsert, log | P0 | in-review | SWE | 1 | A blob dropped in `raw/inventory/` populates SQL and writes an `ingest_log` row; no manual mapping. _Unit-verified; DB/trigger check pending E1.6._ |
+| E1.1 | Event Grid Normalize function on `raw/inventory/{name}` — detect, map, normalise, upsert, log | P0 | done | SWE | 1,15 | A blob dropped in `raw/inventory/` populates SQL and writes an `ingest_log` row; no manual mapping. _Verified live: `raw/inventory/storage.csv` re-upload → Event Grid → `ingest_blob` → refreshed DQ report; 250/31/484/566/5190 rows in SQL._ |
 | E1.2 | Source profiles: Landfall-native, RVTools vInfo, generic CMDB (config-driven) | P0 | in-review | SWE | 1 | Each of the 3 formats is detected and mapped correctly on a sample; adding a 4th is a config edit. _Done — 18 tests pass._ |
 | E1.3 | `data_quality_report` — counts, null-rates, dupes, orphans, unmapped, confidence hint → `answers/` MD+JSON | P0 | in-review | SWE + PMO | 1 | For a dump with known defects the report names every defect and nothing spurious. _Done — `broken_servers.csv` + full-sample verified._ |
 | E1.4 | Graceful degradation — missing perf → low confidence; unknown file → error, no partial load | P0 | in-review | SWE | 1 | Broken inputs never produce a silent partial load; the log says why. _Done — `unknown.csv` test._ |
-| E1.5 | Idempotent re-ingest keyed by source file | P0 | in-review | SWE | 1 | Re-uploading a corrected file replaces only its rows; counts stay correct. _`_dedupe` + `DELETE WHERE source_file` done; DB round-trip pending E1.6._ |
-| E1.6 | Wire ingestion into `azd` deploy + end-to-end check on live `rg-landfall` (SQL round-trip, DQ report, live-DB FK migration) | P0 | in-progress | SRE | 2 | `azd up` on a fresh env → drop a file → SQL populated + DQ report, no manual hook run. |
+| E1.5 | Idempotent re-ingest keyed by source file | P0 | done | SWE | 1,15 | Re-uploading a corrected file replaces only its rows; counts stay correct. _Verified live — `storage.csv` re-ingested (Event Grid + HTTP), row count held at 566; `servers.csv` held at 250._ |
+| E1.6 | Wire ingestion into `azd` deploy + end-to-end check on live `rg-landfall` (SQL round-trip, DQ report, live-DB FK migration) | P0 | done | SRE | 2,15 | `azd up` on a fresh env → drop a file → SQL populated + DQ report, no manual hook run. _Verified on `rg-landfall`. Fixed: `apply_sql.py` needed `db_datawriter`; `eventgrid.sh` MSYS path-mangling of the subject filter. Note: `create_agent.py` should move to postdeploy (SERVICE_API_NAME unset at postprovision on first `azd up`)._ |
 | E1.7 | Column-mapping override file per engagement (`raw/inventory/_mapping.json`) | P1 | backlog | SWE | — | An operator can correct a mis-mapped column without a redeploy. |
 
 ### E2 — Deterministic Cost Engine
@@ -66,8 +66,8 @@ _Last updated: 2026-09-08 (PDCA cycles 1–14; D1 done; E2–E8 + E5.4 + E5.5 in
 | E5.1 | "Assemble estimate" → one structured package, 8 sections | P0 | in-review | PM + SWE | 9 | Package needs editing, not authoring (architect board sign-off). _Done — `src/api/deliverable/assemble.py`; 8 sections + markdown render; full-pipeline test._ |
 | E5.2 | Stable IDs + calculation appendix on every figure | P0 | in-review | SWE | 9 | 10 random figures each traceable using only the delivered doc. _Done — `F*` ids + `calculation_appendix` (formula, inputs, assumptions_applied, confidence) per figure._ |
 | E5.3 | Machine-tracked assumptions & exclusions register | P0 | in-review | PM | 9 | Register is generated across the run, not merged by hand. _Done — `_Reg`: collects every tool's caveats + standing exclusions, deduped + categorised (A/X/G ids). Sample: 28/6/8._ |
-| E5.4 | Client-ready exports — the package as a formatted **Excel workbook, Word document, and PowerPoint deck** | P0 | in-review | SWE + Writer | 13 | An architect can send the .xlsx / .docx / .pptx to a client with light edits; every figure keeps its calculation-appendix reference. _Done — `src/api/deliverable/export.py` + `POST /api/export_estimate`; 6 tests; sample renders 12-sheet xlsx / docx / 11-slide pptx, all re-open._ |
-| E5.5 | **Assessment dashboard web app** on the Container App — an Azure Migrate–style interactive dashboard of the estimate, with in-page export to Excel / Word / PPT | P0 | in-review | SWE | 14 | End user opens the engagement URL, sees the dashboard (inventory, cost, landing zone, waves, effort), and downloads any artifact. Professional, MS-assessment-tool visual quality. _Done — `src/web/dashboard.html` + `/dashboard*` routes + `POST /api/publish_estimate`; 7 tests; visual check passed. Live `azd deploy web` pending._ |
+| E5.4 | Client-ready exports — the package as a formatted **Excel workbook, Word document, and PowerPoint deck** | P0 | in-review | SWE + Writer | 13 | An architect can send the .xlsx / .docx / .pptx to a client with light edits; every figure keeps its calculation-appendix reference. _Done — `src/api/deliverable/export.py` + `POST /api/export_estimate`; 6 tests. Verified live: `publish_estimate` on the deployed Function generated `latest.{xlsx,docx,pptx}` (18 KB / 40 KB / 40 KB) to blob._ |
+| E5.5 | **Assessment dashboard web app** on the Container App — an Azure Migrate–style interactive dashboard of the estimate, with in-page export to Excel / Word / PPT | P0 | in-review | SWE | 14 | End user opens the engagement URL, sees the dashboard (inventory, cost, landing zone, waves, effort), and downloads any artifact. Professional, MS-assessment-tool visual quality. _Done — `src/web/dashboard.html` + `/dashboard*` routes + `POST /api/publish_estimate`; 7 tests; visual check passed. Verified live: `/dashboard` 200, `/dashboard/data` returns the published package, `/dashboard/download/{xlsx,docx,pptx}` stream with the right mime. Behind Container App EasyAuth (RedirectToLoginPage)._ |
 
 ### E6 — Firm Config & Effort Model
 
@@ -92,7 +92,7 @@ _Last updated: 2026-09-08 (PDCA cycles 1–14; D1 done; E2–E8 + E5.4 + E5.5 in
 | ID | Item | Pri | Status | Owner | Cycle | Acceptance |
 |---|---|---|---|---|---|---|
 | E8.1 | One deployment per engagement + reliable fast `azd up`/`down` | P0 | in-review | SRE | 12 | Two engagements never share a datastore; clean `azd up` in CI, no manual steps. _`resourceToken` makes every resource env-unique; DEPLOY.md isolation note added. Clean-machine CI is E9.2 (Phase 2)._ |
-| E8.2 | `query_inventory` auth on by default | P0 | in-review | Security | 12 | Anonymous `curl` → 401; agent still works via managed identity. _Bicep `enableFunctionAuth` param + `authsettingsV2` (excludedPaths /runtime), `AGENT_TOOL_AUTH=managed` recipe in DEPLOY. Off by default; needs a live `azd provision` to verify the 401._ |
+| E8.2 | `query_inventory` auth on by default | P0 | in-progress | Security | 12 | Anonymous `curl` → 401; agent still works via managed identity. _Bicep `enableFunctionAuth` param + `authsettingsV2` (excludedPaths /runtime), `AGENT_TOOL_AUTH=managed` recipe in DEPLOY. **Live on `rg-landfall`: still OFF** — func routes answer anonymously (guarded only by `sqlguard`). Next step: create the Entra app reg, `azd provision` with `enableFunctionAuth=true`, re-run `create_agent.py` with `AGENT_TOOL_AUTH=managed`, confirm anon → 401._ |
 | E8.3 | Allow-list SQL parse + statement timeout | P0 | in-review | Applied Sci + Security | 12 | `WAITFOR`, `sys.*`, cartesian joins rejected or bounded. _Done — `src/api/sqlguard.py` (single SELECT/WITH, 6-table allow-list, comment strip, keyword deny) + `QUERY_TIMEOUT_S` / `cur.timeout`; 20 tests._ |
 | E8.4 | Keep client SQL text out of logs | P0 | in-review | Security | 12 | Logs contain a hash/template, never the question or SQL. _Done — `sqlguard.signature()` (sha256[:12] + tables + shape); every `query_inventory` log call scrubbed._ |
 
@@ -140,7 +140,7 @@ _Last updated: 2026-09-08 (PDCA cycles 1–14; D1 done; E2–E8 + E5.4 + E5.5 in
 |---|---|---|
 | 1 | E1.1–E1.5 — ingestion & data-quality core (normalize + profiles + DQ + loader + tests); D1 partial | [pdca-log.md](pdca-log.md) · **done** |
 | 1a | sample-estate 30-day performance + flow data (user request) — `performance.csv`, servers/deps rollups, `landfall_performance` profile, schema `dbo.performance` | [pdca-log.md](pdca-log.md) · **done** |
-| 2 | E1.6 — deploy wiring + DEPLOY/INSTALL docs (D1 done); live end-to-end check still deferred | [pdca-log.md](pdca-log.md) · partial |
+| 2 | E1.6 — deploy wiring + DEPLOY/INSTALL docs (D1 done); live end-to-end check still deferred | [pdca-log.md](pdca-log.md) · superseded by 15 |
 | 3 | E2.1 deterministic `vm_rightsize` + E6.1 `estimation_config.json` (partial); closes audit FIN-1/FIN-2 | [pdca-log.md](pdca-log.md) · **done** |
 | 4 | E2.2 `estimate_compute_cost` (compute BoM + PAYG/RI/AHB + per-VM disk, low/expected/high); closes audit FIN-3 | [pdca-log.md](pdca-log.md) · **done** |
 | 5 | E2.3 — `estimate_storage_cost` over the `storage` table (file / DB / object); block volumes stay in the compute BoM | [pdca-log.md](pdca-log.md) · **done** |
@@ -153,3 +153,4 @@ _Last updated: 2026-09-08 (PDCA cycles 1–14; D1 done; E2–E8 + E5.4 + E5.5 in
 | 12 | E8.3 / E8.4 / E9.1 done + E8.1 / E8.2 in-review — SQL allow-list guard + timeout, no SQL in logs, Python schema/grant (no sqlcmd), EasyAuth Bicep param, isolation note | [pdca-log.md](pdca-log.md) · **done** |
 | 13 | E5.4 — client-ready exports: assembled package → Excel / Word / PowerPoint | [pdca-log.md](pdca-log.md) · **done** |
 | 14 | E5.5 — assessment dashboard web app on the Container App (Azure Migrate–style) with in-page export | [pdca-log.md](pdca-log.md) · **done** |
+| 15 | First live deploy to `rg-landfall` (cycles 5–14) + verification pass — E1.1 / E1.5 / E1.6 / E5.4 / E5.5 verified live; fixed `apply_sql.py` (db_datawriter), `eventgrid.sh` (MSYS path mangling), text-to-SQL enum hints; agent v4 (12 OpenAPI tools) | [pdca-log.md](pdca-log.md) · **done** |

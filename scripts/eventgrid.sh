@@ -6,6 +6,12 @@
 # the function - hence postdeploy. Idempotent: safe to re-run.
 set -eu
 
+# Git Bash / MSYS rewrites a leading-slash arg like "/blobServices/..." into a
+# Windows path ("C:/Program Files/Git/blobServices/...") before az sees it, which
+# silently corrupts --subject-begins-with. Opt out of that conversion.
+export MSYS_NO_PATHCONV=1
+export MSYS2_ARG_CONV_EXCL="*"
+
 echo "==> Loading azd environment"
 eval "$(azd env get-values | sed 's/^/export /')"
 
@@ -57,6 +63,17 @@ az eventgrid system-topic event-subscription create \
   --event-ttl 1440 \
   --only-show-errors \
   --output none
+
+echo "==> Verifying the subscription filters"
+for sub in landfall-questions landfall-inventory; do
+  got="$(az eventgrid system-topic event-subscription show --name "$sub" \
+    --system-topic-name "$TOPIC" --resource-group "$RG" \
+    --query 'filter.subjectBeginsWith' -o tsv 2>/dev/null || true)"
+  case "$got" in
+    /blobServices/*) echo "   $sub: $got" ;;
+    *) echo "   ! $sub subject filter looks wrong: '$got' - re-run with MSYS_NO_PATHCONV=1"; exit 1 ;;
+  esac
+done
 
 echo "==> postdeploy complete - questions/*.xlsx triggers the batch runner;"
 echo "    raw/inventory/* triggers the ingestion pipeline"

@@ -1,7 +1,15 @@
 """
-Apply the inventory schema and grant the workload identity read-only access —
+Apply the inventory schema and grant the workload identity data access —
 in pure Python (mssql-python + Entra token), so the postprovision hook needs
 neither `sqlcmd` nor `azd` on PATH (PRD E9.1).
+
+The Function App's user-assigned identity runs both the ingestion loader
+(INSERT/DELETE on the inventory tables) and `query_inventory` (text-to-SQL), so
+it is granted db_datareader + db_datawriter. `query_inventory` is held to
+SELECT-only in code by `src/api/sqlguard.py` (single SELECT/WITH, keyword deny
+list, table allow-list) — that guard, not a DB permission, is what stops the
+text-to-SQL path from writing. Splitting ingest and query onto separate
+identities is tracked as a hardening follow-up (PRD E8).
 
 Reads from the environment (postprovision exports these from `azd env`):
   AZURE_SQL_SERVER_FQDN
@@ -26,7 +34,8 @@ _GRANT = """
 IF NOT EXISTS (SELECT 1 FROM sys.database_principals WHERE name = N'{name}')
     CREATE USER [{name}] FROM EXTERNAL PROVIDER WITH OBJECT_ID = '{oid}';
 """.strip()
-_ROLE = "ALTER ROLE db_datareader ADD MEMBER [{name}];"
+_ROLES = ("db_datareader", "db_datawriter")
+_ROLE = "ALTER ROLE {role} ADD MEMBER [{name}];"
 
 
 def _connect():
@@ -74,9 +83,11 @@ def main() -> int:
         oid = os.environ.get("AZURE_USER_ASSIGNED_IDENTITY_PRINCIPAL_ID")
         if name and oid:
             cur.execute(_GRANT.format(name=name, oid=oid))
-            cur.execute(_ROLE.format(name=name))
+            for role in _ROLES:
+                cur.execute(_ROLE.format(role=role, name=name))
             conn.commit()
-            print(f"granted db_datareader to [{name}] (query_inventory)")
+            print(f"granted {' + '.join(_ROLES)} to [{name}] "
+                  "(ingestion loader writes; query_inventory is SELECT-only in code)")
         else:
             print("WARN: identity name/oid not set — skipped the read-only grant "
                   "(set AZURE_USER_ASSIGNED_IDENTITY_NAME / _PRINCIPAL_ID)", file=sys.stderr)

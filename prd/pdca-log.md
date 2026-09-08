@@ -5,6 +5,63 @@ Operating model: [`landfall-5x5-prd.md` §7](landfall-5x5-prd.md). Tracker:
 
 ---
 
+## Cycle 15 — first live deployment + verification pass (E1.6, E5.5, E5.4)
+
+**Date:** 2026-09-08 · **Owner:** SWE · **Tracker:** E1.6 (done), E5.5 (verified),
+E5.4 (verified) · **Trigger:** sponsor gave subscription access
+(`f609eb5b…`, `rg-landfall`, swedencentral) — deploy cycles 5–14 and verify live.
+
+### Plan
+
+- `azd provision` + `azd deploy` to lift the running environment from ~cycle 11 to
+  cycle 14 (SQL guard, Office exports, `publish_estimate`, dashboard, 12-tool agent).
+- Verify the three items that need a real subscription: **E1.6** ingestion end-to-end
+  (Event Grid + operator HTTP), **E5.5** `publish_estimate` → `/dashboard`, **E5.4**
+  Office exports generated server-side.
+
+### Do
+
+- `azd provision` — Bicep idempotent; postprovision re-applied schema (7 batches via
+  `apply_sql.py` — no sqlcmd), rebuilt the search index, recreated the agent.
+- `azd deploy` — `src/api` (20 functions incl. the 8 new tool routes) + `src/web`
+  (dashboard) live.
+- Re-ran `create_agent.py` → agent **v4**, 14 tools (2 built-in + 12 OpenAPI), active.
+- Recreated the `landfall-inventory` Event Grid subscription.
+- Ingested the sample estate (`raw/inventory/*` → SQL): 250 servers / 31 apps /
+  484 deps / 566 storage / 5190 perf rows; DQ reports in `answers/_ingest/`.
+- `publish_estimate` (live) wrote `answers/estimate/latest.{json,xlsx,docx,pptx}`.
+- Ran the web app against live storage: `/dashboard` 200, `/dashboard/data` returns the
+  package, `/dashboard/download/{xlsx,docx}` stream with the right mime, bad fmt → 400.
+- Agent smoke test (Responses API): "servers by env + rough 3yr-RI compute cost" →
+  calls `query_inventory` then `estimate_compute_cost`, returns the
+  Answer/Basis/Assumptions/Data-gaps/Confidence block. Numbers match direct SQL
+  (250 / 1940 vCPU / 10 528 GB).
+
+### Check — three bugs found and fixed
+
+| # | Bug | Fix |
+|---|---|---|
+| B1 | `apply_sql.py` granted the workload identity `db_datareader` only; the ingestion loader needs INSERT/DELETE → every load failed `DELETE permission was denied`. | Grant `db_datareader` **+ `db_datawriter`**. `query_inventory` stays SELECT-only via `sqlguard.py` (code, not DB perm). Identity split tracked under E8. |
+| B2 | `eventgrid.sh` run under Git Bash: MSYS rewrote `--subject-begins-with "/blobServices/…"` to `C:/Program Files/Git/blobServices/…`, so the inventory subscription matched nothing. | `export MSYS_NO_PATHCONV=1` / `MSYS2_ARG_CONV_EXCL="*"` + a post-create filter assertion in the script. |
+| B3 | Text-to-SQL `SCHEMA_HINT` had no enum note for `powerstate`; agent guessed `= 'on'` (data is `poweredOn`/`poweredOff`) → "no servers". | Add value hints for `powerstate`, `dependencies.direction`, `dependencies.confidence`, `compliance_scope`. Redeployed; agent smoke test then correct. |
+
+Serverless SQL auto-pause: first connection after idle returns "database is not
+currently available"; a retry wakes it (~40 s). Expected, not a bug — noted for the SOP.
+
+### Act
+
+- **Verified live:** E1.6 (both ingestion paths), E5.4 (server-side Office export),
+  E5.5 (dashboard reads the published package + downloads).
+- **Still open:** **E8.2** — Function App EasyAuth (needs an Entra app registration +
+  `AGENT_TOOL_AUTH=managed` re-run of `create_agent.py`); the func routes are anonymous
+  today, guarded only by `sqlguard`. Next deliberate step.
+- **Follow-ups:** `create_agent.py` should move to a **postdeploy** hook (on a first-ever
+  `azd up`, `SERVICE_API_NAME` isn't set at postprovision time, so the OpenAPI tools are
+  skipped — the WARN path — and need a manual re-run). Phase 1 tail unchanged
+  (E4.3 / E6.2 / E1.7).
+
+---
+
 ## Cycle 14 — assessment dashboard web app (E5.5)
 
 **Date:** 2026-09-08 · **Owner:** SWE · **Tracker:** E5.5 (done) · **Sponsor ask:** an
