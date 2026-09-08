@@ -48,16 +48,38 @@ def _chat():
     return _state["chat"]
 
 
-def _sql_connect():
-    """mssql-python connection with an Entra token from the workload identity."""
+_SQL_RESUME_HINTS = (
+    "is not currently available",   # 40613 - serverless auto-pause resuming
+    "40613", "40197", "40501", "49918", "49919", "49920", "4060",
+    "login timeout", "connection timeout", "server was not found",
+)
+
+
+def _sql_connect(attempts: int = 4, backoff_s: float = 8.0):
+    """mssql-python connection with an Entra token from the workload identity.
+
+    The database is Azure SQL serverless with auto-pause on (cost), so the first
+    call after an idle period fails while it resumes (~30-60 s). Retry a few times
+    on the transient resume/timeout errors before giving up."""
     import mssql_python
 
     server = os.environ["AZURE_SQL_SERVER_FQDN"]
     database = os.environ["AZURE_SQL_DATABASE"]
-    return mssql_python.connect(
-        f"Server={server};Database={database};Encrypt=yes;",
-        token_provider=_cred,
-    )
+    last: Exception | None = None
+    for i in range(attempts):
+        try:
+            return mssql_python.connect(
+                f"Server={server};Database={database};Encrypt=yes;",
+                token_provider=_cred,
+            )
+        except Exception as exc:                                # noqa: BLE001
+            msg = str(exc).lower()
+            if i == attempts - 1 or not any(h in msg for h in _SQL_RESUME_HINTS):
+                raise
+            last = exc
+            logging.info("sql connect retry %d/%d (database resuming)", i + 1, attempts - 1)
+            time.sleep(backoff_s * (i + 1))
+    raise last  # unreachable
 
 
 # ==========================================================================

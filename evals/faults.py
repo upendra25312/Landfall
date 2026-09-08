@@ -36,10 +36,11 @@ _ROUTES = {
 
 # a broken request per tool: empty body, then a malformed payload.
 _BAD_BODIES = {
-    "vm_rightsize": [b"", b"{}", b'{"servers": "not-a-list"}', b'{"servers": []}'],
-    "estimate_compute_cost": [b"", b"{}", b'{"servers": {}}'],
-    "estimate_storage_cost": [b"", b"{}", b'{"storage": 5}'],
-    "estimate_run_rate_extras": [b"", b"{}", b'{"servers": null}'],
+    "vm_rightsize": [b"", b"{}", b'{"servers": "not-a-list"}', b'{"servers": []}',
+                     b'{"servers": [null, "x"]}'],
+    "estimate_compute_cost": [b"", b"{}", b'{"servers": {}}', b'{"servers": [null]}'],
+    "estimate_storage_cost": [b"", b"{}", b'{"storage": 5}', b'{"storage": [null, 1]}'],
+    "estimate_run_rate_extras": [b"", b"{}", b'{"servers": null}', b'{"servers": [null]}'],
     "design_landing_zone": [b"", b"{}", b'{"applications": "x"}'],
     "score_dispositions": [b"", b"{}", b'{"applications": []}'],
     "plan_waves": [b"", b"{}", b'{"applications": [{"app_id":"a"}]}'],  # missing servers/deps

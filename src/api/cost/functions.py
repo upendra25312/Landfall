@@ -34,9 +34,9 @@ def vm_rightsize(req: func.HttpRequest) -> func.HttpResponse:
         body = req.get_json() or {}
     except ValueError:
         body = {}
-    servers = body.get("servers") or []
-    if not isinstance(servers, list) or not servers:
-        return _json({"error": 'body must be {"servers": [ {server_id, vcpu, ram_gb, ...} ]}'}, 400)
+    servers, err = _rows(body, "servers")
+    if err:
+        return err
 
     try:
         cfg = load_config(overrides=body.get("config"))
@@ -53,9 +53,9 @@ def estimate_compute_cost_route(req: func.HttpRequest) -> func.HttpResponse:
         body = req.get_json() or {}
     except ValueError:
         body = {}
-    servers = body.get("servers") or []
-    if not isinstance(servers, list) or not servers:
-        return _json({"error": 'body must be {"servers": [ {server_id, vcpu, ram_gb, env, os_name, ...} ]}'}, 400)
+    servers, err = _rows(body, "servers")
+    if err:
+        return err
 
     try:
         cfg = load_config(overrides=body.get("config"))
@@ -64,11 +64,16 @@ def estimate_compute_cost_route(req: func.HttpRequest) -> func.HttpResponse:
         skus |= {r["range"]["low"] for r in rs["recommendations"]}
         skus |= {r["range"]["high"] for r in rs["recommendations"]}
         tiers = {r["disk"]["tier"] for r in rs["recommendations"]}
+    except Exception as exc:                       # noqa: BLE001
+        logging.exception("estimate_compute_cost: right-sizing the input failed")
+        return _json({"error": f"could not right-size the servers provided: {exc}"}, 400)
+
+    try:
         book, disks, price_date = _prices(cfg["pricing"]["region"], sorted(skus), sorted(tiers))
         result = estimate_compute_cost(servers[:2000], book, disks, cfg, price_date)
     except Exception as exc:                       # noqa: BLE001
-        logging.exception("estimate_compute_cost failed")
-        return _json({"error": f"cost estimate failed: {exc}"}, 502)
+        logging.exception("estimate_compute_cost: pricing failed")
+        return _json({"error": f"pricing lookup failed: {exc}"}, 502)
     return _json(result)
 
 
@@ -78,9 +83,9 @@ def estimate_storage_cost_route(req: func.HttpRequest) -> func.HttpResponse:
         body = req.get_json() or {}
     except ValueError:
         body = {}
-    rows = body.get("storage") or []
-    if not isinstance(rows, list) or not rows:
-        return _json({"error": 'body must be {"storage": [ {storage_id, type, size_gb, target_service, ...} ]}'}, 400)
+    rows, err = _rows(body, "storage")
+    if err:
+        return err
 
     try:
         cfg = load_config(overrides=body.get("config"))
@@ -98,9 +103,9 @@ def estimate_run_rate_extras_route(req: func.HttpRequest) -> func.HttpResponse:
         body = req.get_json() or {}
     except ValueError:
         body = {}
-    servers = body.get("servers") or []
-    if not isinstance(servers, list) or not servers:
-        return _json({"error": 'body must be {"servers": [ {server_id, used_disk_gb, net_out_gb_30d, powerstate, ...} ], "monthly_infra_cost": <number>}'}, 400)
+    servers, err = _rows(body, "servers")
+    if err:
+        return err
 
     try:
         cfg = load_config(overrides=body.get("config"))
@@ -139,6 +144,19 @@ def _prices(region: str, skus: list, tiers: list):
     value = (book, disks, pricing.last_price_date(book))
     _price_cache[key] = (time.time(), value)
     return value
+
+
+def _rows(body: dict, key: str):
+    """Pull body[key] as a list of dict rows, dropping nulls / non-objects (an LLM
+    caller sometimes emits a trailing `null` or a bare string in the array).
+    Returns (rows, error_response_or_None)."""
+    raw = body.get(key)
+    if not isinstance(raw, list) or not raw:
+        return [], _json({"error": f'body must be {{"{key}": [ {{...}} ]}} with at least one row'}, 400)
+    rows = [r for r in raw if isinstance(r, dict)]
+    if not rows:
+        return [], _json({"error": f'"{key}" was a list but held no usable rows; each entry must be a JSON object'}, 400)
+    return rows, None
 
 
 def _json(body: dict, status: int = 200) -> func.HttpResponse:
