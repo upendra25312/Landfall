@@ -121,6 +121,28 @@ _Last updated: 2026-09-08 (PDCA cycles 1–17). C15 = first live deploy to `rg-l
 | E10.4 | `evidence/{pentest,trials,chaos}/` reports | P0/P1 | backlog | Security + SRE + Writer | — | Pen test passes; usability + comprehension trials meet bars; chaos drill logged. |
 | E10.6 | `evidence/SCORECARD.md` | P0 | backlog | PM | — | Rubric + current score + link to every artifact. |
 
+## Epic E11 — Engagement Workspaces (multi-client, dashboard-driven)
+
+Full plan: [`engagement-workspaces-prd.md`](engagement-workspaces-prd.md). One deployment,
+many engagements, isolated by an `<customer>/<project>` key. The Foundry agent orchestrates;
+`export.py` (deterministic Python) authors the files.
+
+| ID | Item | Pri | Status | Owner | Cycle | Acceptance |
+|---|---|---|---|---|---|---|
+| E11.1 | Engagement model + provisioning (slug rules, `_engagement.json`, `POST/GET /api/engagements`) | P0 | planned | App+Data | 18 | Creating "Contoso / DC-Exit" makes the folder skeleton + returns the id; duplicate → `-2` |
+| E11.2 | Per-engagement ADLS layout (`raw/engagements/<c>/<p>/…`, `answers/engagements/…`); Event Grid subject filter + blob-trigger path | P0 | planned | Data Eng | 18 | A file under one engagement never triggers ingestion for another |
+| E11.3 | SQL tenancy — `engagement_id` on all 6 tables, loader keying, additive `apply_sql.py` migration | P0 | planned | Data Eng | 18 | Two engagements' rows coexist; unscoped `SELECT` impossible from `query_inventory` |
+| E11.4 | Ingestion scoped by engagement — `/api/ingest` + new `run_engagement` take `engagement`; trigger derives it from the path | P0 | planned | Data Eng | 19 | `run_engagement` ingests only that folder |
+| E11.5 | `engagement` a **required arg on every OpenAPI tool** + agent system prompt; `query_inventory` injects `WHERE engagement_id` | P0 | planned | Data & AI | 19 | Missing `engagement` → 400; cross-engagement read returns nothing |
+| E11.6 | Dashboard — engagements home, "New engagement" form, upload panel, "Start analysis" / "Produce estimate" | P0 | planned | App Eng | 20 | A no-CLI pre-sales user creates an engagement, uploads RVTools + CMDB, runs analysis, sees a DQ summary — one session |
+| E11.7 | Dashboard — engagement-scoped embedded chat + configurable prompt cards (`prompt_cards.json`) | P0 | planned | App Eng | 21 | "Full estimate" card produces + publishes for the open engagement only |
+| E11.8 | `publish_estimate` + dashboard use the engagement path; `history/<ts>/` snapshots + a version picker | P1 | planned | SWE | 21 | Re-publish keeps the prior version; dashboard shows any snapshot |
+| E11.9 | Studio-deck container (`ca-deckgen`) — `presentation-skill` + `ppt-master` as an OpenAPI tool; "Studio deck" card | P1 | planned | App+AI | 22 | The agent calls it; a `qa_gate`-passing `studio.pptx` lands in the engagement folder |
+| E11.10 | Access control — `visibility` on `_engagement.json`, list filtering, run/publish audit trail | P1 | planned | Security | 23 | A user sees only their own + group-shared engagements; every run attributable |
+| E11.11 | Migration + back-compat — current single-tenant layout → `_default_/_default_`; one-release shim | P1 | planned | Data Eng | 23 | Existing deploy keeps working through the transition |
+| E11.12 | E5.4q — `.xlsx` formulas-not-literals + LibreOffice-recalc **CI gate**; `.docx` US-Letter DXA + tracked-changes-ready + `accept_changes` | P1 | in-progress | SWE | 17,22 | Change a workbook input → model re-flows; recalc 0 errors; architect edits are tracked changes |
+| E11.13 | Evals — per-engagement isolation tests (two synthetic estates, assert no bleed) + a `run_engagement` scenario | P0 | planned | SRE | 19 | A row-leak regression fails CI |
+
 ## Phase 3 — Sustain
 
 | ID | Item | Pri | Status | Owner | Cycle | Acceptance |

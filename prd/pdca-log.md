@@ -5,6 +5,33 @@ Operating model: [`landfall-5x5-prd.md` §7](landfall-5x5-prd.md). Tracker:
 
 ---
 
+## Plan note — 2026-09-08 — Epic E11 Engagement Workspaces raised
+
+Sponsor: the solution must produce **per-customer / per-project** deliverables, driven
+from the dashboard — enter customer + project, upload docs to a **unique ADLS folder per
+engagement**, start the analysis, and use a **chat bot with predefined prompt cards**.
+Also asked: can the four skills run "at the Foundry agent"?
+
+**Decision & answer** (full write-up: [`engagement-workspaces-prd.md`](engagement-workspaces-prd.md)):
+
+- **Skills cannot be loaded into a Foundry agent** — it has instructions + tools
+  (OpenAPI/MCP/Code Interpreter/File Search) + the Responses API, no `SKILL.md` mechanism.
+  `docx`/`xlsx` → design references baked into `export.py` (+ a CI recalc gate);
+  `presentation-skill`/`ppt-master` → a **containerised OpenAPI tool** (`ca-deckgen`, Node
+  toolchain) the agent calls. The agent orchestrates; `export.py` authors the files.
+- **Move from "one deployment per engagement" to "one deployment, many engagements,
+  isolated by an `<customer>/<project>` key"** — ADLS `raw|answers/engagements/<c>/<p>/…`,
+  `engagement_id` column on all 6 SQL tables, `engagement` a required argument on every
+  OpenAPI tool + the agent prompt. Hard isolation stays a `--tier regulated` option.
+- New epic **E11** (13 items) added to `tracker.md`; scheduled as **PDCA cycles 18–23**.
+  E11 is plumbing + UX + tenancy around the existing engine — no maths changes.
+
+**Changes already on `main`** relevant to the sponsor's framing: cycles 15–17 (live
+deploy + verification, E8.2 auth, `to_pptx` rebuilt as a narrative deck, generation-model
+docs). Nothing multi-engagement is built yet.
+
+---
+
 ## Cycle 17 — PowerPoint export rebuilt as a narrative assessment deck (E5.4 / E5.4q)
 
 **Date:** 2026-09-08 · **Owner:** SWE + Writer · **Tracker:** E5.4 (pptx done),
