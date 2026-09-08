@@ -1,9 +1,9 @@
 # Landfall — Engagement Workspaces (multi-client, dashboard-driven)
 
-**Status:** IN PROGRESS (C18 live; C24 done; **C25 async POE pipeline live end-to-end**
-— adapter accuracy is the open follow-up; C19–C23 + C26–C28 planned) ·
-**Raised:** 2026-09-08 · **Last updated:** 2026-09-08 ·
-**Owner panel:** see below · **Method:** PDCA
+**Status:** IN PROGRESS (C18/C24/C25/C26 done & live — POE pipeline, upload panel,
+per-engagement conversation memory + export/import all deployed; **C25b adapter accuracy**
+is the open POE follow-up; C19–C23 + C27–C28 planned) · **Raised:** 2026-09-08 ·
+**Last updated:** 2026-09-08 · **Owner panel:** see below · **Method:** PDCA
 **Rolls into:** the "Landfall to 5/5" PRD as **Epic E11**. Supersedes the
 "one `azd` deployment per engagement" assumption in
 [`audits/2026-09-07-production-readiness-review.md`](../audits/2026-09-07-production-readiness-review.md)
@@ -695,6 +695,50 @@ Net: the target LZ is **provably aligned to Microsoft's own ALZ / AI-LZ guidance
 the gaps are explicit — stronger in a funding / architecture review than an unattributed
 design.
 
+### 4.12 Conversation memory + engagement portability (E11.26)
+
+**Ask (2026-09-08):** *"memory should be under the Foundry agent"* — the chat only
+remembers the current browser tab (lost on New chat, close, second device; not tied to
+the customer/project). And: the solution is `azd up` / `azd down` on demand to save cost,
+so it must be **portable**.
+
+**Decision — persist the conversation server-side per engagement; do NOT adopt the
+managed Memory feature.** The panel (AI architect / cloud architect / FinOps / director)
+rejected [Foundry Agent Service Memory (preview)](https://learn.microsoft.com/en-us/azure/foundry/agents/how-to/memory-usage):
+it needs the **Standard agent setup backed by Cosmos DB** — Landfall runs a **low-code
+prompt agent** on purpose; Cosmos carries a 24/7 RU floor (breaks near-free), it's preview
+(API churn hurts a redeploy-months-later story), and it's the wrong model — a **funding
+POE must be deterministic**, so the agent's context should come from *tools reading the
+uploaded inventory + `_discovery.json` + the published estimate*, not from an LLM
+"remembering."
+
+**What ships instead:**
+
+- The Responses API already stores the conversation chain in the Foundry project
+  (`store=true`). Landfall keeps only the **pointer + a transcript** in
+  **`answers/engagements/<c>/<p>/_chat.json`** — `{current_response_id, started_at,
+  turns[], archived[]}`. `/api/chat` reads the pointer from there (not the browser),
+  chains `previous_response_id`, appends both turns. **Zero new Azure resources.**
+- `GET /api/engagements/<c>/<p>/chat` — the transcript; the page renders it on load /
+  engagement switch, so nothing is lost on a browser close and the conversation is
+  **scoped to the customer/project**.
+- `POST …/chat/new` — "New chat" **archives** the current thread (summary + last response
+  id) into `archived[]` and starts fresh; the old Foundry chain stays retrievable.
+- **Engagement export / import** — `GET …/export` streams one `.zip` (manifest + every
+  upload + every produced artifact + `_chat.json` + `export.json`); `POST
+  /api/engagements/import` restores it (validates `export.json`, slug-checks the id,
+  blocks path traversal, **409 unless `overwrite=true`**). So an engagement is a
+  **portable unit** — archive it before `azd down`, restore it after `azd up`, or move it
+  between deployments. 250 MB cap, empties + HNS directory markers skipped.
+- Chat page: header gains **↓ export** (when an engagement is active) and **↑ import**;
+  the `localStorage` thread id is dropped (the engagement id still persists so the page
+  reopens where you left off).
+
+**`ca-calc` has no ingress (2026-09-08).** Since §4.6 made it queue-driven, nothing calls
+its HTTP endpoint in Azure — the internal ingress only rendered "Error 404 — Container
+App stopped" to anyone who opened the URL. Removed; `ca-calc` is a pure `calc-jobs`
+queue worker (`minReplicas: 1`). `/healthz` + `/build` stay in `app.py` for local dev.
+
 ---
 
 ## 5. Work breakdown — Epic E11: Engagement Workspaces
@@ -723,6 +767,7 @@ design.
 | **E11.20** | **Engagement-id resolution — the user never types the slug** (§3.5). One shared `make_engagement_id()`; dashboard engagement `<select>` + inline "New engagement" form (names + region/licensing, not the id); `/api/chat` prepends `[Active engagement: …]`; `resolve_engagement` OpenAPI tool with fuzzy candidate matching; agent system prompt reworked to forbid inventing a slug | P0 | A user only ever enters a customer name and a project name; the id used for the ADLS folder, the SQL filter and every tool call is the same derived string; naming "contoso / dc exit" in chat resolves to the existing `contoso-ltd/dc-exit-2027` without the user knowing the slug. **Built + deployed 2026-09-08 (`458d400`); verify picker after hard refresh** |
 | **E11.21** | **Engagement-first chat view** (§4.9) — left rail with the active engagement (customer/project heading), a status strip (Uploads · Analysis · Published estimate · Calculator POE), region + licensing summary, prompt cards / "new engagement"; chat thread + a dashboard tab share the main pane, both scoped to the rail; **Markdown-rendered assistant messages**; per-message toolbar (copy, expand tool calls, "download as Excel"); inline error card with Retry; responsive header. The current single-page chat becomes the "no engagement selected" empty state | P1 | The 10 panel findings in §4.9 are closed; a reviewer can tell which client is active at a glance, see its pipeline state, read a table in an answer without it looking broken, and reach the dashboard for that engagement without losing context. **Needs sponsor sign-off before start** |
 | **E11.24** | **Upload panel + visual upload confirmation** (§4.5, §4.5a) — the engagement-page Upload panel (drag-drop, data/docs toggle, region pickers), `POST /api/engagements/<c>/<p>/upload` (server-side streamed to `raw/…/inventory` or `/docs`, slug-checked, 4 MB blocks), content-sniffed type + size gates (100 MB/file, 250 MB/request, 2 GB/engagement), per-file progress → ✓ uploaded row with detected profile + row count + toast, a persisted manifest panel that re-lists the folder and shows an analysis-will-use badge, ingest badges after Start analysis | P0 | A pre-sales user with no CLI drops `RVTools.xlsx` + a CMDB `.csv` on the Contoso/DC-Exit page, watches each file go uploading → ✓ uploaded (RVTools vInfo · 412 rows), sees them in the manifest, and the files are in `raw/engagements/contoso/dc-exit/inventory/` and nowhere else; a `.xlsm` is rejected with a clear reason |
+| **E11.26** | **Per-engagement conversation memory + engagement export/import** (§4.12) — `_chat.json` per engagement (pointer + transcript + archived threads), `/api/chat` reads/chains it server-side, `GET …/chat`, `POST …/chat/new` (archive not destroy); `GET …/export` (one `.zip`: manifest + uploads + artifacts + chat) and `POST /api/engagements/import` (409 unless overwrite). Chat page renders the saved transcript on select; header ↓ export / ↑ import. **Not** the managed Foundry Memory feature. `ca-calc` ingress removed (queue worker). No new Azure resources | P0 | Closing the browser and reopening keeps the engagement's conversation; a follow-up ("their vCPU?") resolves against the stored chain; an engagement exports to a `.zip` that re-imports into a fresh `azd up` with its files + estimate + chat intact. **Done + deployed 2026-09-08 (Cycle 26)** |
 | **E11.25** | **Discovery questionnaire as a served, round-trippable artifact** (§4.5b) — `GET /questionnaire`; export to `.docx`/`.xlsx`; the completed file uploads through E11.24 into `docs/`, the importer recognises the template → `raw/…/_discovery.json`; `assemble_estimate` cites its answers in the assumptions register, `design_landing_zone` uses its compliance + DR answers; unanswered items become dashboard "ask the client" + the agent's "What's missing?" | P1 | A pre-sales architect opens `/questionnaire`, exports the Word version for the client, uploads the returned file, and its answers drive the estimate's assumptions with per-answer citations; blank answers show as client-ask items |
 | **E11.23** | **`design_landing_zone` checklist conformance** (§4.11) — vendor the Azure ALZ + [AI-LZ design checklist](https://azure.github.io/AI-Landing-Zones/architecture/design-checklist/) to `docs/lz-design/`; `src/api/lz/design.py` emits `checklist_conformance[]` (10 domains, `met`/`partial`/`gap`/`n/a` + evidence + recommendation) deterministically from the existing design output; AI-LZ overlay (Foundry hub/project, AI Search + Content Safety private, APIM gen-AI gateway, PTU+PAYG, Responsible-AI dashboard) when the inventory has AI/ML workloads; `assemble_estimate` + `to_docx`/`to_pptx` + dashboard card get a "design conformance" section; agent system-prompt line. No new tool | P1 | The landing-zone deliverable for an engagement lists every ALZ/AI-LZ checklist item as met/partial/gap with evidence + a recommendation for each gap; the dashboard shows `N/M items met`; the agent surfaces gaps when asked about the target architecture |
 | **E11.22** | **Target landing-zone diagram — `drawio-mcp-diagramming` engine in Azure** (§4.10). `ca-drawio` Container App (`simonkurtz-MSFT/drawio-mcp-server`, HTTP transport, browserless, 700+ offline Azure icons, `minReplicas: 0`) + `drawio-export` for `POST /render`. `src/api/lz/diagram.py` (pure, unit-tested) maps `design_landing_zone` JSON → an ordered MCP-call plan (groups, Azure-icon cells, edges, `libavoid`) using the skill's `xml-authoring-rules` + `azure.md` as the coded-in ruleset. `build_landing_zone_diagram` Function (required `engagement`) replays the plan against `ca-drawio`, `export-xml` → `.drawio`, renders `.svg`/`.png`, writes all 3 to `estimate/`. Agent tool + "Landing-zone diagram" prompt card; optional `ca-drawio` MCP tool on the agent for chat tweaks. Dashboard SVG + "Download .drawio"; `to_pptx` / `to_docx` embed the SVG. Skill refs vendored to `docs/diagram-authoring/`. **Deterministic driver — the agent does not free-draw** | P1 | Producing a landing zone for an engagement yields `landing_zone.{drawio,svg,png}` showing the hub, spokes, shared services and DR pairing for that engagement's chosen region, with correct Azure icons, editable in draw.io desktop; the same design always produces the same diagram; the PPT hub-spoke slide is the rendered diagram, not the hand-drawn one |
@@ -754,7 +799,8 @@ sizing or prices.
 | **C23** | E11.10 + E11.11 (access control, audit, migration + shim, docs) | Visibility enforced; the old single-tenant deploy migrates cleanly |
 | **C24** | E11.15 + E11.16(build) + E11.20 (calculator line-item spec builder; `ca-calc` container; engagement-id resolution + chat picker + prompt cards + "working" indicator) | **Done (2026-09-08, `3c44b5e`):** `calculator_spec.py` (pure, 21 tests; **verified against real `_default_/_default_` data → 55 line items, internal ~$97.6k/mo**) + `calculator_export.py` + `build_calculator_estimate` Function + `ca-calc` scaffold + Bicep + dashboard POE card + E11.20 built, committed, api+agent deployed |
 | **C25** | E11.16 **async redesign** + deploy + E11.17 + E11.18 | **Async DONE + verified live end-to-end (2026-09-08).** `ca-calc` Container App deployed; the sync `Function → ca-calc` call was found to 502 (no shared VNet to the internal ingress **and** the ~230 s Functions HTTP limit), so it's now **queue-decoupled**: `build_calculator_estimate` stages the spec + drops a `calc-jobs` message + returns 202; `ca-calc` (minReplicas 1, background consumer) drains it, drives the real calculator, and writes `landing_zone.{xlsx,json,png}` with the workload identity. Proven: agent → 202 in 10 s → 55-line calculator run → genuine `ExportedEstimate.xlsx` stored. `get_calculator_estimate` poll tool + dashboard `building/ready/failed` card shipped. **Remaining → C25b:** reconciliation delta was −73 % (unverified adapters fell back to calculator defaults) — verify the ~14 adapters live (E11.19), then KEDA queue-scale-to-zero, weekly smoke, `run_engagement` hook |
-| **C26** | E11.21 (engagement-first chat view — rail, status strip, Markdown answers, per-message toolbar, dashboard tab, responsive header) — **sponsor sign-off required first** | The §4.9 panel findings are closed; the chat page is engagement-first, not chat-first |
+| **C26** | E11.26 (per-engagement conversation memory + engagement export/import; `ca-calc` ingress removed) | **Done (2026-09-08):** conversation persists per engagement server-side; an engagement `.zip`-exports and re-imports across `azd down`/`up`; live-verified |
+| **C26b** | E11.21 (engagement-first chat view — rail, status strip, Markdown answers, per-message toolbar, dashboard tab, responsive header) — **sponsor sign-off required first** | The §4.9 panel findings are closed; the chat page is engagement-first, not chat-first |
 | **C27** | E11.22 (`ca-drawio` Container App — `simonkurtz-MSFT/drawio-mcp-server` + `drawio-export`; `lz/diagram.py` deterministic MCP-call plan; `build_landing_zone_diagram` Function + agent tool + prompt card; dashboard + deck + doc embed; skill refs vendored) | Producing a landing zone yields an engagement-specific `.drawio` + rendered SVG for the chosen region with correct Azure icons; same design → same diagram; the deck uses it |
 | **C28** | E11.23 (`design_landing_zone` checklist conformance — vendor the ALZ + AI-LZ design checklist; `checklist_conformance[]` + AI-LZ overlay; deliverable section + dashboard chip + agent prompt line) | The LZ deliverable proves alignment to Microsoft's own ALZ/AI-LZ guidance item by item, with the gaps explicit |
 
@@ -835,6 +881,14 @@ Each cycle logged in [`pdca-log.md`](pdca-log.md) (Plan / Do / Check / Act).
     engagement prefix; **outputs stay in the separate `answers/engagements/<c>/<p>/`
     tree.** Every file shows uploading → ✓ uploaded (detected profile + row count) + a
     toast, and a persisted manifest panel is the durable proof. See §4.5a.
+14. **Conversation memory is the Responses API's own store, per engagement — not the
+    managed Memory feature (2026-09-08).** `_chat.json` per engagement holds the pointer
+    + transcript; `/api/chat` chains it server-side. The preview managed Memory feature
+    was rejected (needs Cosmos DB / Standard agent setup — wrong cost + portability for a
+    tear-down-friendly prompt-agent tool; a funding POE must stay deterministic).
+    Engagement **export/import** (`.zip`) makes an engagement portable across
+    `azd down`/`azd up`. `ca-calc` ingress removed (it's a queue worker). New work
+    E11.26, PDCA C26. See §4.12.
 13. **The discovery questionnaire is delivered through the solution (2026-09-08).**
     `docs/discovery-questionnaire.html` becomes `GET /questionnaire` + a Word/Excel export
     the client fills offline + an upload that the importer parses to
