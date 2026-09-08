@@ -1,8 +1,8 @@
 # Landfall — Engagement Workspaces (multi-client, dashboard-driven)
 
-**Status:** IN PROGRESS (C18 live; C24 built, `ca-calc` not yet deployed; C19–C23 + C25–C26
-planned) · **Raised:** 2026-09-08 · **Last updated:** 2026-09-08 ·
-**Owner panel:** see below · **Method:** PDCA
+**Status:** IN PROGRESS (C18 live; C24 done; C25 `ca-calc` deployed — async redesign
+blocker open; C19–C23 + C26–C28 planned) · **Raised:** 2026-09-08 ·
+**Last updated:** 2026-09-08 · **Owner panel:** see below · **Method:** PDCA
 **Rolls into:** the "Landfall to 5/5" PRD as **Epic E11**. Supersedes the
 "one `azd` deployment per engagement" assumption in
 [`audits/2026-09-07-production-readiness-review.md`](../audits/2026-09-07-production-readiness-review.md)
@@ -81,6 +81,7 @@ No LLM writes a spreadsheet or a slide.
 | [`anthropics/skills · docx`](https://github.com/anthropics/skills/tree/main/skills/docx) | **Design reference** for `to_docx`: US-Letter in DXA; dual table widths; numbering defs; authored so architect edits land as Word **tracked changes**, `accept_changes` → clean copy. | Rules coded into `export.py`. *(E5.4q)* |
 | [`siril9/presentation-skill`](https://github.com/siril9/presentation-skill) | **Studio deck** (E5.6): `outline.json` from `latest.json` → preset + grammar → **pptxgenjs** → `qa_gate.py`. | A **containerised OpenAPI tool** — its own Container App with the Node toolchain. The agent calls `POST /generate_studio_deck`; it never runs the skill. *(E11.9)* |
 | [`hugohe3/ppt-master`](https://github.com/hugohe3/ppt-master) | **Studio deck, design-rich variant**: SVG → native DrawingML, firm template preserved. | Same container. *(E11.9)* |
+| [Azure **ALZ / AI-LZ design checklist**](https://azure.github.io/AI-Landing-Zones/architecture/design-checklist/) | **Design reference** for `design_landing_zone`: the 10 domains + each item; the AI-LZ specifics (Foundry hub/project, private AI Search + Content Safety, APIM gen-AI gateway, PTU+PAYG, Responsible-AI dashboard). | Vendored to `docs/lz-design/`; `design.py` emits `checklist_conformance[]` (met/partial/gap + evidence + recommendation) + an AI-LZ overlay when the estate has AI/ML workloads; deliverable + dashboard + agent surface it. *(E11.23, §4.11)* |
 | [`drawio-mcp-diagramming`](https://github.com/thomast1906/github-copilot-agent-skills/tree/main/.github/skills/drawio-mcp-diagramming) | **Rules** (`xml-authoring-rules`, `azure.md` — palette, swimlane nesting, cross-container edges, `search_shapes`-first, no hand-routed edges) coded into `src/api/lz/diagram.py`; its **engine** (`simonkurtz-MSFT/drawio-mcp-server` — HTTP, browserless, 700+ offline Azure icons) deployed as the `ca-drawio` Container App. | `build_landing_zone_diagram` Function replays a deterministic MCP-call plan against `ca-drawio`; `.drawio → .svg/.png` render in the same container. Agent calls one OpenAPI tool, does **not** free-draw. *(E11.22, §4.10)* |
 
 The in-Function `python-pptx` deck (rebuilt cycle 17 as a 12-slide narrative assessment)
@@ -379,6 +380,27 @@ needs: `virtual-machines`, `managed-disks`, `storage-accounts`, `bandwidth`,
 `add()` + `field_map` + `wait_for_recompute()`, in a registry so one product breaking
 never blocks the rest.
 
+**Execution model — MUST be async (finding, C25 2026-09-08).** Driving ~55 calculator
+line items through Playwright takes **many minutes**; a synchronous
+`Function → ca-calc → wait` call **fails** — Azure Functions' HTTP front end cuts the
+response at ~230 s and returns **502** to the Foundry OpenAPI tool (observed live: agent
+called `build_calculator_estimate` correctly, Function 502'd while `ca-calc` was still
+cold-starting + driving). So E11.16 is **fire-and-forget + poll**:
+- `build_calculator_estimate` writes `landing_zone.json` with `{"status":"building",
+  "started_at":…}`, kicks `ca-calc` **asynchronously** (a queue message, or an
+  un-awaited request with a short connect timeout), and returns **202** immediately with
+  a `poll` hint.
+- **`ca-calc` itself writes the outputs** — on success it uploads
+  `landing_zone.{xlsx,json,png}` (status `ready`) straight to the engagement's
+  `estimate/` prefix using its own managed identity; on failure it writes
+  `landing_zone.json` status `failed` + the error. (`ca-calc` gets **Storage Blob Data
+  Contributor** on the answers container.)
+- The agent tool description tells the agent the POE builds in the background and to
+  tell the user to watch the dashboard card; the dashboard card polls
+  `GET /dashboard/landing-zone` and shows `building / ready / failed`.
+- A `GET /build_calculator_estimate?engagement=…` status route returns the current
+  `landing_zone.json` for the agent / dashboard to poll.
+
 **Robustness & honesty**
 - A **weekly CI Playwright smoke** opens the calculator and asserts every adapter's
   selectors still resolve; a broken adapter drops its line item into `skipped[]` with a
@@ -535,6 +557,45 @@ build_landing_zone_diagram          ← ONE OpenAPI tool the agent calls (like b
 - The diagram is **labelled with the engagement's `target_region` / `dr_region`** and the
   hub components from the actual design — not a generic template.
 
+### 4.11 `design_landing_zone` grounded in the Azure ALZ / AI-LZ design checklists (E11.23)
+
+**Ask (2026-09-08):** use the
+[Azure AI Landing Zone **design checklist**](https://azure.github.io/AI-Landing-Zones/architecture/design-checklist/)
+to design the target landing zone from the Foundry agent.
+
+**Same pattern as MEG and the two diagram skills — a vendored *design reference* the
+deterministic tool applies; the agent does not re-derive architecture.** `design_landing_zone`
+(`src/api/lz/design.py`, E3.1–E3.3) already produces the MG hierarchy, spokes, IP plan,
+policy baseline, identity and DR pairing. E11.23 makes it **check its output against the
+published checklists** and emit a **conformance section**:
+
+- **Vendor the checklist** to `docs/lz-design/{alz-checklist,ai-lz-checklist}.md` — the 10
+  domains (Compute · Cost · Data · Governance · Identity · Monitoring · Reliability ·
+  Resource Organization · Security · Networking) and each item, as the coded-in ruleset.
+- **`design.py` emits `checklist_conformance[]`** — one row per checklist item:
+  `{domain, item, status: met | partial | gap | n/a, evidence, recommendation}`. Deterministic:
+  e.g. *Networking → "private endpoints for all PaaS"* → `met` if the design's policy
+  baseline includes the private-endpoint initiative; *Identity → "Entra ID, not API keys"*
+  → `met` (baseline); *Reliability → "≥2 regions"* → `met` if `dr_region` set, else `gap`.
+- **AI-LZ overlay** — when the inventory shows **AI / ML / analytics workloads** (app
+  `workload_type`, or servers running ML runtimes), `design.py` adds the AI-LZ specifics:
+  Azure AI Foundry hub + project per engagement, AI Search + Content Safety behind private
+  endpoints, **APIM as the generative-AI gateway**, PTU + PAYG spillover for cost, the
+  Responsible-AI dashboard for governance. Otherwise the AI-LZ rows are `n/a`.
+- **Deliverables** — `assemble_estimate` gets a **"Landing-zone design conformance"**
+  section (met / partial / gap counts + the gap list with recommendations); `to_docx` /
+  `to_pptx` render it; the dashboard landing-zone card shows a conformance chip
+  (`27/30 checklist items met`).
+- **Agent** — system-prompt line: *"the landing-zone design is checked against the Azure
+  (AI) Landing Zone design checklist; surface any `gap` rows when the user asks about the
+  target architecture."* No new tool — it rides on `design_landing_zone` /
+  `assemble_estimate` output. The **"Landing zone"** prompt card's answer includes the
+  conformance summary.
+
+Net: the target LZ is **provably aligned to Microsoft's own ALZ / AI-LZ guidance**, and
+the gaps are explicit — stronger in a funding / architecture review than an unattributed
+design.
+
 ---
 
 ## 5. Work breakdown — Epic E11: Engagement Workspaces
@@ -556,12 +617,13 @@ build_landing_zone_diagram          ← ONE OpenAPI tool the agent calls (like b
 | **E11.13** | Evals — golden per-engagement isolation tests (two synthetic estates, assert no bleed); a `run_engagement` end-to-end scenario in the harness | P0 | A regression that leaks one engagement's rows into another fails CI |
 | **E11.14** | **Ask & export to Excel** — `POST /api/answer_to_xlsx` (Question&answer + a sheet per table + Provenance), and a "Download as Excel" affordance on chat answers that carry tabular tool output | P0 | An architect asks "how many prod Windows servers and their vCPU?", gets the answer, and downloads a workbook with the rows + the SQL + the engagement + a DRAFT note |
 | **E11.15** | `src/api/lz/calculator_spec.py` — turn `design_landing_zone` + `estimate_compute_cost` + `estimate_storage_cost` output into a **calculator line-item spec** (§4.6), **using the engagement's `target_region` / `dr_region`** for `region_default` and every line's `region`. Region-name→calculator-code map (Azure name → `select[name=region]` value), VM-SKU→size-slug map, disk-tier→option map, LZ-platform-component→module map. Pure, fully unit-tested. | P0 | The sample estate + a chosen region produce a spec priced **in that region** with VMs (right-sized, per env, AHB/RI as configured), managed disks, hub networking (VNet/GW/Firewall/Bastion/DDoS/DNS), Log Analytics, Key Vault, egress bandwidth, backup — every item mapping to a real calculator module + field set; an unsupported region is rejected at engagement-create time |
-| **E11.16** | **`ca-calc` Container App** — Playwright + Chromium image; `POST /build_calculator_estimate` (engagement-scoped); product-adapter registry (~16 modules); drives the real calculator, sets estimate-name/currency/licensing, clicks Export, captures `ExportedEstimate.xlsx`, re-parses it, screenshots, writes `landing_zone.{xlsx,json,png}` to the engagement folder. Bicep + ACR image + OpenAPI-tool env var. min-replicas 0. | P0 | Given a spec, a genuine calculator `.xlsx` (sheet `Your Estimate`, `Total` row, `created at` line) lands at `answers/engagements/<c>/<p>/estimate/landing_zone.xlsx`; `landing_zone.json` carries the spec + parsed totals + `calculator_url` + `internal_vs_poe_delta_pct` + any `skipped[]` |
+| **E11.16** | **`ca-calc` Container App** — Playwright + Chromium image; product-adapter registry (~16 modules); drives the real calculator, sets estimate-name/currency/licensing, clicks Export, captures `ExportedEstimate.xlsx`, re-parses it, screenshots. **Async execution (C25 finding):** `build_calculator_estimate` Function writes `landing_zone.json` status `building`, kicks `ca-calc` fire-and-forget, returns **202**; `ca-calc` writes `landing_zone.{xlsx,json,png}` (status `ready`/`failed`) to the engagement folder **with its own MSI** (Storage Blob Data Contributor). `GET` status route. Bicep + ACR image + `CALC_URL` + RBAC. min-replicas 0. | P0 | Agent calls the tool, gets 202; within a few minutes a genuine calculator `.xlsx` (sheet `Your Estimate`, `Total` row, `created at` line) lands at `answers/engagements/<c>/<p>/estimate/landing_zone.xlsx`; `landing_zone.json` goes `building → ready` and carries the spec + parsed totals + `calculator_url` + `internal_vs_poe_delta_pct` + any `skipped[]`; a sync call never 502s because there is no sync call. **Container + infra DEPLOYED 2026-09-08 (`3c44b5e` infra); async redesign + RBAC OUTSTANDING** |
 | **E11.17** | Dashboard — **"Azure landing zone — Pricing Calculator POE"** card ($X/mo · $Y/yr · created `<ts>`, "what's included" drawer, `internal_vs_poe` delta flag); `GET /dashboard/download/landing-zone-xlsx?e=<eid>` streams `landing_zone.xlsx`; `landing_zone.json` read path with the same fallback chain as `latest.json` | P0 | Opening the dashboard for an engagement shows the calculator monthly total and a working **Download Excel (POE)** button; the file is byte-identical to what `ca-calc` stored |
 | **E11.18** | Agent wiring — `build_calculator_estimate` OpenAPI tool (required `engagement`), system-prompt line, the **"Landing zone cost (Calculator POE)"** prompt card; optional `run_engagement` hook after `publish_estimate` | P0 | The card / a chat instruction makes the agent call the container for the open engagement and only that engagement; the dashboard card refreshes |
 | **E11.19** | CI **weekly Playwright calculator-adapter smoke** (open the calculator, assert every adapter's selectors resolve, one tiny end-to-end export); **(deferred)** authenticated Save → shared estimate link stored as `landing_zone_url` | P1 | A calculator UI change that breaks an adapter fails the weekly job with the adapter named; a broken adapter degrades to `skipped[]`, never a wrong price |
 | **E11.20** | **Engagement-id resolution — the user never types the slug** (§3.5). One shared `make_engagement_id()`; dashboard engagement `<select>` + inline "New engagement" form (names + region/licensing, not the id); `/api/chat` prepends `[Active engagement: …]`; `resolve_engagement` OpenAPI tool with fuzzy candidate matching; agent system prompt reworked to forbid inventing a slug | P0 | A user only ever enters a customer name and a project name; the id used for the ADLS folder, the SQL filter and every tool call is the same derived string; naming "contoso / dc exit" in chat resolves to the existing `contoso-ltd/dc-exit-2027` without the user knowing the slug. **Built + deployed 2026-09-08 (`458d400`); verify picker after hard refresh** |
 | **E11.21** | **Engagement-first chat view** (§4.9) — left rail with the active engagement (customer/project heading), a status strip (Uploads · Analysis · Published estimate · Calculator POE), region + licensing summary, prompt cards / "new engagement"; chat thread + a dashboard tab share the main pane, both scoped to the rail; **Markdown-rendered assistant messages**; per-message toolbar (copy, expand tool calls, "download as Excel"); inline error card with Retry; responsive header. The current single-page chat becomes the "no engagement selected" empty state | P1 | The 10 panel findings in §4.9 are closed; a reviewer can tell which client is active at a glance, see its pipeline state, read a table in an answer without it looking broken, and reach the dashboard for that engagement without losing context. **Needs sponsor sign-off before start** |
+| **E11.23** | **`design_landing_zone` checklist conformance** (§4.11) — vendor the Azure ALZ + [AI-LZ design checklist](https://azure.github.io/AI-Landing-Zones/architecture/design-checklist/) to `docs/lz-design/`; `src/api/lz/design.py` emits `checklist_conformance[]` (10 domains, `met`/`partial`/`gap`/`n/a` + evidence + recommendation) deterministically from the existing design output; AI-LZ overlay (Foundry hub/project, AI Search + Content Safety private, APIM gen-AI gateway, PTU+PAYG, Responsible-AI dashboard) when the inventory has AI/ML workloads; `assemble_estimate` + `to_docx`/`to_pptx` + dashboard card get a "design conformance" section; agent system-prompt line. No new tool | P1 | The landing-zone deliverable for an engagement lists every ALZ/AI-LZ checklist item as met/partial/gap with evidence + a recommendation for each gap; the dashboard shows `N/M items met`; the agent surfaces gaps when asked about the target architecture |
 | **E11.22** | **Target landing-zone diagram — `drawio-mcp-diagramming` engine in Azure** (§4.10). `ca-drawio` Container App (`simonkurtz-MSFT/drawio-mcp-server`, HTTP transport, browserless, 700+ offline Azure icons, `minReplicas: 0`) + `drawio-export` for `POST /render`. `src/api/lz/diagram.py` (pure, unit-tested) maps `design_landing_zone` JSON → an ordered MCP-call plan (groups, Azure-icon cells, edges, `libavoid`) using the skill's `xml-authoring-rules` + `azure.md` as the coded-in ruleset. `build_landing_zone_diagram` Function (required `engagement`) replays the plan against `ca-drawio`, `export-xml` → `.drawio`, renders `.svg`/`.png`, writes all 3 to `estimate/`. Agent tool + "Landing-zone diagram" prompt card; optional `ca-drawio` MCP tool on the agent for chat tweaks. Dashboard SVG + "Download .drawio"; `to_pptx` / `to_docx` embed the SVG. Skill refs vendored to `docs/diagram-authoring/`. **Deterministic driver — the agent does not free-draw** | P1 | Producing a landing zone for an engagement yields `landing_zone.{drawio,svg,png}` showing the hub, spokes, shared services and DR pairing for that engagement's chosen region, with correct Azure icons, editable in draw.io desktop; the same design always produces the same diagram; the PPT hub-spoke slide is the rendered diagram, not the hand-drawn one |
 
 **Infra deltas (`infra/resources.bicep`):** Event Grid subject filter; a `ca-deckgen`
@@ -589,10 +651,11 @@ sizing or prices.
 | **C21** | E11.7 + E11.8 + E11.14 (engagement-scoped chat + prompt cards + "ask & export to Excel"; versioned publish) | Prompt cards drive per-engagement outcomes; an architect downloads any chat answer as a workbook; dashboard shows the right engagement's estimate |
 | **C22** | E11.9 + E11.12 (studio-deck container; xlsx/docx polish + CI recalc gate) | "Studio deck" card produces a `qa_gate`-passing deck; recalc gate live |
 | **C23** | E11.10 + E11.11 (access control, audit, migration + shim, docs) | Visibility enforced; the old single-tenant deploy migrates cleanly |
-| **C24** | E11.15 + E11.16 + E11.20 (calculator line-item spec builder; `ca-calc` container; engagement-id resolution + chat picker + prompt cards + "working" indicator) | **Partial (2026-09-08):** `calculator_spec.py` (pure, 21 tests, 54 line items on the sample estate) + `calculator_export.py` (parse + reconcile) + `build_calculator_estimate` Function + `ca-calc` scaffold (`src/calc/`, 20 adapters, 2 verified) + Bicep + dashboard POE card + E11.20 all built & committed. **Open: `ca-calc` not deployed** (`azd provision` + `azd deploy calc`), so `build_calculator_estimate` returns 503; ~14 adapters unverified against the live calculator |
-| **C25** | E11.17 + E11.18 + E11.19 (deploy `ca-calc`; verify the ~14 unverified adapters live; dashboard POE card wired to real data; agent tool + prompt card end-to-end; weekly adapter smoke; `run_engagement` → `build_calculator_estimate` hook) | A pre-sales user opens an engagement, clicks "Landing zone cost (Calculator POE)", and downloads the calculator's own Excel for a Microsoft funding submission — against a **deployed** `ca-calc` with every v1 adapter verified |
+| **C24** | E11.15 + E11.16(build) + E11.20 (calculator line-item spec builder; `ca-calc` container; engagement-id resolution + chat picker + prompt cards + "working" indicator) | **Done (2026-09-08, `3c44b5e`):** `calculator_spec.py` (pure, 21 tests; **verified against real `_default_/_default_` data → 55 line items, internal ~$97.6k/mo**) + `calculator_export.py` + `build_calculator_estimate` Function + `ca-calc` scaffold + Bicep + dashboard POE card + E11.20 built, committed, api+agent deployed |
+| **C25** | E11.16 **async redesign** + deploy + E11.17 + E11.18 + E11.19 | **In progress (2026-09-08):** `ca-calc` Container App **provisioned + image deployed** (`azd provision` skipping the SQL hook + `azd deploy calc`); `CALC_URL` wired on the Function; `tools_raw.json` published for `_default_/_default_`. **BLOCKER found:** the sync `Function → ca-calc → wait` call **502s at ~230 s** (Functions HTTP limit) for a 55-item calculator drive → **must go async** (Function 202 + `ca-calc` writes the blobs with its own MSI + status polling — see §4.6). Then: verify the ~14 unverified adapters live, wire the dashboard card + agent tool end-to-end, weekly smoke, `run_engagement` hook |
 | **C26** | E11.21 (engagement-first chat view — rail, status strip, Markdown answers, per-message toolbar, dashboard tab, responsive header) — **sponsor sign-off required first** | The §4.9 panel findings are closed; the chat page is engagement-first, not chat-first |
 | **C27** | E11.22 (`ca-drawio` Container App — `simonkurtz-MSFT/drawio-mcp-server` + `drawio-export`; `lz/diagram.py` deterministic MCP-call plan; `build_landing_zone_diagram` Function + agent tool + prompt card; dashboard + deck + doc embed; skill refs vendored) | Producing a landing zone yields an engagement-specific `.drawio` + rendered SVG for the chosen region with correct Azure icons; same design → same diagram; the deck uses it |
+| **C28** | E11.23 (`design_landing_zone` checklist conformance — vendor the ALZ + AI-LZ design checklist; `checklist_conformance[]` + AI-LZ overlay; deliverable section + dashboard chip + agent prompt line) | The LZ deliverable proves alignment to Microsoft's own ALZ/AI-LZ guidance item by item, with the gaps explicit |
 
 Each cycle logged in [`pdca-log.md`](pdca-log.md) (Plan / Do / Check / Act).
 
@@ -646,9 +709,20 @@ Each cycle logged in [`pdca-log.md`](pdca-log.md) (Plan / Do / Check / Act).
    via MCP (slow, non-repeatable, on the funding path) — though `ca-drawio` may also be
    registered as a raw MCP tool for low-stakes chat tweaks. New work E11.22, PDCA C27.
    See §4.10.
+10. **`ca-calc` runs async (2026-09-08 C25 finding).** A synchronous
+    `Function → ca-calc → wait` call for a multi-minute Playwright calculator drive 502s
+    at the ~230 s Functions HTTP limit. E11.16 is therefore fire-and-forget: the Function
+    returns 202, `ca-calc` writes `landing_zone.{xlsx,json,png}` to the engagement folder
+    with its own managed identity, and the dashboard/agent poll a status route. See §4.6.
+11. **`design_landing_zone` is checked against Microsoft's ALZ / AI-LZ design checklist
+    (2026-09-08).** The checklist is vendored as a design reference; `design.py` emits a
+    deterministic `checklist_conformance[]` + an AI-LZ overlay for AI/ML estates; the
+    deliverable, dashboard and agent surface met/partial/gap. New work E11.23, PDCA C28.
+    See §4.11.
 
-**Build order:** C18 done (E11.1–E11.3, live). C24 built except the `ca-calc` deploy.
-**Next: finish C25** — deploy `ca-calc` (`azd provision` + `azd deploy calc`), verify the
-unverified adapters against the live calculator, then wire the dashboard POE card + agent
-tool end-to-end. C19–C23 (tenancy hardening + dashboard UX) continue in parallel by
-reviewer availability. C26 (E11.21) is gated on sponsor sign-off.
+**Build order:** C18 done (E11.1–E11.3, live). C24 done. **C25 in progress** — `ca-calc`
+deployed; **next concrete step = the E11.16 async redesign** (Function 202 + `ca-calc`
+self-writes the blobs + status polling), then verify the unverified adapters live and
+wire the dashboard card + agent tool end-to-end. C19–C23 (tenancy hardening + dashboard
+UX) continue in parallel by reviewer availability. C26 (E11.21) is gated on sponsor
+sign-off; C27 (E11.22) and C28 (E11.23) follow.
