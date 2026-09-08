@@ -284,7 +284,7 @@ def _list_files(base: str) -> list[dict]:
     cc = _raw_container()
     out = []
     for sub in ("inventory", "docs"):
-        for b in cc.list_blobs(name_starts_with=f"{base}/{sub}/"):
+        for b in cc.list_blobs(name_starts_with=f"{base}/{sub}/", include=["metadata"]):
             fn = b.name.rsplit("/", 1)[-1]
             if not fn or fn == ".keep":
                 continue

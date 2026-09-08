@@ -60,10 +60,10 @@ def classify(filename: str, head: bytes) -> tuple[bool, str, str]:
     """(accepted, kind, reason). kind is 'inventory' | 'docs' when accepted."""
     ext = _ext(filename)
     if not ext:
-        return False, "", "no file extension — rename it with .csv / .xlsx / .pdf …"
+        return False, "", "no file extension - rename it with .csv / .xlsx / .pdf ..."
     if ext in _BLOCKED:
         if ext in (".xlsm", ".xltm", ".docm", ".dotm", ".pptm"):
-            return False, "", f"macro-enabled Office files aren't accepted — re-save as {ext[:-1]}x"
+            return False, "", f"macro-enabled Office files aren't accepted - re-save as {ext[:-1]}x"
         return False, "", f"{ext} files aren't accepted"
     spec = _EXT.get(ext)
     if not spec:

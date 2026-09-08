@@ -104,7 +104,7 @@ class _Container:
             raise KeyError(key)
         return _Down(self.store[key]["data"])
 
-    def list_blobs(self, name_starts_with=""):
+    def list_blobs(self, name_starts_with="", include=None):
         for k, rec in list(self.store.items()):
             if k.startswith(name_starts_with):
                 yield _Blob(k, rec)
