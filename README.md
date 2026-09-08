@@ -79,7 +79,8 @@ blob events.
 | `src/api/tools.py` | agent HTTP tools — `query_inventory` (text-to-SQL), `azure_retail_prices` |
 | `src/api/cost/` | deterministic cost engine — `vm_rightsize`, `estimate_compute_cost`, `estimate_storage_cost`, `estimate_run_rate_extras`, SKU catalogue, `estimation_config.json` loader |
 | `src/api/lz/` | `design_landing_zone` — CAF Azure Landing Zone (MGs, subs, hub-spoke + IP plan, policy, identity, DR) derived from the app portfolio + compliance scope |
-| `estimation_config.json` | your firm's estimation inputs — pricing, right-sizing, storage/extras rates, and the `landing_zone` platform choices |
+| `src/api/waves/` | `score_dispositions` (rule-derived 6R + rationale) and `plan_waves` (dependency graph → affinity move-groups → risk-ordered waves) |
+| `estimation_config.json` | your firm's estimation inputs — pricing, right-sizing, storage/extras rates, `landing_zone` platform choices, `disposition` appetite, `waves` filters |
 | `src/api/openapi/` | OpenAPI 3.0 specs for those tools; `create_agent.py` points them at the deployed Function app |
 | `src/web/` | FastAPI chat UI container |
 | `samples/smoke-questions.xlsx` | two-question sheet for a first end-to-end test of the batch runner |
@@ -103,8 +104,9 @@ estimation tools apply these rather than inventing rates. Anything you omit fall
 the documented defaults in `src/api/cost/config.py`. Consumed by `vm_rightsize` (target
 utilisation, retain floors), `estimate_compute_cost` / `estimate_storage_cost` /
 `estimate_run_rate_extras` (pricing, reserved term, storage rates, backup / egress /
-monitoring), and `design_landing_zone` (region, IP supernet, connectivity, identity
-model, regulated compliance scopes, criticality→RPO/RTO tiers).
+monitoring), `design_landing_zone` (region, IP supernet, connectivity, identity model,
+regulated compliance scopes, criticality→RPO/RTO tiers), and `score_dispositions` /
+`plan_waves` (6R appetite, dependency-confidence and staleness filters, per-wave caps).
 
 - right-sizing targets and retain floors, how to treat servers with no perf data
 - pricing: region, reserved-instance term, Azure Hybrid Benefit, dev/test pricing

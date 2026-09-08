@@ -11,11 +11,11 @@ Companion to [`prd/landfall-5x5-prd.md`](landfall-5x5-prd.md). Delivery log:
 
 | Phase | Items | Done | In review | In progress | Backlog |
 |---|---|---|---|---|---|
-| 1 — Engine | 24 | 1 | 13 | 1 | 9 |
+| 1 — Engine | 24 | 1 | 15 | 1 | 7 |
 | 2 — Evidence | 11 | 0 | 0 | 0 | 11 |
 | 3 — Sustain | 3 | 0 | 0 | 0 | 3 |
 
-_Last updated: 2026-09-08 (PDCA cycles 1–7; D1 done; E2.1–E2.4 / E3.1–E3.3 / E6.1 in review; E2.5 drivers still open; live checks pending E1.6). Cost engine + landing-zone deliverable both built. Sample estate full Azure run-rate ~$119k/mo / $1.43M/yr + ~$77k one-time; ALZ = 9 spokes / 12 subs / HIPAA + PCI regulated._
+_Last updated: 2026-09-08 (PDCA cycles 1–8; D1 done; E2.1–E2.4 / E3.1–E3.3 / E4.1–E4.2 / E6.1 in review; E2.5 + E4.3 open; live checks pending E1.6). Cost engine + landing zone + wave engine all built. Sample: run-rate ~$119k/mo + ~$77k one-time; ALZ 9 spokes / 12 subs; 7 waves; 6R = Rehost 25 / Replatform 3 / Repurchase 2 / Retire 1._
 
 ---
 
@@ -55,8 +55,8 @@ _Last updated: 2026-09-08 (PDCA cycles 1–7; D1 done; E2.1–E2.4 / E3.1–E3.3
 
 | ID | Item | Pri | Status | Owner | Cycle | Acceptance |
 |---|---|---|---|---|---|---|
-| E4.1 | `plan_waves` — dependency graph → move groups → risk-ordered waves | P0 | backlog | Architect + SWE | 7 | Waves reproducible, respect the graph, low-risk-first explained. |
-| E4.2 | Deterministic disposition scorer (6R + rationale) | P0 | backlog | Architect | 7 | Disposition is rule-derived; the agent explains, never invents. |
+| E4.1 | `plan_waves` — dependency graph → move groups → risk-ordered waves | P0 | in-review | Architect + SWE | 8 | Waves reproducible, respect the graph, low-risk-first explained. _Done — `src/api/waves/plan.py`, 8 tests; platform/pilot/regulated waves, stale+commodity edge filter, blocking deps. Sample: 7 waves._ |
+| E4.2 | Deterministic disposition scorer (6R + rationale) | P0 | in-review | Architect | 8 | Disposition is rule-derived; the agent explains, never invents. _Done — `src/api/waves/disposition.py`, 6 tests; Rehost 25 / Replatform 3 / Repurchase 2 / Retire 1 on the sample._ |
 | E4.3 | Duration model → high-level plan + critical path | P1 | backlog | PMO | — | Plan has durations and a critical path, not just a wave list. |
 
 ### E5 — Structured Deliverable & Traceability
@@ -144,4 +144,5 @@ _Last updated: 2026-09-08 (PDCA cycles 1–7; D1 done; E2.1–E2.4 / E3.1–E3.3
 | 5 | E2.3 — `estimate_storage_cost` over the `storage` table (file / DB / object); block volumes stay in the compute BoM | [pdca-log.md](pdca-log.md) · **done** |
 | 6 | E2.4 — run-rate extras (backup / egress / monitoring / support) + one-time migration cost | [pdca-log.md](pdca-log.md) · **done** |
 | 7 | E3.1 / E3.2 / E3.3 — `design_landing_zone` (CAF ALZ topology, spoke count, regulated-spoke flag, resiliency tiers — all portfolio-derived) | [pdca-log.md](pdca-log.md) · **done** |
-| 8 | E4.1 / E4.2 — `plan_waves` (dependency graph → move groups → risk-ordered waves) + deterministic 6R disposition scorer | planned |
+| 8 | E4.1 / E4.2 — `plan_waves` (dependency graph → move-groups → risk-ordered waves) + deterministic 6R disposition scorer | [pdca-log.md](pdca-log.md) · **done** |
+| 9 | E5.1 / E5.2 / E5.3 — assemble estimate into one structured deliverable + calculation appendix + assumptions/exclusions register (E2.5 folds in) | planned |

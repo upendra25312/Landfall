@@ -1,0 +1,75 @@
+{
+  "openapi": "3.0.1",
+  "info": {
+    "title": "score_dispositions",
+    "description": "Rule-derived 6R migration disposition (Rehost / Replatform / Repurchase / Retire / Retain / Refactor) for each application, from inventory signals: criticality, internet-facing, database engine, tech stack, user count, server count, and EOL-OS count. Returns a candidate disposition, a confidence, a plain-English rationale, the signals used, and the alternatives considered. Deterministic — the agent explains the call, it never invents one. Repurchase / Refactor / Retire always need business sign-off.",
+    "version": "1.0.0"
+  },
+  "servers": [{ "url": "https://REPLACE/api" }],
+  "paths": {
+    "/score_dispositions": {
+      "post": {
+        "operationId": "score_dispositions",
+        "summary": "6R disposition candidate + rationale per application",
+        "description": "Pass the applications (app_id, app_name, criticality, internet_facing, db_engine, tech_stack, users, notes) and a server_rollup keyed by app_id ({servers, eol_servers}). Returns dispositions[] with rationale + confidence + alternatives, and a summary with by_disposition counts and the apps that need a human decision.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["applications"],
+                "properties": {
+                  "applications": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "required": ["app_id"],
+                      "properties": {
+                        "app_id": { "type": "string" },
+                        "app_name": { "type": "string", "nullable": true },
+                        "criticality": { "type": "number", "nullable": true },
+                        "internet_facing": { "type": "number", "nullable": true },
+                        "db_engine": { "type": "string", "nullable": true },
+                        "tech_stack": { "type": "string", "nullable": true },
+                        "users": { "type": "number", "nullable": true },
+                        "notes": { "type": "string", "nullable": true }
+                      }
+                    }
+                  },
+                  "server_rollup": {
+                    "type": "object",
+                    "nullable": true,
+                    "description": "{ app_id: { servers: n, eol_servers: n } } — from a GROUP BY over dbo.servers"
+                  },
+                  "config": {
+                    "type": "object",
+                    "nullable": true,
+                    "description": "Overrides merged over estimation_config.json (e.g. {\"disposition\":{\"appetite\":\"aggressive\"}})"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Per-application disposition candidates",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "dispositions": { "type": "array", "items": { "type": "object" } },
+                    "summary": { "type": "object" },
+                    "assumptions": { "type": "array", "items": { "type": "string" } }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

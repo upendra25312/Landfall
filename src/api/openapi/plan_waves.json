@@ -1,0 +1,83 @@
+{
+  "openapi": "3.0.1",
+  "info": {
+    "title": "plan_waves",
+    "description": "Turns the server dependency graph into a risk-ordered migration wave plan. Drops stale / low-confidence flows, rolls server edges up to application-to-application edges, clusters apps into affinity move-groups (connected components), scores each group's migration risk (criticality, internet-facing, compliance scope, size, EOL OS, disposition change, data quality) and orders the groups low-risk-first into waves — capped by servers/apps per wave, regulated scopes last, with a pilot wave (wave 0). Emits entry/exit criteria and cross-wave blocking dependencies. Deterministic.",
+    "version": "1.0.0"
+  },
+  "servers": [{ "url": "https://REPLACE/api" }],
+  "paths": {
+    "/plan_waves": {
+      "post": {
+        "operationId": "plan_waves",
+        "summary": "Risk-ordered migration waves from the dependency graph",
+        "description": "Pass the applications, the servers (server_id, app_id, env, os_eol_date, powerstate) and the dependencies (src_id, dst_id, confidence, last_seen, flows_30d). Optionally pass dispositions[] from score_dispositions (otherwise computed internally). Returns move_groups, waves[] (each with apps, server_count, risk_score/band, risk_factors, dispositions, entry_criteria, exit_criteria, blocking_dependencies, notes), and a graph summary. Present the wave table and call out the pilot wave and any regulated wave.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["applications", "servers", "dependencies"],
+                "properties": {
+                  "applications": { "type": "array", "items": { "type": "object" } },
+                  "servers": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "server_id": { "type": "string" },
+                        "app_id": { "type": "string", "nullable": true },
+                        "env": { "type": "string", "nullable": true },
+                        "os_eol_date": { "type": "string", "nullable": true },
+                        "powerstate": { "type": "string", "nullable": true }
+                      }
+                    }
+                  },
+                  "dependencies": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "src_id": { "type": "string" },
+                        "dst_id": { "type": "string" },
+                        "confidence": { "type": "string", "nullable": true },
+                        "last_seen": { "type": "string", "nullable": true },
+                        "flows_30d": { "type": "number", "nullable": true }
+                      }
+                    }
+                  },
+                  "dispositions": { "type": "array", "nullable": true, "items": { "type": "object" } },
+                  "config": {
+                    "type": "object",
+                    "nullable": true,
+                    "description": "Overrides merged over estimation_config.json (e.g. {\"waves\":{\"max_servers_per_wave\":30,\"min_edge_confidence\":\"medium\"}})"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Move-groups and the risk-ordered wave plan",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "move_groups": { "type": "array", "items": { "type": "object" } },
+                    "waves": { "type": "array", "items": { "type": "object" } },
+                    "graph": { "type": "object" },
+                    "disposition_summary": { "type": "object" },
+                    "assumptions": { "type": "array", "items": { "type": "string" } }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

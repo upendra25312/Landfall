@@ -47,6 +47,8 @@ _OPENAPI_TOOLS = {
     "estimate_storage_cost": "Monthly Azure cost for the storage inventory (dbo.storage) - file shares (Files Premium / NetApp), DB volumes (SQL MI / Hyperscale / Flexible Server / Oracle), object (Blob). Block/managed-disk volumes are covered by estimate_compute_cost and excluded here.",
     "estimate_run_rate_extras": "Run-rate lines beyond compute + storage - backup, internet egress, monitoring (Log Analytics + Defender), support plan - plus one-time migration cost (tooling, replication, dual-run). Pass the servers and the compute+storage monthly total.",
     "design_landing_zone": "Client-specific CAF Azure Landing Zone from the application portfolio - management groups, subscriptions, hub-spoke VNets + IP plan, policy set, identity, connectivity, DR, and a dedicated regulated spoke per compliance scope. Topology is derived from the data.",
+    "score_dispositions": "Rule-derived 6R disposition (Rehost / Replatform / Repurchase / Retire / Retain / Refactor) + rationale + confidence per application, from OS EOL, stack, criticality, internet-facing and DB engine. Repurchase / Refactor / Retire need business sign-off.",
+    "plan_waves": "Risk-ordered migration wave plan - server dependency graph -> affinity move-groups -> waves (pilot first, regulated last) with entry/exit criteria and cross-wave blocking dependencies. Pass applications + servers + dependencies.",
     "azure_retail_prices": "Live Azure pay-as-you-go and reserved prices (cached proxy over prices.azure.com) - for ad-hoc price lookups outside the compute BoM.",
 }
 
@@ -73,6 +75,11 @@ server/application migration from client-supplied on-premises inventory.
   list (criticality, internet_facing, compliance_scope) and a server_summary. Present
   its management groups, subscription list, spokes, IP plan, identity + connectivity
   model, policy overlay and DR strategy. Never hand-design the topology — quote the tool.
+- For dispositions call `score_dispositions` (applications + a server_rollup of
+  {servers, eol_servers} per app_id). For the migration plan call `plan_waves`
+  (applications + servers + dependencies). Present the disposition mix and the wave
+  table with the pilot wave, the regulated wave, and blocking dependencies. The 6R
+  call and the wave order are the tool's — you explain them, you don't invent them.
 - Use `microsoft_docs` for Cloud Adoption Framework and target-service guidance.
 - Use `search_documents` for client constraints (compliance, network, DR, non-functional).
 

@@ -108,6 +108,49 @@ DEFAULTS: dict = {
             "dual_run_fraction_of_infra": 0.5,         # fraction of the monthly infra bill incurred twice
         },
     },
+    "disposition": {
+        # score_dispositions (E4.2) — rule-derived 6R candidate per application.
+        "appetite": "rehost_first",           # rehost_first | replatform_where_easy | aggressive
+        "paas_db_engines": {                  # engine substring -> PaaS target
+            "postgresql": "Azure Database for PostgreSQL Flexible Server",
+            "postgres": "Azure Database for PostgreSQL Flexible Server",
+            "mysql": "Azure Database for MySQL Flexible Server",
+            "mariadb": "Azure Database for MySQL Flexible Server",
+            "sql server": "Azure SQL Managed Instance",
+        },
+        "clustered_markers": ["always on", "always-on", "availability group", "data guard",
+                              "rac", "patroni", "galera", "wsfc", "replica set"],
+        "container_markers": ["docker", "kubernetes", "k8s", "containerd", "openshift"],
+        "repurchase_markers": {               # name / stack substring -> SaaS category
+            "learning management": "SaaS LMS",
+            "collaboration": "SharePoint Online / Teams",
+        },
+        "retire_markers": ["sandbox", "proof of concept", "poc", "decommission",
+                           "to be retired", "print & output", "print and output",
+                           "legacy billing (frozen)"],
+        "replatform_min_criticality": 3,      # only tier 3+ (lower-criticality) apps replatform; tier 1-2 stay IaaS
+        "replatform_max_servers": 6,
+        "allow_refactor": False,
+    },
+    "waves": {
+        # plan_waves (E4.1) — dependency graph -> affinity move-groups -> risk-ordered waves.
+        "min_edge_confidence": "low",         # low | medium | high — edges below this are dropped
+        "stale_after_days": 21,               # a flow not seen in this many days is excluded (flagged)
+        "observation_window_end": None,       # ISO date; default = max last_seen in the data
+        "max_servers_per_wave": 40,
+        "max_apps_per_wave": 6,
+        # platform / commodity services (AD, DNS, NTP, Kerberos, monitoring) — every app
+        # depends on them, so they don't form affinity groups; they migrate in the pilot wave.
+        "commodity_protocols": ["LDAP", "LDAPS", "DNS", "NTP", "KERBEROS", "SMB", "CIFS", "SNMP"],
+        "commodity_ports": [53, 88, 123, 137, 138, 139, 389, 445, 636, 3268, 3269, 514, 161],
+        "infra_app_markers": ["infrastructure", "shared services", "shared-infra",
+                              "platform services", "active directory", "domain services"],
+        "regulated_scopes_last": ["PCI-DSS", "PCI", "HIPAA", "HITRUST"],
+        "risk_weights": {                    # contribution to the 0-100 group risk score
+            "criticality": 40, "internet_facing": 12, "compliance": 22,
+            "size": 14, "eol_os": 6, "change": 10, "data_quality": 8,
+        },
+    },
     "effort": {
         "bands_pd": {"S": 8, "M": 14, "L": 22, "XL": 40},
         "assessment_pd_per_server": 0.15,

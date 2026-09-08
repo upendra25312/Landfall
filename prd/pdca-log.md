@@ -5,6 +5,99 @@ Operating model: [`landfall-5x5-prd.md` §7](landfall-5x5-prd.md). Tracker:
 
 ---
 
+## Cycle 8 — score_dispositions + plan_waves (the wave engine)
+
+**Date:** 2026-09-08 · **Owner:** Architect + PM + SWE · **Tracker:** E4.1 / E4.2 (done) ·
+**Closes audit** P0-4 / MA-1..5 (no move-group / wave plan — the agent was inventing them).
+
+### Plan
+
+**Objective.** Two deterministic tools:
+- **`score_dispositions` (E4.2)** — a rule-derived 6R candidate + rationale + confidence
+  per app from inventory signals (servers, EOL OS, criticality, internet-facing, DB
+  engine, stack, retire/repurchase markers). The agent explains it, never invents it.
+- **`plan_waves` (E4.1)** — server dependency graph → drop stale / low-confidence /
+  commodity (AD, DNS, NTP) edges → roll up to app-to-app edges → affinity move-groups
+  (connected components) → risk-score each group → order low-risk-first into waves
+  (platform wave 0, pilot next, regulated last), capped by servers/apps per wave, with
+  entry/exit criteria and cross-wave blocking dependencies (real + dropped-but-flagged).
+
+**Acceptance this cycle**
+
+| # | Criterion | Check |
+|---|---|---|
+| C1 | 0 servers / retire marker → Retire; repurchase marker → Repurchase | unit test |
+| C2 | small single-PaaS-DB low-criticality app → Replatform; clustered DB → Rehost (IaaS) | unit test |
+| C3 | tier-1 PaaS-DB app → Rehost but notes the Replatform alternative; `aggressive` appetite flips it | unit test |
+| C4 | EOL-OS servers noted on the Rehost rationale | unit test |
+| C5 | chatty apps land in one move-group; standalone apps are singletons | unit test |
+| C6 | stale / low-confidence / commodity edges excluded and counted | unit test |
+| C7 | platform (shared-infra) group is wave 0; regulated group is last; pilot is low-risk | unit test |
+| C8 | per-wave server / app cap splits into multiple waves | unit test |
+| C9 | a dropped edge across waves is surfaced as an `unverified` blocking dependency | unit test |
+| C10 | deterministic over the full sample estate | unit test |
+
+**Design.** `src/api/waves/{disposition,plan}.py` — pure (own union-find, no graph lib).
+`waves/functions.py` — `POST /api/score_dispositions` + `POST /api/plan_waves`. New
+`disposition` + `waves` blocks in `cost/config.py` + `estimation_config.json`. 2 OpenAPI
+specs + agent tools #8/#9 + prompt lines. `waves_bp` wired into `function_app.py`.
+
+**Deferred.** E4.3 duration model (servers/wave ÷ throughput → dated plan + critical
+path) — needs the effort model (E6.2). Same-wave non-prod-before-prod is a scheduling
+note, not a separate wave.
+
+### Do
+
+- `src/api/waves/{__init__,disposition,plan,functions}.py` — new package.
+  `function_app.py` — `waves_bp`. `cost/config.py` — `disposition` + `waves` blocks.
+- `src/api/openapi/{score_dispositions,plan_waves}.json` — new. `scripts/create_agent.py`
+  — `_OPENAPI_TOOLS` (now 9) + `SYSTEM_PROMPT` lines.
+- `tests/test_waves.py` — 14 cases. `estimation_config.json`, `DEPLOY.md`, `README.md`,
+  `tests/README.md` updated.
+
+### Check
+
+`pytest tests -q` → **80 passed**. C1–C10 pass (see test names).
+
+Full sample estate (31 apps, 250 servers, 484 dependency rows):
+```
+DISPOSITIONS  Rehost 25 / Replatform 3 / Repurchase 2 / Retire 1
+  Replatform: Corporate Website (CMS), Document Management, Procurement Portal  (all low conf)
+  Repurchase: Learning Management, [Collaboration]      Retire: Analytics Sandbox
+  needs_human_decision: 6
+
+GRAPH  31 app nodes, 0 app edges, 31 components   (362 commodity/platform edges excluded,
+       0 stale after the filter, platform_apps = [app-31])
+  -> the sample's only cross-app coupling is AD/DNS/shared-infra; every business app is
+     self-contained. Affinity clustering will bind groups on a messier real estate.
+
+WAVES  0 platform  (app-31, 35 srv, high — foundation)
+       1 pilot     (2 apps, 3 srv, medium — incl. the Retire app)
+       2 standard  (6 apps, 23 srv, risk 47)
+       3 standard  (6 apps, 30 srv, risk 60)
+       4 standard  (6 apps, 29 srv, risk 71)
+       5 standard  (6 apps, 29 srv, risk 77)
+       6 regulated (5 apps, 34 srv, risk 79 — PCI-DSS + HIPAA, QSA gate)
+```
+7 waves, risk rising 47→79 across the standard band — matches the discovery answer's
+7-wave shape, but derived from `dependencies.csv` + `applications.csv`.
+
+### Act
+
+- **E4.1 / E4.2 done.** The migration plan (move-groups + risk-ordered waves) and the 6R
+  disposition are now deterministic tools.
+- **Watch:** the sample's dependency data has no cross-app application-layer flows (all
+  LDAP/DNS) so every app is a singleton move-group. That's a property of the synthetic
+  data, not a bug — a real RVTools/DR-Migrate export with app-tier flows exercises the
+  affinity clustering. Consider adding a few cross-app HTTP flows to `sample-estate` to
+  demo it (candidate for a follow-up).
+- **Next — Cycle 9:** E5.1/E5.2/E5.3 — "assemble estimate" into one structured
+  deliverable (8 sections), stable IDs + calculation appendix on every figure, and the
+  machine-tracked assumptions & exclusions register. Plus E2.5 (top-3 cost drivers)
+  folds in here.
+
+---
+
 ## Cycle 7 — design_landing_zone (CAF ALZ from the portfolio)
 
 **Date:** 2026-09-08 · **Owner:** Architect (CAF/Landing Zones) + SWE · **Tracker:**
