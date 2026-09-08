@@ -80,6 +80,29 @@ across every path: the `DRAFT — architect review required` watermark, every he
 number resolvable to an `F*` calculation-appendix id, and the E7.4 no-un-sourced-number
 guard over the rendered text.
 
+**Narrative + structure reference — [`Azure/migration`](https://github.com/Azure/migration)
+(the Microsoft *Migration Execution Guide*, MEG).** The deck, the Word document and the
+dashboard all follow the MEG's migration-lifecycle arc and its work-stream vocabulary so
+the output reads like a Microsoft FastTrack deliverable, not a bespoke template:
+
+- **Story arc per the MEG lifecycle:** *Assess → Plan/Design → Mobilise → Migrate (waves)
+  → Optimise*. The deck opens with an executive summary (estate size → run-rate → one-time
+  → effort → plan shape), then a methodology slide showing that lifecycle as a chevron
+  flow, then one section per stage.
+- **Work-stream vocabulary from the MEG templates:** Digital Estate Discovery (→ current
+  state), Workload Mapping (→ 6R disposition), Wave Planning (→ the wave plan, same
+  columns: wave, workloads, servers, dependencies, risk, entry/exit), Project Plan (→
+  effort + timeline), Risk Register (→ the assumptions/exclusions/data-gaps register maps
+  to MEG risk-register rows), Migration-day Runbook (→ per-wave entry/exit criteria).
+- **DACI / RACI:** the "next steps" and "who owns each figure" framing uses the MEG's
+  DACI responsibility split (architect = *Driver/Approver* of every number).
+- The MEG ships as Excel work-streams — Landfall's `.xlsx` export should mirror its sheet
+  taxonomy where they overlap (estate, workload map, wave plan) so a customer already
+  using the MEG can drop Landfall's output straight in.
+
+Tracked as **E5.4q** / **E5.6** in [`prd/tracker.md`](../prd/tracker.md); full spec in
+[`audits/path-to-5x5.md` §"Deliverable polish"](path-to-5x5.md).
+
 ---
 
 ## 2. Scenario walk-through (the acid test)

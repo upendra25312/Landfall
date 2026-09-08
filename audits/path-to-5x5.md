@@ -253,6 +253,17 @@ own `docx` and `xlsx` document skills and the two PowerPoint skills the sponsor 
   boundary (the core answer contract) shows up in the artifact itself.
 - Read-back for QA via `pandoc -t markdown`.
 
+**Narrative + structure — the Microsoft *Migration Execution Guide*
+([`Azure/migration`](https://github.com/Azure/migration))**
+- The deck, the Word doc and the dashboard follow the MEG lifecycle
+  (*Assess → Plan/Design → Mobilise → Migrate → Optimise*) and its work-stream vocabulary
+  (Digital Estate Discovery, Workload Mapping, Wave Planning, Project Plan, Risk Register,
+  Migration-day Runbook) so the output reads like a Microsoft FastTrack deliverable.
+- Deck story arc: executive summary (estate → run-rate → one-time → effort → plan shape)
+  → methodology (the lifecycle as a chevron flow) → one section per stage → next steps.
+- The `.xlsx` mirrors the MEG's sheet taxonomy where they overlap (estate, workload map,
+  wave plan) so a customer already using the MEG can drop Landfall's output straight in.
+
 **PowerPoint (`.pptx`) — the two sponsor-selected skills**
 - **`presentation-skill`** (`github.com/siril9/presentation-skill`) — source-first:
   author an **`outline.json`** from the E5.1 package, never touch the `.pptx` directly;
