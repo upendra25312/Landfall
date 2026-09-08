@@ -33,6 +33,8 @@ from calculator_export import parse_calculator_export, reconcile
 from worker import consume_forever
 
 logging.basicConfig(level=logging.INFO)
+for _n in ("azure.core.pipeline.policies.http_logging_policy", "azure.identity", "azure.storage"):
+    logging.getLogger(_n).setLevel(logging.WARNING)
 
 _CALCULATOR_URL = "https://azure.microsoft.com/pricing/calculator/"
 _tasks: set = set()

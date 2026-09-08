@@ -30,9 +30,13 @@ import os
 from driver import build_estimate
 from calculator_export import parse_calculator_export, reconcile
 
+for _n in ("azure.core.pipeline.policies.http_logging_policy", "azure.identity", "azure.storage"):
+    logging.getLogger(_n).setLevel(logging.WARNING)
+
 _POLL_IDLE_S = 10
-_VISIBILITY_S = 1200          # 20 min — longer than the worst-case calculator drive
+_VISIBILITY_S = 1800          # 30 min — longer than the worst-case calculator drive
 _MAX_DEQUEUE = 3
+_RUN_BUDGET_S = 1500          # hard cap on one calculator drive
 
 
 def _now() -> str:
@@ -64,7 +68,7 @@ async def _process(blob, job: dict) -> None:
     spec = json.loads(cc.get_blob_client(job["spec_blob"]).download_blob().readall())
 
     try:
-        run = await build_estimate(spec)
+        run = await asyncio.wait_for(build_estimate(spec), timeout=_RUN_BUDGET_S)
         xlsx = base64.b64decode(run["xlsx_b64"])
         parsed = parse_calculator_export(xlsx)
         rec = reconcile(parsed, spec.get("internal_monthly_estimate"))
