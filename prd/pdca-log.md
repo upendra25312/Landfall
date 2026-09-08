@@ -5,6 +5,86 @@ Operating model: [`landfall-5x5-prd.md` §7](landfall-5x5-prd.md). Tracker:
 
 ---
 
+## Cycle 26 — per-engagement conversation memory + engagement export / import (E11.26)
+
+**Date:** 2026-09-08 · **Owner:** Azure AI Architect + FinOps + App Eng ·
+**Tracker:** E11.26 (done, deployed) · **Decisions:**
+[`engagement-workspaces-prd.md`](engagement-workspaces-prd.md) §4.12 + decision 14 —
+conversation memory is the Responses API's own server-side store, keyed per
+engagement in blob; **not** the preview managed Memory feature.
+
+### Plan
+
+Sponsor: *"memory should be under the Foundry agent"* — the chat only remembers the
+current browser tab today (lost on New chat / close / second device, not tied to the
+customer/project). Also: the solution is deployed with `azd up` and **torn down with
+`azd down` to save cost**, so it must be **portable** — an engagement should survive a
+teardown/redeploy or move between deployments.
+
+Panel verdict (AI architect / cloud architect / FinOps / director):
+
+- **Not** the new managed Foundry Memory feature — it needs the **Standard agent setup
+  backed by Cosmos DB**; Landfall runs a **low-code prompt agent** on purpose. Cosmos
+  carries a 24/7 RU floor (breaks near-free), it's preview (API churn hurts a
+  redeploy-months-later story), and it's the wrong model: a **funding POE must be
+  deterministic** — the agent's context is the uploaded inventory + `_discovery.json` +
+  the published estimate, which it already reads through tools. Don't make the LLM
+  *remember* a compliance scope; make it *look it up*.
+- **Do** persist the conversation server-side per engagement. The Responses API already
+  stores the chain in the Foundry project (`store=true`); keep the **pointer + a
+  transcript** in the engagement's own blob. Zero new resources.
+- **Do** add engagement **export / import** — the real portability piece for a
+  tear-down-friendly tool.
+
+### Do
+
+- **`src/web/app.py`**
+  - `answers/engagements/<c>/<p>/_chat.json` = `{current_response_id, started_at,
+    turns[], archived[]}`. `/api/chat` reads the pointer from there (not the browser
+    body), chains `previous_response_id`, appends the user + assistant turns, saves.
+    Falls back to a body `thread_id` only when unscoped.
+  - `GET  /api/engagements/<c>/<p>/chat` — the transcript (page renders it on load /
+    engagement switch).
+  - `POST /api/engagements/<c>/<p>/chat/new` — archive the current thread into
+    `archived[]` (summary + last response id — the Foundry chain stays retrievable),
+    start fresh.
+  - `GET  /api/engagements/<c>/<p>/export` — one `.zip`: `raw/_engagement.json` + every
+    `raw/inventory|docs/*` + every `answers/estimate/*` + `answers/_chat.json` +
+    `export.json`. 250 MB cap; skips empties + HNS directory markers.
+  - `POST /api/engagements/import` — restore a `.zip` (validates `export.json`, slug-
+    checks the id, blocks `..`/absolute paths); **409 unless `overwrite=true`**.
+  - `_SEG_RE` relaxed to allow the `_default_` sentinel's underscores (it was 404-ing).
+- **Chat page** — loads + renders the engagement's saved transcript on select; "New
+  chat" archives server-side; header gains **↓ export** (when an engagement is active)
+  and **↑ import** (hidden file input); dropped the `localStorage` thread id (the
+  engagement id still persists locally so the page reopens where you left off).
+- **`tests/test_engagement_memory.py`** (6) — chain continuity, transcript GET, archive-
+  not-destroy, export/import round-trip, 409-on-existing, non-zip rejection.
+
+### Study
+
+| # | Result |
+|---|---|
+| conversation continuity (live, real agent) | turn 1 "how many prod servers?" → *173*; turn 2 "**their** total vCPU?" → *1,436* — the agent resolved "their" from the stored chain, i.e. memory works |
+| persistence | `_chat.json` written to `answers/engagements/_default_/_default_/_chat.json`, 4 turns + pointer; a `GET …/chat` reload returns them |
+| New chat | archives to `archived[]` with the last response id; next turn starts a fresh chain (no `previous_response_id`) |
+| export | live: 2.54 MB `.zip`, 12 members — `raw/_engagement.json`, `answers/_chat.json`, `answers/estimate/{latest.*, landing_zone.*, tools_raw.json}` |
+| import | round-tripped a re-keyed engagement; imported `_chat.json` had all 4 turns; existing id → **409**, `overwrite=true` → 201 |
+| tests | **208 pytest** (+6) + 32/8/30 evals green |
+| cost | **no new Azure resources**; nothing added to the `azd up` path |
+
+### Act
+
+- Committed + pushed; deployed `web`. PDCA log + PRD §4.12 + decision 14 + work item
+  E11.26 + `INSTALL.md` note ("export engagements before `azd down`, import after
+  `azd up`") — *INSTALL note still to write*.
+- **Carry:** last-write-wins on `_chat.json` (fine for one pre-sales user; add an ETag
+  check if it ever goes multi-user); an "archived threads" viewer on the dashboard;
+  re-key on import (import under a *new* customer/project, not just the original id);
+  a one-click "export all engagements" before teardown.
+
+---
+
 ## Cycle 25 — POE pipeline live (async) + engagement upload panel (E11.16, E11.6 part, E11.24)
 
 **Date:** 2026-09-08 · **Owner:** App Eng + Azure Pre-Sales Architect + Platform Eng ·

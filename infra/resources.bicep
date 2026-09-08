@@ -338,11 +338,10 @@ resource calcApp 'Microsoft.App/containerApps@2024-03-01' = {
     managedEnvironmentId: containerEnv.id
     configuration: {
       activeRevisionsMode: 'Single'
-      ingress: {
-        external: false
-        targetPort: 8080
-        transport: 'auto'
-      }
+      // No ingress: ca-calc is a pure background worker driven by the calc-jobs
+      // storage queue (E11.16). It exposes no HTTP endpoint in Azure — that avoids a
+      // dangling internal URL that renders "Error 404 - Container App stopped" to
+      // anyone who opens it. /healthz + /build stay in app.py for local dev only.
       registries: [
         { server: acr.properties.loginServer, identity: uami.id }
       ]
@@ -660,7 +659,7 @@ output eventGridSystemTopicName string = egSystemTopic.name
 output containerAppName string = containerApp.name
 output containerAppUri string = 'https://${containerApp.properties.configuration.ingress.fqdn}'
 output calcAppName string = calcApp.name
-output calcAppUri string = 'https://${calcApp.properties.configuration.ingress.fqdn}'
+// ca-calc has no ingress — it's a queue worker (E11.16); no URI to output.
 output containerRegistryLoginServer string = acr.properties.loginServer
 output uamiClientId string = uami.properties.clientId
 output uamiPrincipalId string = uami.properties.principalId
