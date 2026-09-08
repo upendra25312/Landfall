@@ -5,6 +5,80 @@ Operating model: [`landfall-5x5-prd.md` §7](landfall-5x5-prd.md). Tracker:
 
 ---
 
+## Cycle 11 — fault injection, output guard, CI gate
+
+**Date:** 2026-09-08 · **Owner:** Applied Scientist + SRE · **Tracker:** E7.3 / E7.4 /
+E7.5 (done) · **Closes audit** AI-3..6 (a tool failure or an un-sourced number could
+slip through; nothing gated regressions).
+
+### Plan
+
+- **E7.3 fault injection** — every deterministic HTTP tool, given a broken request,
+  returns a clean error (HTTP ≥ 400, body = an `error` string only) and never a 200
+  with fabricated numbers; `assemble_estimate` omits a section when an upstream slot
+  carries `{"error": ...}`.
+- **E7.4 output guard** — a checker that flags any numeric claim (money, %, unit'd
+  counts, magnitudes ≥ 1000) not backed by a tool value or a citation; run it against
+  each scenario's own `summary_markdown` (the deliverable must be self-sourcing).
+- **E7.5 CI gate** — a GitHub Actions workflow runs `pytest` + `evals/runner.py` on
+  every push / PR; a stale `SCORECARD.md` or any regression fails the build. Changes to
+  `scripts/create_agent.py` ride the same gate.
+
+**Acceptance**
+
+| # | Criterion | Check |
+|---|---|---|
+| C1 | every tool leaks nothing on a bad request (empty / wrong-type / missing) | `run_faults` / `test_evals` |
+| C2 | `assemble_estimate` degrades: failed slot → section omitted, gap recorded, no fabricated figure | `run_faults` |
+| C3 | output guard passes a real package render; flags a planted un-sourced number | `test_evals` |
+| C4 | guard is quiet on dates, structural ints, and cited assumption/basis lines | manual + scenario runs |
+| C5 | `evals/runner.py` exits non-zero on any golden / scenario / fault / guard failure | manual |
+| C6 | CI workflow runs the full gate and diffs `SCORECARD.md` | `.github/workflows/evals.yml` |
+
+**Design.** `evals/faults.py` (drives the real route functions with a fake
+`func.HttpRequest`), `evals/output_guard.py` (`check_message` + `sourced_from_package`),
+`runner.py` gains `run_faults` + a per-scenario guard check + a fault section in the
+scorecard, `.github/workflows/evals.yml`. `assemble._ok()` skips a tool slot with an
+`error` key and records the gap (+ `meta.tools_failed`).
+
+### Do
+
+- `evals/{faults,output_guard}.py` — new. `evals/runner.py` — `run_faults`, guard in
+  `run_scenarios`, `scorecard(golden, scenarios, faults)`, dropped the daily date so the
+  committed `SCORECARD.md` is stable. `evals/SCORECARD.md` regenerated (now 3 suites).
+- `src/api/deliverable/assemble.py` — `_ok()` + `failed_tools` + register gap +
+  `meta.tools_failed`.
+- `.github/workflows/evals.yml` — new. `tests/test_evals.py` — +4 cases (94 total).
+  `evals/README.md`, `README.md`, `tests/README.md` updated.
+
+### Check
+
+`pytest tests -q` → **94 passed**. `python evals/runner.py` → **PASS**:
+```
+Golden text-to-SQL (E7.1)                      32/32 (100%)   ✅
+Full-estimate scenarios + output guard (E7.2/E7.4)  8/8       ✅
+Fault injection (E7.3)                         26/26          ✅
+```
+Faults: 8 tools × 3–4 broken bodies each → all return `{"error": ...}` at 4xx/5xx;
+the downstream case (compute + storage slots = `{"error": ...}`) → `tools_failed`
+lists both, no compute/storage figures, register carries the gap. Guard: catches
+`$2,400,000/year` / `1,200 person-days` / bare `63%`; passes every scenario's render.
+
+### Act
+
+- **E7 epic complete** (E7.1–E7.5). The engine now has a correctness gate that runs on
+  every change.
+- **Watch:** the output guard is heuristic — it challenges *claims*, not every digit,
+  and exempts assumption/basis prose. It's a safety net for the agent's free text, not
+  a formal proof; the live "agent never states an un-sourced number" drill is Phase 2.
+  The CI workflow hasn't run yet (no push has triggered it) — first green run is the
+  real confirmation.
+- **Next — Cycle 12:** E8 (security & isolation — `query_inventory` auth on by default,
+  allow-list SQL parse + statement timeout, SQL text out of logs, one datastore per
+  engagement) + E9.1 (self-contained hooks). That closes Phase 1.
+
+---
+
 ## Cycle 10 — eval harness (golden SQL + full-estimate scenarios)
 
 **Date:** 2026-09-08 · **Owner:** Applied Scientist + FinOps + SRE · **Tracker:**

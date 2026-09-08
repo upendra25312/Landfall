@@ -11,11 +11,11 @@ Companion to [`prd/landfall-5x5-prd.md`](landfall-5x5-prd.md). Delivery log:
 
 | Phase | Items | Done | In review | In progress | Backlog |
 |---|---|---|---|---|---|
-| 1 — Engine | 34 | 0 | 23 | 1 | 10 |
+| 1 — Engine | 34 | 0 | 26 | 1 | 7 |
 | 2 — Evidence | 11 | 0 | 0 | 0 | 11 |
 | 3 — Sustain | 3 | 0 | 0 | 0 | 3 |
 
-_Last updated: 2026-09-08 (PDCA cycles 1–10; D1 done; E2.1–E2.5 / E3.1–E3.3 / E4.1–E4.2 / E5.1–E5.3 / E6.1–E6.3 / E7.1–E7.2 in review. Backlog: E1.7, E4.3, E7.3–E7.5, E8.*, E9.1. Live check pending E1.6). Full engine end-to-end + eval harness. Sample: run-rate ~$119k/mo + ~$77k one-time; effort ~834 PD / ~$650k services. 91 pytest + 32 golden SQL + 8 scenarios all green (`evals/SCORECARD.md`)._
+_Last updated: 2026-09-08 (PDCA cycles 1–11; D1 done; E2–E7 all in review. Backlog: E1.7, E4.3, E8.1–E8.4, E9.1. Live check pending E1.6). Full engine + eval harness (golden SQL + scenarios + fault injection + output guard) + CI gate. Sample: run-rate ~$119k/mo + ~$77k one-time; effort ~834 PD / ~$650k services. 94 pytest + 32 golden SQL + 8 scenarios + 26 fault cases all green (`evals/SCORECARD.md`)._
 
 ---
 
@@ -81,9 +81,9 @@ _Last updated: 2026-09-08 (PDCA cycles 1–10; D1 done; E2.1–E2.5 / E3.1–E3.
 |---|---|---|---|---|---|---|
 | E7.1 | Golden text-to-SQL set (30+) + runner | P0 | in-review | Applied Sci | 10 | `≥95%` exact-match on the sample estate. _Done — `evals/golden_sql.json` (32 cases) + `evals/runner.py`; runs against a SQLite copy of the sample; 32/32. Live model-generation gate is CI._ |
 | E7.2 | Full-estimate scenarios (8+) with expected ranges | P0 | in-review | Applied Sci + FinOps | 10 | Portfolio numbers within band; 0 un-sourced numbers; identical on re-run. _Done — `evals/scenarios.json` (8) + `evals/pipeline.py`; every figure in band + traceable + deterministic; 8/8. `evals/SCORECARD.md` committed._ |
-| E7.3 | Fault-injection harness | P0 | backlog | Applied Sci | 11 | Each tool fails → agent reports, never invents (100%). |
-| E7.4 | Output guard — reject un-sourced numeric claims | P0 | backlog | Applied Sci | 11 | A planted un-sourced number is blocked in test. |
-| E7.5 | CI gate — version + scorecard on every `create_agent.py` change | P0 | backlog | SRE | 11 | A seeded regression fails the build. |
+| E7.3 | Fault-injection harness | P0 | in-review | Applied Sci | 11 | Each tool fails → agent reports, never invents (100%). _Done — `evals/faults.py`; 26 cases; every tool returns a clean 4xx/5xx error, `assemble_estimate` omits a failed section + records the gap._ |
+| E7.4 | Output guard — reject un-sourced numeric claims | P0 | in-review | Applied Sci | 11 | A planted un-sourced number is blocked in test. _Done — `evals/output_guard.py` `check_message`; run against every scenario's `summary_markdown`; flags planted `$2.4M` / `1,200 PD` / bare `63%`._ |
+| E7.5 | CI gate — version + scorecard on every `create_agent.py` change | P0 | in-review | SRE | 11 | A seeded regression fails the build. _Done — `.github/workflows/evals.yml`: `pytest` + `evals/runner.py` on every push/PR; stale `SCORECARD.md` fails. First live run pending a push._ |
 
 ### E8 — Security & Isolation (Phase 1 part)
 
@@ -147,4 +147,5 @@ _Last updated: 2026-09-08 (PDCA cycles 1–10; D1 done; E2.1–E2.5 / E3.1–E3.
 | 8 | E4.1 / E4.2 — `plan_waves` (dependency graph → move-groups → risk-ordered waves) + deterministic 6R disposition scorer | [pdca-log.md](pdca-log.md) · **done** |
 | 9 | E5.1 / E5.2 / E5.3 — `assemble_estimate`: one structured deliverable + calculation appendix + assumptions/exclusions register (E2.5 + E6.2-basic folded in) | [pdca-log.md](pdca-log.md) · **done** |
 | 10 | E7.1 / E7.2 — eval harness: 32 golden text-to-SQL cases + 8 full-estimate scenarios + `SCORECARD.md` | [pdca-log.md](pdca-log.md) · **done** |
-| 11 | E7.3 / E7.4 / E7.5 — fault-injection harness + un-sourced-number output guard + CI scorecard gate | planned |
+| 11 | E7.3 / E7.4 / E7.5 — fault-injection harness + un-sourced-number output guard + CI scorecard gate | [pdca-log.md](pdca-log.md) · **done** |
+| 12 | E8.1–E8.4 + E9.1 — security & isolation (`query_inventory` auth, SQL allow-list + timeout, no SQL in logs, one datastore per engagement) + self-contained hooks | planned |

@@ -64,20 +64,32 @@ class _Reg:
         return [i for i in self.items if i["category"] == category]
 
 
+def _ok(v):
+    """A tool slot counts as supplied only if it's a dict with no `error` key —
+    a failed upstream tool must not fabricate a section (E7.3)."""
+    return v if isinstance(v, dict) and v and "error" not in v else {}
+
+
 def assemble_estimate(inputs: dict, cfg: dict | None = None) -> dict:
     cfg = cfg or load_config()
     dv = cfg["deliverable"]
     inv = inputs.get("inventory_summary") or {}
     dq = inputs.get("data_quality") or {}
-    cc = inputs.get("compute_cost") or {}
-    sc = inputs.get("storage_cost") or {}
-    rr = inputs.get("run_rate_extras") or {}
-    lz = inputs.get("landing_zone") or {}
-    disp = inputs.get("dispositions") or {}
-    wav = inputs.get("waves") or {}
+    cc = _ok(inputs.get("compute_cost"))
+    sc = _ok(inputs.get("storage_cost"))
+    rr = _ok(inputs.get("run_rate_extras"))
+    lz = _ok(inputs.get("landing_zone"))
+    disp = _ok(inputs.get("dispositions"))
+    wav = _ok(inputs.get("waves"))
+    failed_tools = sorted(k for k in ("compute_cost", "storage_cost", "run_rate_extras",
+                                      "landing_zone", "dispositions", "waves")
+                          if isinstance(inputs.get(k), dict) and inputs[k].get("error"))
     generated_on = inputs.get("generated_on")
 
     reg = _Reg()
+    for k in failed_tools:
+        reg.add(f"{k} did not run ({inputs[k]['error']}) — its section is omitted; "
+                f"re-run before issuing the estimate", "data_gap", k)
     dq_conf = dq.get("confidence") or "Medium"
 
     # --- fold every tool's own caveats into the register (E5.3) -----------
@@ -266,7 +278,8 @@ def assemble_estimate(inputs: dict, cfg: dict | None = None) -> dict:
             "config_source": cfg.get("_source"),
             "tools_run": [k for k in ("compute_cost", "storage_cost", "run_rate_extras",
                                       "landing_zone", "dispositions", "waves")
-                          if inputs.get(k)],
+                          if _ok(inputs.get(k))],
+            "tools_failed": failed_tools,
         },
         "sections": sections,
         "figures": figs.items,

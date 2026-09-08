@@ -1,0 +1,46 @@
+name: evals
+
+# PRD E7.5 — every push / PR runs the unit suite + the offline eval harness.
+# A regression in the deterministic engine, a golden-SQL mismatch, a scenario
+# drifting out of band, a tool that leaks on a bad request, or an un-sourced
+# number in the assembled deliverable fails the build. Changes to
+# scripts/create_agent.py (the agent definition) are gated by the same run.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  evals:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r src/api/requirements.txt
+          pip install -r tests/requirements-dev.txt
+
+      - name: Unit tests
+        run: pytest tests -q
+
+      - name: Eval harness (golden SQL + scenarios + fault injection)
+        run: python evals/runner.py            # writes evals/SCORECARD.md, non-zero on failure
+
+      - name: Fail if SCORECARD drifted from the committed copy
+        run: |
+          git diff --exit-code evals/SCORECARD.md \
+            || (echo "::error::evals/SCORECARD.md is stale - run 'python evals/runner.py' and commit it" && exit 1)
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: eval-scorecard
+          path: evals/SCORECARD.md

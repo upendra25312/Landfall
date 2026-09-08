@@ -93,7 +93,8 @@ blob events.
 | `audits/` | recorded runs of that audit — observations, prioritized backlog, rubric scores, the path to 5/5 |
 | `prd/` | the "Landfall to 5/5" PRD, work tracker, and PDCA delivery log |
 | `tests/` | unit tests (`pytest`) — ingestion, cost engine, landing zone, wave engine, deliverable |
-| `evals/` | offline eval harness (`python evals/runner.py`) — 32 golden text-to-SQL cases + 8 full-estimate scenarios + `SCORECARD.md` |
+| `evals/` | offline eval harness (`python evals/runner.py`) — 32 golden text-to-SQL cases + 8 full-estimate scenarios + fault injection + output guard + `SCORECARD.md` |
+| `.github/workflows/evals.yml` | CI — runs `pytest` + the eval harness on every push / PR; a stale `SCORECARD.md` or any regression fails the build |
 
 Read them online at **[upendra25312.github.io/Landfall](https://upendra25312.github.io/Landfall/)**
 (GitHub Pages, served from `docs/`), or open the `docs/*.html` files locally — each is a

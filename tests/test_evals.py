@@ -31,6 +31,29 @@ def test_full_estimate_scenarios_all_pass():
     assert s["passed"] == s["total"], f"scenario failures: {failed}"
 
 
+def test_fault_injection_every_tool_fails_cleanly():
+    f = runner.run_faults(verbose=False)
+    assert f["total"] >= 20
+    failed = [(r["tool"], r["body"], r["detail"]) for r in f["results"] if not r["ok"]]
+    assert f["passed"] == f["total"], f"tools that leaked on a bad request: {failed}"
+
+
+def test_output_guard_flags_an_unsourced_number():
+    from output_guard import check_message
+    sourced = [119181, 833.7, 650286]
+    assert check_message("Run-rate is $119,181/mo per the tool (F8).", sourced)["ok"]
+    bad = check_message("Expect around $2,400,000/year once you add buffer.", sourced)
+    assert not bad["ok"] and any("2,400,000" in v["claim"] for v in bad["violations"])
+
+
+def test_output_guard_passes_a_real_package_render():
+    from output_guard import check_message, sourced_from_package
+    pkg = __import__("pipeline").run()
+    r = check_message(pkg["summary_markdown"], sourced_from_package(pkg))
+    assert r["ok"], f"assemble_estimate render has un-sourced numbers: {r['violations']}"
+
+
 def test_scorecard_renders():
-    card = runner.scorecard(runner.run_golden(verbose=False), runner.run_scenarios(verbose=False))
-    assert "Landfall eval scorecard" in card and "Overall" in card
+    card = runner.scorecard(runner.run_golden(verbose=False), runner.run_scenarios(verbose=False),
+                            runner.run_faults(verbose=False))
+    assert "Landfall eval scorecard" in card and "Overall" in card and "Fault injection" in card

@@ -1,6 +1,6 @@
 # tests/
 
-Unit tests for Landfall — pure logic that runs without Azure (91 cases):
+Unit tests for Landfall — pure logic that runs without Azure (94 cases):
 the ingestion pipeline (`src/api/ingest/`), the cost engine (`src/api/cost/` —
 right-sizer, `estimate_compute_cost`, `estimate_storage_cost`,
 `estimate_run_rate_extras`) with injected price/rate books, the landing-zone
@@ -24,8 +24,10 @@ full-pipeline test that runs every tool over the sample estate and assembles it.
 | `unknown.csv` | headers that match no source profile |
 
 `test_evals.py` wraps `evals/runner.py` (32 golden text-to-SQL cases + 8
-full-estimate scenarios) so a regression fails `pytest`; run the harness directly
-with `.venv2/Scripts/python evals/runner.py` for the full scorecard.
+full-estimate scenarios + 26 fault-injection cases + the output guard) so a
+regression fails `pytest`; run the harness directly with
+`.venv2/Scripts/python evals/runner.py` for the full scorecard.
+`.github/workflows/evals.yml` runs both on every push / PR.
 
 Tests that need a live Azure SQL / Blob (the Event Grid trigger end-to-end) are
 tracked as tracker item **E1.6** and run at deploy time, not here.
