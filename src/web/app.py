@@ -8,6 +8,7 @@ app is handled by the Container App's built-in Entra ID (Easy Auth) - configure 
 after first deploy.
 """
 import base64
+import datetime as _dt
 import os
 import json
 import pathlib
@@ -82,6 +83,33 @@ def _read_estimate_blob(name: str, engagement: str | None = None) -> bytes | Non
     return None
 
 
+def _now() -> str:
+    return _dt.datetime.now(_dt.timezone.utc).isoformat(timespec="seconds")
+
+
+# --- per-engagement conversation (E11.26) ---------------------------------
+# The Responses API stores the conversation server-side in the Foundry project;
+# we persist only the pointer + a transcript in the engagement's own blob so the
+# chat survives a browser close, is scoped to the customer/project, and travels
+# with the engagement export. No new Azure resources.
+
+def _chat_blob(eid: str) -> str:
+    return f"engagements/{eid}/_chat.json"
+
+
+def _load_chat(eid: str) -> dict:
+    try:
+        return json.loads(_estimate_container().download_blob(_chat_blob(eid)).readall())
+    except Exception:  # noqa: BLE001
+        return {"engagement": eid, "current_response_id": None, "started_at": _now(),
+                "turns": [], "archived": []}
+
+
+def _save_chat(eid: str, chat: dict) -> None:
+    _estimate_container().upload_blob(
+        _chat_blob(eid), json.dumps(chat, default=str).encode(), overwrite=True)
+
+
 def _citations(resp) -> list:
     """Pull document/URL citation labels out of a Responses API result."""
     seen = []
@@ -109,23 +137,28 @@ def health():
 async def chat(req: Request):
     body = await req.json()
     question = (body.get("message") or "").strip()
-    prev_id = body.get("thread_id")  # last response id, kept per browser tab
     engagement = (body.get("engagement") or "").strip().strip("/")
     if not question:
         return JSONResponse({"error": "empty message"}, status_code=400)
     if not AGENT_NAME:
         return JSONResponse({"error": "AGENT_ID not set - run the postprovision hook"}, status_code=503)
 
-    # The user never types the engagement id — the page carries it and we prepend a
-    # scoping instruction so the agent passes it to every tool call (E11.7).
+    # The conversation pointer comes from the engagement's stored chat, not the
+    # browser (E11.26). Falls back to a body thread_id only when unscoped.
+    chat_doc = _load_chat(engagement) if engagement else {}
+    prev_id = chat_doc.get("current_response_id") or (body.get("thread_id") if not engagement else None)
+
+    scoped = question
     if engagement:
-        question = (f"[Active engagement: {engagement}. Use exactly this value as the "
-                    f"`engagement` argument for every tool call — do not ask the user "
-                    f"for it.]\n\n{question}")
+        # the user never types the engagement id — prepend a scoping instruction so the
+        # agent passes it to every tool call (E11.7).
+        scoped = (f"[Active engagement: {engagement}. Use exactly this value as the "
+                  f"`engagement` argument for every tool call — do not ask the user "
+                  f"for it.]\n\n{question}")
 
     try:
         kwargs = {
-            "input": question,
+            "input": scoped,
             "extra_body": {
                 "agent_reference": {"type": "agent_reference", "name": AGENT_NAME}
             },
@@ -139,7 +172,19 @@ async def chat(req: Request):
                 {"error": f"agent returned no text (status {resp.status})", "thread_id": resp.id},
                 status_code=502,
             )
-        return {"answer": text, "citations": _citations(resp), "thread_id": resp.id}
+        cites = _citations(resp)
+        if engagement:
+            ts = _now()
+            chat_doc.setdefault("turns", []).append({"role": "user", "text": question, "ts": ts})
+            chat_doc["turns"].append({"role": "assistant", "text": text, "ts": ts, "citations": cites})
+            chat_doc["current_response_id"] = resp.id
+            chat_doc["engagement"] = engagement
+            chat_doc.setdefault("started_at", ts)
+            try:
+                _save_chat(engagement, chat_doc)
+            except Exception:  # noqa: BLE001
+                logging.exception("could not persist the conversation for %s", engagement)
+        return {"answer": text, "citations": cites, "thread_id": resp.id}
     except Exception as exc:  # noqa: BLE001
         logging.exception("chat failed")
         return JSONResponse({"error": str(exc)}, status_code=500)
@@ -172,7 +217,8 @@ def _raw_container():
     return _blob_state["raw"]
 
 
-_SEG_RE = __import__("re").compile(r"^[a-z0-9][a-z0-9-]{0,39}$")
+# slug segments are [a-z0-9-]; the seed engagement `_default_` also uses underscores.
+_SEG_RE = __import__("re").compile(r"^[a-z0-9_][a-z0-9_-]{0,49}$")
 
 
 def _slug(v: str) -> str:
@@ -407,6 +453,139 @@ def engagement_file_delete(customer: str, project: str, name: str):
     return JSONResponse({"error": f"{safe} not found"}, status_code=404)
 
 
+@app.get("/api/engagements/{customer}/{project}/chat")
+def engagement_chat_get(customer: str, project: str):
+    """The saved conversation for this engagement (E11.26) — the page renders it on
+    load / engagement switch so nothing is lost on a browser close."""
+    eng = _engagement(customer, project)
+    if not eng:
+        return JSONResponse({"error": "unknown engagement"}, status_code=404)
+    eid, _ = eng
+    c = _load_chat(eid)
+    return JSONResponse({"engagement": eid, "turns": c.get("turns", []),
+                         "current_response_id": c.get("current_response_id"),
+                         "archived": c.get("archived", [])})
+
+
+@app.post("/api/engagements/{customer}/{project}/chat/new")
+def engagement_chat_new(customer: str, project: str):
+    """Start a fresh thread for this engagement — the previous one is archived, not
+    destroyed (its Foundry response chain stays retrievable)."""
+    eng = _engagement(customer, project)
+    if not eng:
+        return JSONResponse({"error": "unknown engagement"}, status_code=404)
+    eid, _ = eng
+    c = _load_chat(eid)
+    if c.get("turns"):
+        c.setdefault("archived", []).append({
+            "started_at": c.get("started_at"), "ended_at": _now(),
+            "last_response_id": c.get("current_response_id"), "turns": len(c["turns"])})
+    c.update({"turns": [], "current_response_id": None, "started_at": _now(), "engagement": eid})
+    try:
+        _save_chat(eid, c)
+    except Exception as exc:  # noqa: BLE001
+        return JSONResponse({"error": str(exc)}, status_code=500)
+    return JSONResponse({"engagement": eid, "cleared": True, "archived": len(c["archived"])})
+
+
+_EXPORT_MAX = 250 * 1024 * 1024
+
+
+@app.get("/api/engagements/{customer}/{project}/export")
+def engagement_export(customer: str, project: str):
+    """One .zip with the engagement manifest + every uploaded file + every produced
+    artifact + the conversation — so an engagement is portable across `azd down` /
+    `azd up` or between deployments (E11.26)."""
+    eng = _engagement(customer, project)
+    if not eng:
+        return JSONResponse({"error": "unknown engagement"}, status_code=404)
+    eid, rawbase = eng
+    import io
+    import zipfile
+
+    raw, ans = _raw_container(), _estimate_container()
+    buf = io.BytesIO()
+    total = 0
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as z:
+        for cont, base, top in ((raw, f"{rawbase}/", "raw"),
+                                (ans, f"engagements/{eid}/", "answers")):
+            for b in cont.list_blobs(name_starts_with=base):
+                rel = b.name[len(base):]
+                if not rel or rel.endswith("/.keep") or b.size == 0:
+                    continue  # skip empties + HNS directory markers
+                data = cont.download_blob(b.name).readall()
+                total += len(data)
+                if total > _EXPORT_MAX:
+                    return JSONResponse(
+                        {"error": f"engagement is over the {_EXPORT_MAX // 1024 // 1024} MB "
+                                  "export limit — remove old history/uploads first"}, status_code=413)
+                z.writestr(f"{top}/{rel}", data)
+        z.writestr("export.json", json.dumps(
+            {"engagement": eid, "exported_at": _now(), "format": "landfall-engagement/1"}))
+    fn = eid.replace("/", "__") + ".landfall.zip"
+    return Response(buf.getvalue(), media_type="application/zip",
+                    headers={"Content-Disposition": f'attachment; filename="{fn}"'})
+
+
+@app.post("/api/engagements/import")
+async def engagement_import(request: Request, file: UploadFile, overwrite: str = Form("false")):
+    """Restore an engagement from an export .zip into this deployment (E11.26)."""
+    import io
+    import zipfile
+
+    try:
+        clen = int(request.headers.get("content-length") or 0)
+    except ValueError:
+        clen = 0
+    if clen and clen > _EXPORT_MAX:
+        return JSONResponse({"error": "import file too large"}, status_code=413)
+
+    data = await file.read()
+    if len(data) > _EXPORT_MAX:
+        return JSONResponse({"error": "import file too large"}, status_code=413)
+    try:
+        z = zipfile.ZipFile(io.BytesIO(data))
+        meta = json.loads(z.read("export.json"))
+    except Exception:  # noqa: BLE001
+        return JSONResponse({"error": "not a Landfall engagement export (missing export.json)"},
+                            status_code=400)
+
+    eid = (meta.get("engagement") or "").strip().strip("/")
+    parts = eid.split("/")
+    if len(parts) != 2 or not (_seg(parts[0]) and _seg(parts[1])):
+        return JSONResponse({"error": f"bad engagement id in export: {eid!r}"}, status_code=400)
+
+    raw, ans = _raw_container(), _estimate_container()
+    try:
+        raw.download_blob(f"engagements/{eid}/_engagement.json").readall()
+        exists = True
+    except Exception:  # noqa: BLE001
+        exists = False
+    if exists and overwrite != "true":
+        return JSONResponse({"error": f"engagement {eid} already exists — pass overwrite=true to replace",
+                             "engagement": eid, "exists": True}, status_code=409)
+
+    written = 0
+    for name in z.namelist():
+        if name == "export.json" or name.endswith("/"):
+            continue
+        if ".." in name.replace("\\", "/").split("/") or name.startswith("/"):
+            continue
+        body = z.read(name)
+        if name.startswith("raw/"):
+            raw.upload_blob(f"engagements/{eid}/{name[4:]}", body, overwrite=True)
+            written += 1
+        elif name.startswith("answers/"):
+            ans.upload_blob(f"engagements/{eid}/{name[8:]}", body, overwrite=True)
+            written += 1
+    try:
+        manifest = json.loads(raw.download_blob(f"engagements/{eid}/_engagement.json").readall())
+    except Exception:  # noqa: BLE001
+        manifest = {"engagement": eid}
+    return JSONResponse({"engagement": eid, "imported": written, "manifest": manifest},
+                        status_code=201)
+
+
 @app.get("/api/prompt_cards")
 def prompt_cards():
     """Intro + capability list + the clickable prompt cards for the chat UI (E11.7).
@@ -533,10 +712,13 @@ def index():
 </style></head><body>
 <header>
  <span>Landfall &mdash; Migration Estimator</span>
- <select id=engsel title="Active engagement — every question is scoped to it"></select>
+ <select id=engsel title="Active engagement — every question, upload and estimate is scoped to it"></select>
  <button class=link id=neweng title="Create a new customer / project engagement">+ New engagement</button>
+ <button class=link id=expeng title="Download this engagement (files + estimates + chat) as a portable .zip" hidden>&darr; export</button>
+ <button class=link id=impeng title="Restore an engagement from a .landfall.zip">&uarr; import</button>
+ <input type=file id=impfile accept=".zip" hidden>
  <span class=sp></span>
- <button class=link id=newchat title="Clear this conversation and start fresh">+ New chat</button>
+ <button class=link id=newchat title="Archive this conversation and start a fresh one">+ New chat</button>
  <a href="/dashboard">Assessment dashboard &rarr;</a>
 </header>
 <div class=mini id=engform hidden>
@@ -574,7 +756,7 @@ def index():
  <button class=send id=send>Send</button>
 </form>
 <script>
-let tid=null,busy=false,CARDS=[],ENG=localStorage.getItem('landfall.eng')||'';
+let busy=false,CARDS=[],ENG=localStorage.getItem('landfall.eng')||'';
 const log=document.getElementById('log'),q=document.getElementById('q'),send=document.getElementById('send');
 const engsel=document.getElementById('engsel'),engform=document.getElementById('engform');
 
@@ -634,9 +816,44 @@ async function loadEngagements(){
  });
  if(ENG && list.some(e=>e.engagement===ENG)) engsel.value=ENG;
  else { ENG=engsel.value||''; localStorage.setItem('landfall.eng',ENG); }
- renderWelcome();showUpload();
+ document.getElementById('expeng').hidden=!ENG;
+ renderWelcome();showUpload();loadChat();
 }
-engsel.onchange=()=>{ENG=engsel.value;localStorage.setItem('landfall.eng',ENG);renderWelcome();showUpload();};
+engsel.onchange=()=>{ENG=engsel.value;localStorage.setItem('landfall.eng',ENG);
+ document.getElementById('expeng').hidden=!ENG;renderWelcome();showUpload();loadChat();};
+
+// --- per-engagement conversation (E11.26) ------------------------------
+async function loadChat(){
+ if(!ENG){return;}
+ let doc={turns:[]};
+ const [c,p]=ENG.split('/');
+ try{doc=await (await fetch('/api/engagements/'+enc(c)+'/'+enc(p)+'/chat')).json();}catch(e){}
+ const turns=doc.turns||[];
+ log.innerHTML='<div id=welcome></div>';
+ if(!turns.length){renderWelcome();return;}
+ document.getElementById('welcome').remove();
+ turns.forEach(t=>add(t.text,t.role==='user'?'u':'a',t.citations));
+}
+document.getElementById('expeng').onclick=()=>{
+ if(!ENG)return;const [c,p]=ENG.split('/');
+ window.location='/api/engagements/'+enc(c)+'/'+enc(p)+'/export';
+};
+const impfile=document.getElementById('impfile');
+document.getElementById('impeng').onclick=()=>impfile.click();
+impfile.onchange=async()=>{
+ const f=impfile.files[0];impfile.value='';if(!f)return;
+ const fd=new FormData();fd.append('file',f);
+ let r=await fetch('/api/engagements/import',{method:'POST',body:fd});
+ let j=await r.json();
+ if(r.status===409 && confirm(j.error+'\\n\\nReplace it?')){
+  fd.append('overwrite','true');
+  r=await fetch('/api/engagements/import',{method:'POST',body:fd});j=await r.json();
+ }
+ if(j.error){alert('Import failed: '+j.error);return;}
+ toast('Imported '+j.engagement+' ('+j.imported+' files)');
+ ENG=j.engagement;localStorage.setItem('landfall.eng',ENG);
+ await loadEngagements();engsel.value=ENG;
+};
 
 // --- Upload panel (E11.6 / E11.24) ---------------------------------------
 const upanel=document.getElementById('uploadpanel'),uz=document.getElementById('uz'),
@@ -718,8 +935,11 @@ document.getElementById('ef').onsubmit=async ev=>{
  btn.disabled=false;btn.textContent='Create engagement';
 };
 
-function newChat(){
- if(busy)return;tid=null;log.innerHTML='<div id=welcome></div>';renderWelcome();q.value='';q.focus();
+async function newChat(){
+ if(busy)return;
+ if(ENG){const [c,p]=ENG.split('/');
+  try{await fetch('/api/engagements/'+enc(c)+'/'+enc(p)+'/chat/new',{method:'POST'});}catch(e){}}
+ log.innerHTML='<div id=welcome></div>';renderWelcome();q.value='';q.focus();
 }
 document.getElementById('newchat').onclick=newChat;
 
@@ -736,11 +956,11 @@ async function ask(v){
  const ph=working();
  try{
   const r=await fetch('/api/chat',{method:'POST',headers:{'content-type':'application/json'},
-    body:JSON.stringify({message:v,thread_id:tid,engagement:ENG})});
+    body:JSON.stringify({message:v,engagement:ENG})});
   const j=await r.json();
   clearInterval(ph._timer);ph.remove();
   if(j.error){add('Error: '+j.error,'a');}
-  else{tid=j.thread_id;add(j.answer,'a',j.citations);}
+  else{add(j.answer,'a',j.citations);}
  }catch(err){clearInterval(ph._timer);ph.remove();add('Error: '+err,'a');}
  setBusy(false);
 }
