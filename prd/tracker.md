@@ -11,8 +11,8 @@ Companion to [`prd/landfall-5x5-prd.md`](landfall-5x5-prd.md). Delivery log:
 
 | Phase | Items | Done | In review | In progress | Backlog |
 |---|---|---|---|---|---|
-| 1 — Engine | 36 | 6 | 29 | 0 | 1 |
-| 2 — Evidence | 11 | 0 | 0 | 0 | 11 |
+| 1 — Engine | 37 | 6 | 29 | 0 | 2 |
+| 2 — Evidence | 12 | 0 | 0 | 0 | 12 |
 | 3 — Sustain | 3 | 0 | 0 | 0 | 3 |
 
 _Last updated: 2026-09-08 (PDCA cycles 1–16). Cycle 15 = first live deploy to `rg-landfall`/swedencentral + verification: E1.1 / E1.5 / E1.6 / E5.4 / E5.5 **done**. Cycle 16 = **E8.2 done** — Function App EasyAuth on, anon `/api/*` → 401, agent calls tools via managed identity, Event Grid path intact. Phase 1 engine complete bar E1.7 / E4.3 / full E6.2. Live sample in SQL: 250 servers / 31 apps. Cycle 15 fixed 3 deploy bugs (see pdca-log). 127 pytest + 32 golden SQL + 8 scenarios + 26 fault cases green. Known gap: `schema.sql` drops+recreates tables on every `azd provision` (wipes loaded inventory) — needs idempotent migrations._
@@ -68,6 +68,8 @@ _Last updated: 2026-09-08 (PDCA cycles 1–16). Cycle 15 = first live deploy to 
 | E5.3 | Machine-tracked assumptions & exclusions register | P0 | in-review | PM | 9 | Register is generated across the run, not merged by hand. _Done — `_Reg`: collects every tool's caveats + standing exclusions, deduped + categorised (A/X/G ids). Sample: 28/6/8._ |
 | E5.4 | Client-ready exports — the package as a formatted **Excel workbook, Word document, and PowerPoint deck** | P0 | in-review | SWE + Writer | 13 | An architect can send the .xlsx / .docx / .pptx to a client with light edits; every figure keeps its calculation-appendix reference. _Done — `src/api/deliverable/export.py` + `POST /api/export_estimate`; 6 tests. Verified live: `publish_estimate` on the deployed Function generated `latest.{xlsx,docx,pptx}` (18 KB / 40 KB / 40 KB) to blob._ |
 | E5.5 | **Assessment dashboard web app** on the Container App — an Azure Migrate–style interactive dashboard of the estimate, with in-page export to Excel / Word / PPT | P0 | in-review | SWE | 14 | End user opens the engagement URL, sees the dashboard (inventory, cost, landing zone, waves, effort), and downloads any artifact. Professional, MS-assessment-tool visual quality. _Done — `src/web/dashboard.html` + `/dashboard*` routes + `POST /api/publish_estimate`; 7 tests; visual check passed. Verified live: `/dashboard` 200, `/dashboard/data` returns the published package, `/dashboard/download/{xlsx,docx,pptx}` stream with the right mime. Behind Container App EasyAuth (RedirectToLoginPage)._ |
+| E5.4q | **Export-quality upgrade** — `export.py` to the Anthropic `docx`/`xlsx` skill bar: `.xlsx` derived cells as **formulas not literals** + LibreOffice recalc-clean gate; `.docx` US-Letter DXA + tracked-changes-ready; `.pptx` native objects. Spec in `audits/path-to-5x5.md` §"Deliverable polish" | P1 | backlog | SWE | — | A reviewer changes an input in the .xlsx and the model re-flows; recalc reports 0 errors; architect edits land as Word tracked changes. |
+| E5.6 | **Studio-grade client deck** — `presentation-skill` (outline.json → pptxgenjs → `qa_gate.py`) + `ppt-master` (SVG → DrawingML) as a side-car (architect-local or a Node build container), invoked from the dashboard. Spec: PRD E5.6 | P1 | backlog | SWE + Writer | — | The deck a pre-sales lead shows a client is generated from `latest.json`, passes `qa_gate.py` + the E7.4 un-sourced-number guard, carries the DRAFT watermark, every headline number → an `F*` id. Phase 2. |
 
 ### E6 — Firm Config & Effort Model
 
@@ -155,3 +157,4 @@ _Last updated: 2026-09-08 (PDCA cycles 1–16). Cycle 15 = first live deploy to 
 | 14 | E5.5 — assessment dashboard web app on the Container App (Azure Migrate–style) with in-page export | [pdca-log.md](pdca-log.md) · **done** |
 | 15 | First live deploy to `rg-landfall` (cycles 5–14) + verification pass — E1.1 / E1.5 / E1.6 / E5.4 / E5.5 verified live; fixed `apply_sql.py` (db_datawriter), `eventgrid.sh` (MSYS path mangling), text-to-SQL enum hints; agent v4 (12 OpenAPI tools) | [pdca-log.md](pdca-log.md) · **done** |
 | 16 | E8.2 — Function App EasyAuth on live: app reg + `authsettingsV2` (Return401, `excludedPaths` blobs/durabletask), all 12 OpenAPI tools → managed-identity auth, `functionAuthClientId`/`functionAuthAllowedClientIds` Bicep params, DEPLOY.md recipe rewritten. Verified: anon → 401, agent works via MSI, ingestion intact | [pdca-log.md](pdca-log.md) · **done** |
+| — | Scope add (sponsor): E5.4q export-quality bar (`docx`/`xlsx` skills) → `audits/path-to-5x5.md` §"Deliverable polish"; E5.6 studio deck (`presentation-skill` + `ppt-master`) → PRD E5.6. Both P1/backlog. | doc-only | — |

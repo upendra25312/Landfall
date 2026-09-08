@@ -217,6 +217,66 @@ silently falls back — it says when it can't answer.
 
 ---
 
+## Deliverable polish — the artifact-generation bar
+
+The three client-ready exports (PRD **E5.4**) and the studio deck (**E5.6**) are what a
+client actually sees, so their production quality is a scored part of *Usability for
+pre-sales* (dimension 5) and *Defensibility* (dimension 2). The bar is set by Anthropic's
+own `docx` and `xlsx` document skills and the two PowerPoint skills the sponsor selected.
+
+**Excel (`.xlsx`) — the standard from the `xlsx` skill**
+(`github.com/anthropics/skills/tree/main/skills/xlsx`)
+- **Formulas, never hardcoded results.** A derived cell holds `='Run rate'!B4*12`, not
+  the number Python already computed. A reviewer must be able to change an input and see
+  the model re-flow — that is the whole point of shipping Excel rather than a PDF table.
+- Excel-2007-era functions only — `SUMIFS`, `INDEX`, `MATCH`, `IFERROR`. **Never**
+  `XLOOKUP`, `XMATCH`, `SORT`, `FILTER`, `UNIQUE`, `SEQUENCE` (they fail or silently
+  truncate in older Excel / LibreOffice). The six `_xlfn.`-prefixed functions only with
+  the prefix.
+- Formatting: Arial or Times New Roman; currency `$#,##0`; percentages as real fractions;
+  negatives in parentheses; frozen header panes; column widths that fit the content.
+- Every hardcoded input cell carries a comment naming its `F*` calculation-appendix id or
+  external source.
+- **Zero formula errors before delivery** — a headless LibreOffice recalc pass
+  (`soffice --headless`, à la the skill's `recalc.py`) must come back clean. Green recalc
+  proves the formulas *evaluate*; a human still checks they are *right*.
+
+**Word (`.docx`) — the standard from the `docx` skill**
+(`github.com/anthropics/skills/tree/main/skills/docx`)
+- Page size **US Letter in DXA units** — do not ship the library's A4 default.
+- Tables specify **both** column and cell widths; `ShadingType.CLEAR` for fills (never
+  `SOLID`); lists via numbering definitions, not literal `•` glyphs; `PageBreak` only
+  inside a paragraph.
+- Authored so an architect's edits come back as Word **tracked changes** — every
+  modification a proper `<w:ins>` / `<w:del>` with an `--author`; an `accept_changes`
+  pass produces the clean proposal copy. This is how the DRAFT → owned-by-architect
+  boundary (the core answer contract) shows up in the artifact itself.
+- Read-back for QA via `pandoc -t markdown`.
+
+**PowerPoint (`.pptx`) — the two sponsor-selected skills**
+- **`presentation-skill`** (`github.com/siril9/presentation-skill`) — source-first:
+  author an **`outline.json`** from the E5.1 package, never touch the `.pptx` directly;
+  pick a style preset + composition grammar suited to an Azure migration business case;
+  render via **pptxgenjs**; the **`qa_gate.py`** geometry/content/visual check must pass
+  before the deck is delivered.
+- **`ppt-master`** (`github.com/hugohe3/ppt-master`) — the design-rich path: SVG-layout →
+  native DrawingML, firm `.pptx` template preserved, optional narration / speaker notes.
+- Native editable objects only — shapes, tables, charts; never rasterised slides.
+- Both need a Node toolchain (+ LibreOffice / Poppler for render checks) that the Azure
+  Function runtime does not have, so E5.6 runs **side-car**: an architect runs the skill
+  locally on the downloaded `latest.json`, or the dashboard invokes a dedicated build
+  container. The Function's plain `python-pptx` deck (E5.4) stays the always-available
+  fallback.
+
+**Proof (Phase 2).** Three real estates → generate all four artifacts → (a) `xlsx`
+LibreOffice recalc reports 0 errors and an independent hand-calc of three headline
+figures ties out to the sheet; (b) `docx` opens clean in Word, tracked-changes round-trip
+works, every figure resolves to an `F*` id; (c) the studio `.pptx` passes `qa_gate.py`
+and the E7.4 un-sourced-number guard over its extracted text; (d) a pre-sales lead who
+has not seen the code sends all four to a mock client with only light edits.
+
+---
+
 ## Phasing
 
 | Phase | Scope | Duration | Score after |
