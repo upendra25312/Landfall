@@ -1,0 +1,295 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Landfall — Migration Assessment</title>
+<style>
+  :root{
+    --accent:#0a6ed1; --accent-ink:#fff;
+    --bg:#f3f4f6; --panel:#ffffff; --ink:#1b1f24; --muted:#5b6673; --line:#e3e6ea;
+    --good:#107c41; --warn:#9a6700; --bad:#b3261e; --draft:#8a3b00;
+    --c1:#0a6ed1; --c2:#33b1c9; --c3:#7a5cff; --c4:#e08600; --c5:#8a8f98;
+  }
+  @media (prefers-color-scheme:dark){
+    :root:not([data-theme=light]){
+      --bg:#0c1116; --panel:#161c23; --ink:#e6edf3; --muted:#8b98a5; --line:#26303b;
+      --good:#3fb950; --warn:#d29922; --bad:#f85149; --draft:#e3934d;
+    }
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font:14px/1.55 "Segoe UI",system-ui,-apple-system,Roboto,Helvetica,Arial,sans-serif}
+  a{color:var(--accent)}
+  .wrap{max-width:1200px;margin:0 auto;padding:0 20px 64px}
+  header{background:var(--panel);border-bottom:1px solid var(--line)}
+  .hrow{max-width:1200px;margin:0 auto;padding:16px 20px;display:flex;align-items:center;
+    gap:16px;flex-wrap:wrap}
+  .brand{font-weight:600;font-size:16px;display:flex;align-items:center;gap:10px}
+  .brand .dot{width:10px;height:10px;border-radius:3px;background:var(--accent)}
+  .badge{font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;
+    padding:3px 8px;border-radius:4px;background:color-mix(in srgb,var(--draft) 16%,transparent);
+    color:var(--draft);border:1px solid color-mix(in srgb,var(--draft) 30%,transparent)}
+  .pill{font-size:12px;padding:3px 9px;border-radius:999px;border:1px solid var(--line);color:var(--muted)}
+  .spacer{flex:1}
+  .dl{display:flex;gap:8px}
+  .dl a{font-size:13px;font-weight:600;text-decoration:none;padding:7px 12px;border-radius:6px;
+    border:1px solid var(--line);color:var(--ink);background:var(--panel)}
+  .dl a:hover{border-color:var(--accent);color:var(--accent)}
+  h1{font-size:20px;margin:26px 0 4px}
+  .sub{color:var(--muted);margin:0 0 20px}
+  .tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px;margin:18px 0 8px}
+  .tile{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px 16px}
+  .tile .k{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.03em}
+  .tile .v{font-size:22px;font-weight:650;margin-top:6px;font-variant-numeric:tabular-nums}
+  .tile .r{font-size:11px;color:var(--muted);margin-top:4px}
+  .grid{display:grid;grid-template-columns:repeat(12,1fr);gap:16px;margin-top:16px}
+  .card{grid-column:span 6;background:var(--panel);border:1px solid var(--line);border-radius:12px;
+    padding:16px 18px}
+  .card.wide{grid-column:span 12}
+  .card h2{font-size:14px;margin:0 0 12px;display:flex;align-items:center;gap:8px}
+  .card h2 .ref{font-size:10px;color:var(--muted);font-weight:500}
+  @media (max-width:860px){.card{grid-column:span 12}}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th,td{text-align:left;padding:7px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+  th{color:var(--muted);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.03em}
+  td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
+  .kv{display:grid;grid-template-columns:auto 1fr;gap:4px 14px;font-size:13px}
+  .kv b{color:var(--muted);font-weight:500}
+  .bar{height:10px;border-radius:3px;background:color-mix(in srgb,var(--accent) 22%,transparent);overflow:hidden}
+  .bar > i{display:block;height:100%;background:var(--accent);border-radius:3px}
+  .risk-low > i{background:var(--good)} .risk-medium > i{background:var(--warn)} .risk-high > i{background:var(--bad)}
+  .chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+  .chip{font-size:12px;padding:2px 8px;border-radius:6px;border:1px solid var(--line);color:var(--muted)}
+  details{margin-top:8px} summary{cursor:pointer;color:var(--accent);font-size:13px}
+  .legend{display:flex;flex-wrap:wrap;gap:10px;font-size:12px;color:var(--muted);margin-top:10px}
+  .legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;vertical-align:middle}
+  .empty{background:var(--panel);border:1px dashed var(--line);border-radius:12px;padding:40px;text-align:center;color:var(--muted)}
+  .foot{color:var(--muted);font-size:12px;margin-top:24px;border-top:1px solid var(--line);padding-top:14px}
+  code{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:12px}
+</style>
+</head>
+<body>
+<header>
+  <div class="hrow">
+    <div class="brand"><span class="dot"></span> Landfall — Migration Assessment</div>
+    <span class="badge" id="statusBadge">Draft</span>
+    <span class="pill" id="confPill">confidence —</span>
+    <span class="spacer"></span>
+    <div class="dl">
+      <a href="/dashboard/download/xlsx">Excel</a>
+      <a href="/dashboard/download/docx">Word</a>
+      <a href="/dashboard/download/pptx">PowerPoint</a>
+    </div>
+  </div>
+</header>
+
+<div class="wrap" id="root">
+  <div class="empty" id="loading">Loading the assessment…</div>
+</div>
+
+<script>
+const $ = (s,el=document)=>el.querySelector(s);
+const fmt = n => n==null ? "—" : (Math.abs(n)>=100 ? Math.round(n).toLocaleString()
+                : n.toLocaleString(undefined,{maximumFractionDigits:2}));
+const money = (n,cur) => n==null ? "—" : (cur? cur+" " : "$") + fmt(n);
+const el = (tag,cls,html)=>{const e=document.createElement(tag); if(cls)e.className=cls;
+  if(html!=null)e.innerHTML=html; return e;};
+
+function figMap(pkg){const m={}; (pkg.figures||[]).forEach(f=>m[f.key]=f); return m;}
+function sectionBody(pkg,key){const s=(pkg.sections||[]).find(x=>x.key===key); return s? s.body||{} : {};}
+function ref(f){return f? `<span class="ref">${f.id}</span>` : "";}
+
+function tile(label,value,r){
+  const t=el("div","tile");
+  t.append(el("div","k",label), el("div","v",value));
+  if(r) t.append(el("div","r",r));
+  return t;
+}
+
+function donut(parts){ // parts: [{label,value,color}]
+  const total=parts.reduce((a,p)=>a+p.value,0)||1; let acc=0; const R=52,C=2*Math.PI*R;
+  const segs=parts.map(p=>{const len=p.value/total*C; const s=`<circle r="${R}" cx="70" cy="70" fill="none"
+     stroke="${p.color}" stroke-width="20" stroke-dasharray="${len} ${C-len}"
+     stroke-dashoffset="${-acc}" transform="rotate(-90 70 70)"/>`; acc+=len; return s;}).join("");
+  return `<svg viewBox="0 0 140 140" width="140" height="140" role="img">${segs}</svg>`;
+}
+
+function render(pkg){
+  const root=$("#root"); root.innerHTML="";
+  const meta=pkg.meta||{}, F=figMap(pkg);
+  $("#statusBadge").textContent = meta.status||"Draft";
+  $("#confPill").textContent = "confidence " + (meta.overall_confidence||"—");
+
+  root.append(el("h1",null,`Migration estimate — ${meta.package_id||""}`));
+  root.append(el("p","sub",
+    `Region ${meta.region||"n/a"} · ${meta.currency||"USD"} · prices ${meta.price_date||"n/a"}`
+    + (meta.generated_on? ` · generated ${meta.generated_on}`:"")
+    + (meta.tools_failed&&meta.tools_failed.length? ` · ⚠ tools failed: ${meta.tools_failed.join(", ")}`:"")));
+
+  // headline tiles
+  const cs=sectionBody(pkg,"current_state");
+  const tiles=el("div","tiles");
+  tiles.append(
+    tile("Servers", fmt(cs.servers), F.servers_total?F.servers_total.id:""),
+    tile("Applications", fmt(cs.applications), F.apps_total?F.apps_total.id:""),
+    tile("Azure run-rate / mo", money(F.run_rate_monthly?.value, meta.currency),
+         F.run_rate_monthly? F.run_rate_monthly.id+" · "+F.run_rate_monthly.confidence : ""),
+    tile("Run-rate / year", money(F.run_rate_annual?.value, meta.currency), F.run_rate_annual?.id||""),
+    tile("One-time migration", money(F.one_time_cost?.value, meta.currency), F.one_time_cost?.id||""),
+    tile("Migration effort", (F.effort_pd? fmt(F.effort_pd.value)+" PD":"—"), F.effort_pd?.id||""),
+    tile("Services cost", money(F.services_cost?.value, meta.currency), F.services_cost?.id||""),
+  );
+  root.append(tiles);
+
+  const grid=el("div","grid"); root.append(grid);
+
+  // --- inventory & readiness
+  grid.append(card("Inventory & readiness","F1", `
+    <div class="kv">
+      <b>Servers</b><span>${fmt(cs.servers)} (${cs.servers_powered_on??"?"} powered on)</span>
+      <b>Applications</b><span>${fmt(cs.applications)}</span>
+      <b>Compute</b><span>${fmt(cs.total_vcpu)} vCPU · ${fmt(cs.total_ram_gb)} GB RAM</span>
+      <b>Storage</b><span>${fmt(cs.provisioned_disk_tb)} TB provisioned · ${fmt(cs.used_disk_tb)} TB used</span>
+      <b>OS past end-of-support</b><span>${fmt(cs.eol_servers)} servers</span>
+      <b>No performance history</b><span>${fmt(cs.no_perf_data_servers)} servers</span>
+      <b>Data-quality confidence</b><span>${cs.data_quality_confidence||"n/a"}</span>
+    </div>
+    ${barsFromObj(cs.by_env,"By environment")}`));
+
+  // --- run-rate cost
+  const rc=sectionBody(pkg,"run_rate_cost"), drivers=rc.top_cost_drivers||[];
+  const dcolors=["var(--c1)","var(--c2)","var(--c3)","var(--c4)","var(--c5)"];
+  const shown=drivers.reduce((a,d)=>a+d.share_pct,0);
+  const dslices=drivers.map((d,i)=>({label:d.driver,value:d.monthly,color:dcolors[i%5]}));
+  if(shown<99 && rc.monthly) dslices.push({label:"Other",value:rc.monthly*(100-shown)/100,color:"var(--c5)"});
+  grid.append(card("Azure run-rate cost","F8", `
+    <div style="display:flex;gap:18px;align-items:center;flex-wrap:wrap">
+      <div>${donut(dslices)}</div>
+      <div style="flex:1;min-width:180px">
+        <div style="font-size:20px;font-weight:650">${money(rc.monthly,meta.currency)} <span style="font-size:12px;color:var(--muted)">/ month</span></div>
+        <div style="color:var(--muted);font-size:13px">~${money(rc.annual,meta.currency)} / year · ${rc.reserved_term||"?"} reserved</div>
+        ${rc.one_time? `<div style="color:var(--muted);font-size:13px">one-time ~${money(rc.one_time,meta.currency)}</div>`:""}
+      </div>
+    </div>
+    <table style="margin-top:12px"><thead><tr><th>Cost driver</th><th class="num">Share</th></tr></thead><tbody>
+      ${drivers.map((d,i)=>`<tr><td><i class="legend" style="background:${dcolors[i%5]};width:9px;height:9px;display:inline-block;border-radius:2px;margin-right:6px"></i>${d.driver}</td><td class="num">${d.share_pct}%</td></tr>`).join("")}
+    </tbody></table>`));
+
+  // --- landing zone
+  const lz=sectionBody(pkg,"landing_zone");
+  grid.append(card("Landing zone","F13", lz.note? `<p class="sub">${lz.note}</p>` : `
+    <p style="margin:0 0 8px">${lz.summary||""}</p>
+    <div class="kv">
+      <b>Region</b><span>${lz.region||"?"} → DR ${lz.dr_region||"?"}</span>
+      <b>Identity</b><span>${lz.identity||"?"}</span>
+      <b>Connectivity</b><span>${lz.connectivity||"?"}</span>
+      <b>Regulated scopes</b><span>${(lz.regulated_scopes&&lz.regulated_scopes.length)? lz.regulated_scopes.join(", ") : "none"}</span>
+    </div>
+    <div class="chips">${(lz.spokes||[]).map(s=>`<span class="chip">${s.name} ${s.address_space||""}</span>`).join("")}</div>
+    <p style="color:var(--muted);font-size:12px;margin-top:10px">${lz.dr||""}</p>`));
+
+  // --- disposition
+  const dp=sectionBody(pkg,"disposition"), bd=dp.by_disposition||{};
+  const dispColors={Rehost:"var(--c1)",Replatform:"var(--c3)",Repurchase:"var(--c4)",Retire:"var(--c5)",Retain:"var(--c2)",Refactor:"var(--bad)"};
+  const dtot=Object.values(bd).reduce((a,b)=>a+b,0)||1;
+  grid.append(card("Application disposition (6R)",null, dp.note? `<p class="sub">${dp.note}</p>` : `
+    <div class="bar" style="height:20px;display:flex">
+      ${Object.entries(bd).map(([k,v])=>`<i style="width:${v/dtot*100}%;background:${dispColors[k]||"var(--c5)"};border-radius:0" title="${k}: ${v}"></i>`).join("")}
+    </div>
+    <div class="legend">${Object.entries(bd).map(([k,v])=>`<span><i style="background:${dispColors[k]||"var(--c5)"}"></i>${k} ${v}</span>`).join("")}</div>
+    ${(dp.needs_human_decision&&dp.needs_human_decision.length)? `<p style="font-size:12px;color:var(--warn);margin-top:10px">Needs a business decision: ${dp.needs_human_decision.join(", ")}</p>`:""}`));
+
+  // --- waves
+  const wv=sectionBody(pkg,"waves");
+  grid.append(card("Migration wave plan","F14", wv.note? `<p class="sub">${wv.note}</p>` : `
+    <table><thead><tr><th>Wave</th><th>Kind</th><th class="num">Apps</th><th class="num">Servers</th><th>Risk</th></tr></thead><tbody>
+    ${(wv.waves||[]).map(w=>`<tr>
+      <td>${w.wave}</td><td>${w.kind}</td><td class="num">${w.app_count}</td><td class="num">${w.server_count}</td>
+      <td><div class="bar risk-${w.risk_band}" style="width:110px"><i style="width:${Math.min(100,w.risk_score)}%"></i></div>
+          <span style="font-size:11px;color:var(--muted)">${w.risk_score} ${w.risk_band}</span></td>
+    </tr>`).join("")}
+    </tbody></table>`));
+
+  // --- effort
+  const ef=sectionBody(pkg,"migration_effort");
+  grid.append(card("Migration effort & services cost","F11", `
+    <div style="font-size:20px;font-weight:650">${fmt(ef.estimate_at_completion_pd)} <span style="font-size:12px;color:var(--muted)">person-days (EAC)</span></div>
+    <div style="color:var(--muted);font-size:13px">range ${fmt(ef.range_pd?.low)}–${fmt(ef.range_pd?.high)} PD ·
+      services ~${money(ef.services_cost?.expected, ef.services_cost?.currency)}
+      (${money(ef.services_cost?.low, ef.services_cost?.currency)}–${money(ef.services_cost?.high, ef.services_cost?.currency)})</div>
+    ${(()=>{const ws=(ef.workstreams||[]).slice().sort((a,b)=>b.pd-a.pd);const mx=Math.max(...ws.map(w=>w.pd),1);
+      return `<div style="margin-top:12px">${ws.slice(0,7).map(w=>`
+        <div style="display:flex;align-items:center;gap:8px;margin-top:5px">
+          <span style="width:210px;font-size:12px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${w.workstream}</span>
+          <div class="bar" style="flex:1"><i style="width:${w.pd/mx*100}%"></i></div>
+          <span style="width:52px;text-align:right;font-size:12px" class="num">${fmt(w.pd)}</span></div>`).join("")}</div>`;})()}
+    <p style="font-size:12px;color:var(--muted);margin-top:10px">${ef.basis||""}</p>`));
+
+  // --- register + appendix (wide)
+  const reg=pkg.register||{};
+  grid.append(card("Assumptions, exclusions & data gaps",null, `
+    <div class="kv">
+      <b>Assumptions</b><span>${(reg.assumptions||[]).length}</span>
+      <b>Exclusions</b><span>${(reg.exclusions||[]).length}</span>
+      <b>Data gaps</b><span>${(reg.data_gaps||[]).length}</span>
+    </div>
+    ${regList("Assumptions",reg.assumptions)}
+    ${regList("Exclusions",reg.exclusions)}
+    ${regList("Data gaps",reg.data_gaps)}`,true));
+
+  const app=el("div","card wide");
+  app.append(el("h2",null,"Calculation appendix — every figure, traceable"));
+  const d=el("details"); d.append(el("summary",null,"Show the calculation appendix"));
+  const tbl=el("table"); tbl.innerHTML=`<thead><tr><th>Ref</th><th>Figure</th><th class="num">Result</th>
+    <th>Formula</th><th>Inputs</th><th>Assumptions</th><th>Conf.</th></tr></thead><tbody>${
+    (pkg.calculation_appendix||[]).map(a=>`<tr>
+      <td>${a.figure_id}</td><td>${a.label}</td><td class="num">${fmt(a.result)} ${a.unit||""}</td>
+      <td><code>${a.formula||""}</code></td>
+      <td>${Object.entries(a.inputs||{}).filter(([,v])=>v!=null).map(([k,v])=>`${k}=${fmt(v)}`).join(", ")||"—"}</td>
+      <td>${(a.assumptions_applied||[]).join(", ")||"—"}</td><td>${a.confidence||""}</td>
+    </tr>`).join("")}</tbody>`;
+  d.append(tbl); app.append(d); grid.append(app);
+
+  root.append(el("p","foot",
+    (meta.watermark||"DRAFT — architect review required")
+    + " · every figure on this page comes from the estimate package; references (F#) tie to the calculation appendix."));
+}
+
+function card(title,refId,html,wide){
+  const c=el("div","card"+(wide?" wide":""));
+  c.append(el("h2",null, title + (refId? ` <span class="ref">${refId}</span>`:"")));
+  c.append(el("div",null,html));
+  return c;
+}
+function barsFromObj(obj,title){
+  if(!obj) return "";
+  const max=Math.max(...Object.values(obj))||1;
+  return `<div style="margin-top:10px;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.03em">${title}</div>`
+    + Object.entries(obj).map(([k,v])=>`<div style="display:flex;align-items:center;gap:8px;margin-top:5px">
+        <span style="width:70px;font-size:12px;color:var(--muted)">${k}</span>
+        <div class="bar" style="flex:1"><i style="width:${v/max*100}%"></i></div>
+        <span style="width:38px;text-align:right;font-size:12px" class="num">${v}</span></div>`).join("");
+}
+function regList(label,items){
+  if(!items||!items.length) return "";
+  return `<details><summary>${label} (${items.length})</summary><ul style="margin:6px 0 0;padding-left:18px">
+    ${items.map(i=>`<li style="margin:3px 0"><b>${i.id}</b> ${i.text}${i.source&&i.source!=="standing"?` <span style="color:var(--muted)">(${i.source})</span>`:""}</li>`).join("")}
+  </ul></details>`;
+}
+
+fetch("/dashboard/data").then(r=>{
+  if(r.status===404) throw new Error("no-estimate");
+  if(!r.ok) throw new Error("http "+r.status);
+  return r.json();
+}).then(render).catch(err=>{
+  $("#root").innerHTML = err.message==="no-estimate"
+    ? `<div class="empty"><h2 style="margin:0 0 8px">No assessment published yet</h2>
+       <p>Run the estimator and call <code>publish_estimate</code> (or the operator does it once).<br>
+       The dashboard will show the current-state summary, right-sizing &amp; cost, landing zone,
+       6R disposition, wave plan and migration effort — with Excel / Word / PowerPoint downloads.</p></div>`
+    : `<div class="empty">Could not load the assessment (${err.message}).</div>`;
+});
+</script>
+</body>
+</html>

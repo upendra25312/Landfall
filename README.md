@@ -80,10 +80,10 @@ blob events.
 | `src/api/cost/` | deterministic cost engine — `vm_rightsize`, `estimate_compute_cost`, `estimate_storage_cost`, `estimate_run_rate_extras`, SKU catalogue, `estimation_config.json` loader |
 | `src/api/lz/` | `design_landing_zone` — CAF Azure Landing Zone (MGs, subs, hub-spoke + IP plan, policy, identity, DR) derived from the app portfolio + compliance scope |
 | `src/api/waves/` | `score_dispositions` (rule-derived 6R + rationale) and `plan_waves` (dependency graph → affinity move-groups → risk-ordered waves) |
-| `src/api/deliverable/` | `assemble_estimate` — every tool's output → one package (8 sections, calculation appendix + stable figure IDs, assumptions/exclusions register, parametric effort + services cost, markdown render); `export_estimate` — the package as an Excel workbook, Word document, or PowerPoint deck |
+| `src/api/deliverable/` | `assemble_estimate` — every tool's output → one package (8 sections, calculation appendix + stable figure IDs, assumptions/exclusions register, parametric effort + services cost, markdown render); `export_estimate` — Excel / Word / PowerPoint; `publish_estimate` — writes it to blob for the dashboard |
 | `estimation_config.json` | your firm's estimation inputs — pricing, right-sizing, storage/extras rates, `landing_zone`, `disposition`, `waves`, `effort` bands, `deliverable` sections |
 | `src/api/openapi/` | OpenAPI 3.0 specs for those tools; `create_agent.py` points them at the deployed Function app |
-| `src/web/` | FastAPI chat UI container |
+| `src/web/` | FastAPI Container App — `/` chat UI + `/dashboard` (Azure Migrate–style assessment dashboard: reads the published estimate, Excel/Word/PPT downloads) |
 | `samples/smoke-questions.xlsx` | two-question sheet for a first end-to-end test of the batch runner |
 | `docs/operating-sop.html` | **how to use a deployed Landfall** — step-by-step SOP from data load to architect hand-off |
 | `docs/build-spec.html` | solution build specification |

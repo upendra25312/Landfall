@@ -5,6 +5,72 @@ Operating model: [`landfall-5x5-prd.md` §7](landfall-5x5-prd.md). Tracker:
 
 ---
 
+## Cycle 14 — assessment dashboard web app (E5.5)
+
+**Date:** 2026-09-08 · **Owner:** SWE · **Tracker:** E5.5 (done) · **Sponsor ask:** an
+Azure Migrate–style interactive dashboard on the Container App with in-page export.
+
+### Plan
+
+- **`publish_estimate`** (Function) — assemble → write `answers/estimate/latest.json` +
+  `latest.{xlsx,docx,pptx}` to blob.
+- **`src/web`** — the FastAPI Container App gains `/dashboard` (static page),
+  `/dashboard/data` (the package JSON from blob, 404 if unpublished),
+  `/dashboard/download/{fmt}` (streams the export blob). Chat client lazy-init'd so the
+  container starts without Foundry.
+- **`src/web/dashboard.html`** — a self-contained page (no CDN): header with DRAFT
+  badge + confidence pill + Excel/Word/PPT buttons; a strip of headline tiles; a panel
+  grid (inventory & readiness with a by-env bar chart; run-rate cost with a donut +
+  driver table; landing zone with spoke chips; 6R as a stacked bar; the wave table with
+  per-wave risk bars; effort with a workstream bar chart); a collapsible calculation
+  appendix and the register. Every figure shows its `F*` id. Light + dark.
+- **Bicep** — `STORAGE_URL` env on the container app.
+
+**Acceptance**
+
+| # | Criterion | Check |
+|---|---|---|
+| C1 | `publish_estimate` writes exactly `latest.json` + 3 exports; the JSON round-trips | `test_dashboard` |
+| C2 | `publish_estimate` rejects an empty body | `test_dashboard` |
+| C3 | `/dashboard` serves the page and wires `/dashboard/data` + the 3 download links | `test_dashboard` |
+| C4 | `/dashboard/data` → 404 when nothing published; returns the package when it is | `test_dashboard` |
+| C5 | `/dashboard/download/{fmt}` streams with the right mime + attachment header; bad fmt → 400 | `test_dashboard` |
+| C6 | `/healthz` reports `estimate_published` | `test_dashboard` |
+| C7 | renders correctly against a real package (visual check) | Playwright screenshot |
+
+### Do
+
+- `src/api/deliverable/functions.py` — `_container_client` + `POST /api/publish_estimate`.
+  `src/api/openapi/publish_estimate.json` + `create_agent.py` tool #12.
+- `src/web/app.py` — lazy OpenAI client, `_read_estimate_blob`, 3 dashboard routes,
+  `/healthz` extended, chat header links `/dashboard`. `src/web/dashboard.html` — new.
+  `src/web/requirements.txt` — `azure-storage-blob`. `infra/resources.bicep` — container
+  `STORAGE_URL`.
+- `tests/test_dashboard.py` — 7 cases (127 total); `fastapi` + `httpx` added to
+  `tests/requirements-dev.txt`. `DEPLOY.md`, `README.md`, `tests/README.md` updated.
+
+### Check
+
+`pytest tests -q` → **127 passed**. Visual: rendered the dashboard against the full
+sample package (Playwright) — headline tiles, the by-env bars, the cost donut (with an
+"Other" slice to 100%), the spoke chips, the 6R stacked bar, the 7-wave risk table, the
+workstream bars, the collapsible appendix — all correct, Azure-portal-like, light+dark.
+
+### Act
+
+- **E5.5 done.** The estimate is now (a) a JSON package, (b) a markdown render, (c)
+  Excel / Word / PowerPoint files, and (d) an interactive dashboard the client opens by
+  URL and exports from.
+- **Watch:** the dashboard needs `publish_estimate` to have been called (shows a
+  friendly "nothing published yet" state otherwise). The container-app routes are
+  behind the same Easy Auth as the chat page (manual, per DEPLOY step 1). A live `azd
+  deploy web` is the real confirmation (same bucket as E1.6 / E8.2).
+- **Phase 1 backlog left:** E1.7 (mapping override), E4.3 (duration model), full E6.2
+  resource loading. **Phase 1 engine is otherwise complete.**
+- **Next:** E1.6 / E8.2 / E5.5 live verification via `azd`, then Phase 2 (evidence pack).
+
+---
+
 ## Cycle 13 — client-ready exports: Excel / Word / PowerPoint
 
 **Date:** 2026-09-08 · **Owner:** SWE + Staff Writer · **Tracker:** E5.4 (done) ·

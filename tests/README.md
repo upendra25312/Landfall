@@ -1,6 +1,6 @@
 # tests/
 
-Unit tests for Landfall — pure logic that runs without Azure (120 cases):
+Unit tests for Landfall — pure logic that runs without Azure (127 cases):
 the ingestion pipeline (`src/api/ingest/`), the cost engine (`src/api/cost/` —
 right-sizer, `estimate_compute_cost`, `estimate_storage_cost`,
 `estimate_run_rate_extras`) with injected price/rate books, the landing-zone
@@ -8,8 +8,9 @@ designer (`src/api/lz/`), the wave engine (`src/api/waves/` —
 `score_dispositions`, `plan_waves`), and the deliverable assembler
 (`src/api/deliverable/` — `assemble_estimate`, `estimate_effort`, `export`),
 including a full-pipeline test that runs every tool over the sample estate,
-assembles it, and renders the Excel / Word / PowerPoint exports; and the SQL
-guard (`src/api/sqlguard.py`).
+assembles it, and renders the Excel / Word / PowerPoint exports; the SQL
+guard (`src/api/sqlguard.py`); and the assessment dashboard (`src/web` —
+`publish_estimate` blob writes + the `/dashboard` routes via FastAPI TestClient).
 
 ```bash
 .venv2/Scripts/python -m pip install -r tests/requirements-dev.txt

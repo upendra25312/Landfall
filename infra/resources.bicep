@@ -295,6 +295,7 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
             { name: 'AZURE_CLIENT_ID', value: uami.properties.clientId }
             { name: 'APPLICATIONINSIGHTS_CONNECTION_STRING', value: appInsights.properties.ConnectionString }
             { name: 'AGENT_ID', value: agentId } // seeded from azd env; postprovision refreshes it
+            { name: 'STORAGE_URL', value: storage.properties.primaryEndpoints.blob } // assessment dashboard reads answers/estimate/*
           ]
         }
       ]

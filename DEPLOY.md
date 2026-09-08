@@ -72,8 +72,8 @@ What `azd up` does:
      (`query_inventory`, `vm_rightsize`, `estimate_compute_cost`,
      `estimate_storage_cost`, `estimate_run_rate_extras`, `design_landing_zone`,
      `score_dispositions`, `plan_waves`, `assemble_estimate`, `export_estimate`,
-     `azure_retail_prices`) pointed at the Function app. The agent is addressed
-     by **name**
+     `publish_estimate`, `azure_retail_prices`) pointed at the Function app. The
+     agent is addressed by **name**
      (`landfall-migration-estimator`), not an `asst_` id; that name is written to
      `AGENT_ID` in the azd env and pushed to both running services.
 3. **deploy** — zip-deploys `src/api` to the Function app and builds + pushes the
@@ -86,7 +86,11 @@ What `azd up` does:
    Idempotent and `continueOnError` — re-run by hand with `azd hooks run postdeploy` if
    the function host was still warming up.
 
-At the end `azd` prints the **`SERVICE_WEB_URI`** — the chat UI.
+At the end `azd` prints the **`SERVICE_WEB_URI`** — the Container App. It serves two
+pages: `/` (the chat UI) and `/dashboard` (the **assessment dashboard** — an Azure
+Migrate–style read of the estimate, with Excel / Word / PowerPoint download buttons).
+The dashboard is populated when the agent (or an operator) calls **`publish_estimate`**,
+which writes the assembled package + the three exports to `answers/estimate/`.
 
 ---
 

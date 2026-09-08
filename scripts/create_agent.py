@@ -51,6 +51,7 @@ _OPENAPI_TOOLS = {
     "plan_waves": "Risk-ordered migration wave plan - server dependency graph -> affinity move-groups -> waves (pilot first, regulated last) with entry/exit criteria and cross-wave blocking dependencies. Pass applications + servers + dependencies.",
     "assemble_estimate": "Assembles every other tool's output + an inventory summary into ONE structured estimate package: 8 sections, a stable ID + calculation appendix on every figure, an assumptions/exclusions/data-gaps register, a parametric effort + services-cost estimate, and a markdown render. Call this last.",
     "export_estimate": "Renders the assembled estimate package into a client-ready file - Excel workbook, Word document, or PowerPoint deck (format = xlsx|docx|pptx). Pass the assemble_estimate result. Returns the file.",
+    "publish_estimate": "Assembles the estimate and writes it + the Excel/Word/PPT exports to blob so the assessment dashboard web app shows it. Call after assembling; then point the user at the Container App /dashboard URL.",
     "azure_retail_prices": "Live Azure pay-as-you-go and reserved prices (cached proxy over prices.azure.com) - for ad-hoc price lookups outside the compute BoM.",
 }
 
@@ -89,6 +90,9 @@ server/application migration from client-supplied on-premises inventory.
 - When the user wants a client-ready file, call `export_estimate` with the
   `assemble_estimate` result and `format` = xlsx (Excel workbook), docx (Word), or
   pptx (PowerPoint). Offer all three; each drops into the proposal with light edits.
+- To make the estimate available as the interactive **assessment dashboard**, call
+  `publish_estimate` with the `assemble_estimate` result, then give the user the
+  chat-UI Container App URL with `/dashboard` (they download Excel/Word/PPT from there).
 - Use `microsoft_docs` for Cloud Adoption Framework and target-service guidance.
 - Use `search_documents` for client constraints (compliance, network, DR, non-functional).
 

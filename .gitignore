@@ -19,3 +19,4 @@ obj/
 
 # claude code — keep shared plugin config, ignore per-user local settings
 .claude/settings.local.json
+.playwright-mcp/

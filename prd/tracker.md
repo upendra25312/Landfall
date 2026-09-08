@@ -11,11 +11,11 @@ Companion to [`prd/landfall-5x5-prd.md`](landfall-5x5-prd.md). Delivery log:
 
 | Phase | Items | Done | In review | In progress | Backlog |
 |---|---|---|---|---|---|
-| 1 — Engine | 36 | 0 | 32 | 1 | 3 |
+| 1 — Engine | 36 | 0 | 33 | 1 | 2 |
 | 2 — Evidence | 11 | 0 | 0 | 0 | 11 |
 | 3 — Sustain | 3 | 0 | 0 | 0 | 3 |
 
-_Last updated: 2026-09-08 (PDCA cycles 1–13; D1 done; E2–E8 + E5.4 in review. Backlog: E1.7, E4.3, E5.5. Live checks pending: E1.6 ingestion, E8.2 EasyAuth). Full engine + eval harness + CI gate + security + Excel/Word/PPT exports. Sample: run-rate ~$119k/mo + ~$77k one-time; effort ~834 PD / ~$650k services. 120 pytest + 32 golden SQL + 8 scenarios + 26 fault cases green. Next: E5.5 assessment dashboard web app on the Container App._
+_Last updated: 2026-09-08 (PDCA cycles 1–14; D1 done; E2–E8 + E5.4 + E5.5 in review. Phase 1 engine complete bar E1.7 / E4.3 / full E6.2. Live checks pending: E1.6 ingestion, E8.2 EasyAuth, E5.5 dashboard). Full engine + eval harness + CI gate + security + Excel/Word/PPT exports + Azure Migrate–style assessment dashboard on the Container App. Sample: run-rate ~$119k/mo + ~$77k one-time; effort ~834 PD / ~$650k services. 127 pytest + 32 golden SQL + 8 scenarios + 26 fault cases green._
 
 ---
 
@@ -67,7 +67,7 @@ _Last updated: 2026-09-08 (PDCA cycles 1–13; D1 done; E2–E8 + E5.4 in review
 | E5.2 | Stable IDs + calculation appendix on every figure | P0 | in-review | SWE | 9 | 10 random figures each traceable using only the delivered doc. _Done — `F*` ids + `calculation_appendix` (formula, inputs, assumptions_applied, confidence) per figure._ |
 | E5.3 | Machine-tracked assumptions & exclusions register | P0 | in-review | PM | 9 | Register is generated across the run, not merged by hand. _Done — `_Reg`: collects every tool's caveats + standing exclusions, deduped + categorised (A/X/G ids). Sample: 28/6/8._ |
 | E5.4 | Client-ready exports — the package as a formatted **Excel workbook, Word document, and PowerPoint deck** | P0 | in-review | SWE + Writer | 13 | An architect can send the .xlsx / .docx / .pptx to a client with light edits; every figure keeps its calculation-appendix reference. _Done — `src/api/deliverable/export.py` + `POST /api/export_estimate`; 6 tests; sample renders 12-sheet xlsx / docx / 11-slide pptx, all re-open._ |
-| E5.5 | **Assessment dashboard web app** on the Container App — an Azure Migrate–style interactive dashboard of the estimate, with in-page export to Excel / Word / PPT | P0 | backlog | SWE | 14 | End user opens the engagement URL, sees the dashboard (inventory, cost, landing zone, waves, effort), and downloads any artifact. Professional, MS-assessment-tool visual quality. |
+| E5.5 | **Assessment dashboard web app** on the Container App — an Azure Migrate–style interactive dashboard of the estimate, with in-page export to Excel / Word / PPT | P0 | in-review | SWE | 14 | End user opens the engagement URL, sees the dashboard (inventory, cost, landing zone, waves, effort), and downloads any artifact. Professional, MS-assessment-tool visual quality. _Done — `src/web/dashboard.html` + `/dashboard*` routes + `POST /api/publish_estimate`; 7 tests; visual check passed. Live `azd deploy web` pending._ |
 
 ### E6 — Firm Config & Effort Model
 
@@ -152,4 +152,4 @@ _Last updated: 2026-09-08 (PDCA cycles 1–13; D1 done; E2–E8 + E5.4 in review
 | 11 | E7.3 / E7.4 / E7.5 — fault-injection harness + un-sourced-number output guard + CI scorecard gate | [pdca-log.md](pdca-log.md) · **done** |
 | 12 | E8.3 / E8.4 / E9.1 done + E8.1 / E8.2 in-review — SQL allow-list guard + timeout, no SQL in logs, Python schema/grant (no sqlcmd), EasyAuth Bicep param, isolation note | [pdca-log.md](pdca-log.md) · **done** |
 | 13 | E5.4 — client-ready exports: assembled package → Excel / Word / PowerPoint | [pdca-log.md](pdca-log.md) · **done** |
-| 14 | E5.5 — assessment dashboard web app on the Container App (Azure Migrate–style) with in-page export | planned |
+| 14 | E5.5 — assessment dashboard web app on the Container App (Azure Migrate–style) with in-page export | [pdca-log.md](pdca-log.md) · **done** |
