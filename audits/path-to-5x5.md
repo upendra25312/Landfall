@@ -221,8 +221,24 @@ silently falls back — it says when it can't answer.
 
 The three client-ready exports (PRD **E5.4**) and the studio deck (**E5.6**) are what a
 client actually sees, so their production quality is a scored part of *Usability for
-pre-sales* (dimension 5) and *Defensibility* (dimension 2). The bar is set by Anthropic's
-own `docx` and `xlsx` document skills and the two PowerPoint skills the sponsor selected.
+pre-sales* (dimension 5) and *Defensibility* (dimension 2).
+
+**How generation actually works — no LLM writes the documents.** The artifacts are produced
+by deterministic Python in `src/api/deliverable/export.py` (openpyxl / python-docx /
+python-pptx, native charts), exposed as the `export_estimate` / `publish_estimate` OpenAPI
+tools. The **Azure AI Foundry agent** (gpt-4o, Responses API) only *orchestrates*: it runs
+the estimation tools, calls `assemble_estimate`, then calls `export_estimate` /
+`publish_estimate` and points the user at the dashboard. It does not author spreadsheets or
+slides, and Claude / Claude Code is not in the deployed runtime.
+
+The four external repos below therefore serve two different roles:
+
+| Repo | Role in Landfall | Runtime? |
+|---|---|---|
+| `anthropics/skills · xlsx`, `· docx` | **Design reference.** Their rules (below) are implemented directly in `export.py`; a CI step runs the `.xlsx` through a headless LibreOffice recalc to enforce "0 formula errors". | No — baked into the Function's Python at build time |
+| `siril9/presentation-skill`, `hugohe3/ppt-master` | **E5.6 studio deck.** A side-car build service (its own container with the Node toolchain) or an architect running it locally, fed the published `latest.json`. Invoked from the dashboard ("Generate studio deck"), not by the Foundry agent. | Side-car only — never in the Function or the agent |
+
+The bar each sets:
 
 **Excel (`.xlsx`) — the standard from the `xlsx` skill**
 (`github.com/anthropics/skills/tree/main/skills/xlsx`)

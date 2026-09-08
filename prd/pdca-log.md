@@ -5,6 +5,59 @@ Operating model: [`landfall-5x5-prd.md` §7](landfall-5x5-prd.md). Tracker:
 
 ---
 
+## Cycle 17 — PowerPoint export rebuilt as a narrative assessment deck (E5.4 / E5.4q)
+
+**Date:** 2026-09-08 · **Owner:** SWE + Writer · **Tracker:** E5.4 (pptx done),
+E5.4q (in-progress) · **Trigger:** sponsor — "make the ppt highly professional with the
+right visuals, icons, narrative, data, story; refer to Microsoft PPT and `Azure/migration`."
+
+### Plan
+
+`to_pptx` was a text dump on the stock template (11 slides, one big textbox each, no
+charts, DRAFT on 1 slide). Rebuild it as a client-facing deck whose *narrative* follows
+the Microsoft **Migration Execution Guide** lifecycle, with native charts and a design
+system — still pure Python in `export.py` (the tool the Foundry agent calls; **no LLM
+authors the file**).
+
+### Do
+
+- **`src/api/deliverable/export.py` — `to_pptx` fully rewritten** (~450 lines). 12 slides:
+  cover · executive summary · approach (Assess→Optimise chevron flow) · current state ·
+  landing zone · 6R disposition · wave plan · run-rate cost · effort · risk register ·
+  next steps · traceability.
+- Design system: Segoe UI, Azure palette (`0078D4` / `1B2A4A` / semantic green-amber-red),
+  KPI tiles, section rules, a one-line takeaway band per slide.
+- **Native charts from package data:** 2 doughnut (6R mix, cost drivers with an "Other"
+  slice to 100%), 2 horizontal bar (servers-by-env, effort-by-workstream); a
+  colour-coded wave table; a hub-and-spoke landing-zone diagram; numbered next-steps.
+- **DRAFT watermark + page number + "Confidential" on every slide** (was 1 of 11);
+  speaker notes on every content slide; every figure keeps its `F#` ref.
+- `tests/test_export.py` — `test_pptx_opens_and_has_narrative_deck` rewritten (12 slides,
+  ≥3 charts, a table, watermark on ≥11 slides). **127 pytest + 32/8/30 evals green.**
+- Deployed (`azd deploy api`) and re-published to the live dashboard — the PowerPoint
+  button on `/dashboard` now serves the 97 KB narrative deck.
+
+### Check
+
+| # | Result |
+|---|---|
+| C1 | `to_pptx` renders from the live package: 12 slides, 0 off-slide shapes, 4 charts + 2 tables |
+| C2 | degraded package (failed compute tool) still exports all 3 formats |
+| C3 | narrative reads end-to-end (exec summary sentence is generated from figures) |
+| C4 | 127 pytest green; eval harness 32/32 · 8/8 · 30/30 |
+
+### Act
+
+- E5.4 `.pptx` **done**. **E5.4q** now covers the `.xlsx` (formulas-not-literals +
+  LibreOffice-recalc CI gate) and `.docx` (US-Letter DXA + tracked-changes) polish — the
+  `docx`/`xlsx` skill rules implemented in `export.py`, plus a CI recalc step.
+- **E5.6** (studio deck via `presentation-skill` / `ppt-master`) stays a Phase-2 side-car —
+  clarified in the docs that the Foundry agent is never in the generation path.
+- Docs updated: audit block, `path-to-5x5` §"Deliverable polish" (generation model +
+  role table), PRD E5.4 / E5.6, tracker.
+
+---
+
 ## Cycle 16 — Function App EasyAuth, live (E8.2)
 
 **Date:** 2026-09-08 · **Owner:** Security · **Tracker:** E8.2 (done) · **Trigger:**

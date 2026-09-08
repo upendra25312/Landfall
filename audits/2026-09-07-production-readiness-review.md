@@ -58,27 +58,30 @@ wave engine (P0-4), the structured deliverable + traceability (P0-5), `estimatio
 (P0-6), the eval harness (P0-7), Function App EasyAuth (P0-8), and per-engagement `azd`
 isolation (P0-9). The verdict above stands as the 2026-09-07 record.
 
-**Client-ready artifacts — generation-tooling direction (folds into PS-2 / P0-5).** The
+**Client-ready artifacts — how they are generated (folds into PS-2 / P0-5).** The
 assembled package (`assemble_estimate`) is rendered to Excel / Word / PowerPoint by
-`src/api/deliverable/export.py` and surfaced through the assessment dashboard. The
-production bar for those files, and the studio deck, is set by four external skills the
-sponsor selected — the detailed spec lives in
-[`audits/path-to-5x5.md` §"Deliverable polish"](path-to-5x5.md) and PRD **E5.4** / **E5.6**:
+**deterministic Python** in `src/api/deliverable/export.py` (openpyxl / python-docx /
+python-pptx with native charts), exposed as the `export_estimate` / `publish_estimate`
+OpenAPI tools and surfaced through the dashboard. **The Azure AI Foundry agent does not
+author documents** — it runs the estimation tools, calls `assemble_estimate`, then calls
+`export_estimate` / `publish_estimate`. No LLM (and no Claude / Claude Code) is in the
+deployed generation path.
 
-| Artifact | Skill | What it dictates |
+The four sponsor-selected repos are used at two different points, never as a runtime
+component of the agent:
+
+| Repo | Use in Landfall | Where it runs |
 |---|---|---|
-| `.xlsx` | [`anthropics/skills · xlsx`](https://github.com/anthropics/skills/tree/main/skills/xlsx) | derived cells are **formulas, not Python literals**; Excel-2007 functions only; `$#,##0` / fractions / parens; a headless LibreOffice recalc must report **0 errors** before delivery |
-| `.docx` | [`anthropics/skills · docx`](https://github.com/anthropics/skills/tree/main/skills/docx) | US-Letter in DXA (not the lib's A4 default); dual table widths; numbering defs not bullet glyphs; authored so an architect's edits land as Word **tracked changes**, `accept_changes` → clean proposal copy |
-| `.pptx` (studio) | [`siril9/presentation-skill`](https://github.com/siril9/presentation-skill) | source-first: `outline.json` from the package → style preset + composition grammar → **pptxgenjs** render → `qa_gate.py` must pass; never hand-edit the `.pptx` |
-| `.pptx` (design-rich) | [`hugohe3/ppt-master`](https://github.com/hugohe3/ppt-master) | SVG layout → native DrawingML, firm `.pptx` template preserved, optional speaker notes |
+| [`anthropics/skills · xlsx`](https://github.com/anthropics/skills/tree/main/skills/xlsx) | **Design reference** for `to_xlsx`: derived cells are **formulas, not Python literals**; Excel-2007 functions only; `$#,##0` / fractions / parens. | Rules coded into `export.py`; a CI step runs a headless LibreOffice recalc — **0 formula errors** to ship (E5.4q) |
+| [`anthropics/skills · docx`](https://github.com/anthropics/skills/tree/main/skills/docx) | **Design reference** for `to_docx`: US-Letter in DXA; dual table widths; numbering defs not bullet glyphs; authored so architect edits land as Word **tracked changes**, `accept_changes` → clean copy. | Rules coded into `export.py` (E5.4q) |
+| [`siril9/presentation-skill`](https://github.com/siril9/presentation-skill) | **E5.6 studio deck**: `outline.json` from `latest.json` → style preset + grammar → **pptxgenjs** → `qa_gate.py` must pass. | **Side-car** — its own container (Node toolchain) that the dashboard invokes, or an architect runs locally. Not the Function, not the agent. |
+| [`hugohe3/ppt-master`](https://github.com/hugohe3/ppt-master) | **E5.6 design-rich variant**: SVG layout → native DrawingML, firm `.pptx` template preserved. | Same side-car |
 
-Both PowerPoint skills need a Node toolchain (+ LibreOffice/Poppler) absent from the
-Function runtime, so **E5.6 runs side-car** — an architect runs the skill locally against
-the downloaded `latest.json`, or the dashboard invokes a dedicated build container. The
-in-Function `python-pptx` deck (E5.4) stays the always-available fallback. Invariants held
-across every path: the `DRAFT — architect review required` watermark, every headline
-number resolvable to an `F*` calculation-appendix id, and the E7.4 no-un-sourced-number
-guard over the rendered text.
+The in-Function `python-pptx` deck (E5.4, rebuilt as a 12-slide narrative assessment)
+stays the always-available default; E5.6 is the higher-polish option. Invariants held
+across every path: the `DRAFT — architect review required` watermark on every slide, every
+headline number resolvable to an `F*` calculation-appendix id, and the E7.4
+no-un-sourced-number guard over the rendered text.
 
 **Narrative + structure reference — [`Azure/migration`](https://github.com/Azure/migration)
 (the Microsoft *Migration Execution Guide*, MEG).** The deck, the Word document and the
