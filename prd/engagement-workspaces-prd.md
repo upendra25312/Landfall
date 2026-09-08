@@ -222,7 +222,7 @@ becomes `raw/engagements/{customer}/{project}/inventory/{name}`.
 - `publish_estimate` writes to `answers/engagements/<c>/<p>/estimate/` and snapshots to
   `history/<ts>/`.
 
-### 4.5 Dashboard (`src/web`) — the four things the user asked for
+### 4.5 Dashboard (`src/web`) — what the user asked for
 
 Route model: `/` = engagements home · `/e/<customer>/<project>` = one engagement.
 
