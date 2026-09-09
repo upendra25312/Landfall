@@ -1,0 +1,39 @@
+name: calc-adapter-smoke
+
+# PRD E11.19 — weekly check that every Azure Pricing Calculator adapter's
+# selectors still resolve against the live calculator. A calculator UI change
+# that breaks a *verified* adapter fails this job with the adapter named; an
+# unverified adapter is reported but never fails the build (in a real run it
+# degrades to skipped[] rather than mispricing a line item).
+
+on:
+  schedule:
+    - cron: "17 6 * * 1"      # Mondays 06:17 UTC
+  workflow_dispatch:
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install Playwright + Chromium
+        run: |
+          python -m pip install --upgrade pip
+          pip install playwright openpyxl
+          python -m playwright install --with-deps chromium
+
+      - name: Adapter smoke
+        run: python src/calc/smoke.py --json calc-adapter-smoke.json
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: calc-adapter-smoke
+          path: calc-adapter-smoke.json

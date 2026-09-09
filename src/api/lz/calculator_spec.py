@@ -85,8 +85,8 @@ _VM_FAMILY = {
 
 # storage_cost category -> (calculator service, config)
 _STORAGE_MODULE = {
-    "files_premium":      ("storage-accounts", {"type": "files", "tier": "premium", "redundancy": "lrs"}),
-    "files_standard_hot": ("storage-accounts", {"type": "files", "tier": "standard", "access": "hot", "redundancy": "lrs"}),
+    "files_premium":      ("azure-files", {"tier": "premium", "redundancy": "lrs"}),
+    "files_standard_hot": ("azure-files", {"tier": "standard", "redundancy": "lrs"}),
     "anf_standard": ("azure-netapp-files", {"service_level": "standard"}),
     "anf_premium":  ("azure-netapp-files", {"service_level": "premium"}),
     "anf_ultra":    ("azure-netapp-files", {"service_level": "ultra"}),
