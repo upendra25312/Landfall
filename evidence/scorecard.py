@@ -152,28 +152,32 @@ def rubric(live: dict) -> list[dict]:
          "gap": "run the 60-minute comprehension test with 3 consultants new to Landfall "
                 "(protocol.md Trial A); record in evidence/trials/."},
 
-        {"dim": "Operability", "score": 3.75,
+        {"dim": "Operability", "score": 4.0,
          "bar": "CI `azd up → smoke → azd down` on Linux + Windows every PR; chaos drill "
                 "degrades cleanly.",
-         "basis": "Deploy hooks are self-contained (no azd-on-PATH, SQL grant via Python — "
-                  "E9.1); every PDCA cycle deploys api/web to the live rg-landfall and "
-                  "verifies. E9.2: `scripts/smoke.py` (8 checks) passes green against the "
-                  "live deployment (evidence/ops/smoke-live.json), unit-tested; the "
-                  "`.github/workflows/clean-machine.yml` matrix (`azd up→smoke→down` on "
-                  "Linux + Windows) is written but DORMANT until the OIDC secrets are added "
-                  "— not yet proven green in CI. E9.3: `DEPLOYMENT_TIER=prod` — one Bicep "
-                  "switch moves off every Free tier (Search basic + SLA, SQL without the "
-                  "free-limit cap, ZRS storage, warm web app, 90-day retention), cost delta "
-                  "documented in DEPLOY.md; `az bicep build` compiles both branches. No "
-                  "observability dashboard, no logged chaos drill.",
+         "basis": "Deploy hooks are self-contained (E9.1). E9.2: `scripts/smoke.py` "
+                  "(8 checks) passes green against the live deployment "
+                  "(evidence/ops/smoke-live.json), unit-tested; `clean-machine.yml` "
+                  "(`azd up→smoke→down` on Linux + Windows) is written but DORMANT until "
+                  "the OIDC secrets are added — not yet proven green in CI. E9.3: "
+                  "`DEPLOYMENT_TIER=prod` moves off every Free tier in one Bicep switch, "
+                  "cost delta documented. E9.5: `scripts/export_all.py` dumps every "
+                  "engagement (raw + answers + RLS-scoped SQL CSVs) to a re-importable "
+                  ".zip before teardown — run live (6,498 rows, retried through a paused "
+                  "DB). Chaos drill: 6 failure modes documented + probed "
+                  "(evidence/chaos/) — SQL auto-pause induced + observed, ca-drawio "
+                  "cold-start in place, the other 4 verified by inspection; all degrade "
+                  "to a slow/partial answer with a reason, never a wrong one. Still no "
+                  "observability dashboard, and the chaos drill is not yet induced "
+                  "end-to-end on a scratch env.",
          "evidence": [("smoke test", "../scripts/smoke.py"),
-                      ("smoke run (live)", "ops/smoke-live.json"),
                       ("clean-machine CI", "../.github/workflows/clean-machine.yml"),
-                      ("tier switch + cost delta", "../DEPLOY.md"),
-                      ("tier tests", "../tests/test_infra_tier.py")],
+                      ("close-out export", "../scripts/export_all.py"),
+                      ("close-out run (live)", "ops/closeout-example.json"),
+                      ("chaos drill", "chaos/RESULTS.md")],
          "gap": "arm + green the clean-machine CI on both OSes (one-time secret add); E9.4 "
-                "answer-quality observability; E9.5 export-before-teardown; a chaos drill "
-                "logged to evidence/chaos/."},
+                "answer-quality observability (traces + dashboard + alerts); induce the "
+                "chaos scenarios end-to-end on a scratch env."},
 
         {"dim": "Security", "score": 3.5,
          "bar": "External pen test passes; isolation test passes; data-handling statement "

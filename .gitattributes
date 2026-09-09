@@ -7,6 +7,7 @@ evidence/evals/history/**     text eol=lf
 evidence/broken-dumps/dumps/** text eol=lf
 evidence/broken-dumps/EXPECTED.json text eol=lf
 evidence/ops/*.json           text eol=lf
+evidence/chaos/*.json         text eol=lf
 src/web/questionnaire.html    text eol=lf
 src/web/discovery_catalog.json text eol=lf
 

@@ -237,6 +237,24 @@ app — two engagements never share a datastore. Use a distinct env name per cli
 (`azd env new acme-migration`), and `azd down --purge` when the engagement closes (it
 also removes the soft-deleted Key Vault and Foundry account so the names free up).
 
+### Close-out — export before you tear down (E9.5)
+
+`azd down --purge` is irreversible. **Before it**, retain every engagement:
+
+```bash
+python scripts/export_all.py --sql            # -> ./_closeout/<UTC>/<customer>__<project>.landfall.zip
+#                                                each zip: raw/ inventory + docs, answers/ artifacts +
+#                                                chat, sql/*.csv (the six tables, RLS-scoped), export.json
+python scripts/export_all.py --dry-run        # preview: engagements + sizes, writes nothing
+```
+
+Each `.zip` re-imports into a fresh deployment via `POST /api/engagements/import`
+(or the chat header's **↑ import**). `--sql` retries through a paused serverless
+DB; a SQL hiccup never loses the blob export (`raw/` is the source of truth and
+re-ingests on import). Needs a SQL reader login for `--sql` (the deploy identity
+or an `az login` user with `db_datareader`); `STORAGE_URL` + `AZURE_SQL_*` come
+from `azd env get-values`.
+
 ---
 
 ## Post-deploy smoke test (E9.2)
