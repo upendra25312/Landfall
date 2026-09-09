@@ -170,14 +170,16 @@ def publish_estimate_route(req: func.HttpRequest) -> func.HttpResponse:
         lz_design = body.get("landing_zone") if isinstance(body.get("landing_zone"), dict) else None
         if lz_design:
             try:
-                from lz.diagram import build_drawio, diagram_meta
-                xml = build_drawio(lz_design)
-                cc.upload_blob(f"{prefix}/landing_zone.drawio", xml.encode(), overwrite=True)
+                from lz.diagram import build_drawio, build_svg, diagram_meta
+                cc.upload_blob(f"{prefix}/landing_zone.drawio", build_drawio(lz_design).encode(),
+                               overwrite=True)
+                cc.upload_blob(f"{prefix}/landing_zone.svg", build_svg(lz_design).encode(),
+                               overwrite=True)
                 cc.upload_blob(f"{prefix}/landing_zone_diagram.json",
                                json.dumps(diagram_meta(lz_design) | {"engagement": engagement,
                                                                      "built_at": _now()}).encode(),
                                overwrite=True)
-                written += ["landing_zone.drawio", "landing_zone_diagram.json"]
+                written += ["landing_zone.drawio", "landing_zone.svg", "landing_zone_diagram.json"]
             except Exception:                     # noqa: BLE001
                 logging.warning("publish_estimate: landing-zone diagram skipped", exc_info=True)
     except Exception as exc:                       # noqa: BLE001

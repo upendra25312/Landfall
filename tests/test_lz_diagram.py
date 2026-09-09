@@ -12,7 +12,7 @@ from conftest import ROOT
 sys.path.insert(0, os.path.join(ROOT, "src", "api"))
 
 from lz.design import design_landing_zone  # noqa: E402
-from lz.diagram import build_drawio, mcp_plan, diagram_meta  # noqa: E402
+from lz.diagram import build_drawio, build_svg, mcp_plan, diagram_meta  # noqa: E402
 
 _APPS = [
     {"app_id": "a1", "app_name": "Storefront", "criticality": "1", "internet_facing": "1",
@@ -49,6 +49,25 @@ def test_build_drawio_is_valid_xml_with_the_expected_structure():
 def test_deterministic():
     d = _design()
     assert build_drawio(d) == build_drawio(d)
+    assert build_svg(d) == build_svg(d)
+
+
+def test_build_svg_is_valid_self_contained_svg():
+    d = _design()
+    svg = build_svg(d)
+    dom = _md.parseString(svg)
+    assert dom.documentElement.tagName == "svg"
+    assert svg.startswith("<svg") and 'viewBox="0 0 ' in svg
+    assert "http://" not in svg.replace("http://www.w3.org/2000/svg", "")  # no external refs
+    assert d["region"] in svg and d["dr_region"] in svg
+    assert "#B4009E" in svg                          # regulated spoke colour carries through
+
+
+def test_build_svg_thin_and_no_dr():
+    _md.parseString(build_svg({}))
+    svg = build_svg(_design(dr_region=None))
+    _md.parseString(svg)
+    assert "DR region" not in svg
 
 
 def test_no_dr_region_still_renders():
@@ -171,9 +190,9 @@ def test_route_stores_for_an_engagement(fn):
     resp = f.build_landing_zone_diagram_route(_req({"engagement": "contoso/dc-exit"}))
     assert resp.status_code == 200
     out = json.loads(resp.get_body())
-    assert "landing_zone.drawio" in out["stored"]
-    assert f"{prefix}/landing_zone.drawio" in store
+    assert "landing_zone.drawio" in out["stored"] and "landing_zone.svg" in out["stored"]
     assert store[f"{prefix}/landing_zone.drawio"].startswith(b"<mxfile")
+    assert store[f"{prefix}/landing_zone.svg"].startswith(b"<svg")
     meta = json.loads(store[f"{prefix}/landing_zone_diagram.json"])
     assert meta["engagement"] == "contoso/dc-exit" and meta["built_at"]
 
@@ -217,8 +236,9 @@ def test_publish_estimate_regenerates_the_diagram(monkeypatch):
     resp = d.publish_estimate_route(req)
     assert resp.status_code == 200
     import engagement as eng
-    key = f"{eng.estimate_prefix('acme/x')}/landing_zone.drawio"
-    assert key in store and store[key].startswith(b"<mxfile")
+    p = eng.estimate_prefix("acme/x")
+    assert store[f"{p}/landing_zone.drawio"].startswith(b"<mxfile")
+    assert store[f"{p}/landing_zone.svg"].startswith(b"<svg")
 
 
 # --------------------------------------------------------------- web serving
@@ -232,24 +252,28 @@ def test_web_serves_the_drawio_and_dashboard_embeds_it(monkeypatch):
     importlib.reload(webapp)
     from fastapi.testclient import TestClient
 
-    xml = build_drawio(_design())
+    d = _design()
+    blobs = {"landing_zone.drawio": build_drawio(d).encode(),
+             "landing_zone.svg": build_svg(d).encode()}
 
     class _C:
         def download_blob(self, key):
-            if key.endswith("landing_zone.drawio"):
-                class _D:
-                    def readall(_s):
-                        return xml.encode()
-                return _D()
+            for name, data in blobs.items():
+                if key.endswith(name):
+                    class _D:
+                        def readall(_s):
+                            return data
+                    return _D()
             raise KeyError(key)
 
     monkeypatch.setattr(webapp, "_estimate_container", lambda: _C())
     c = TestClient(webapp.app)
 
-    r = c.get("/dashboard/landing-zone-diagram")
-    assert r.status_code == 200 and r.text.startswith("<mxfile")
-    r2 = c.get("/dashboard/landing-zone-diagram?download=1")
-    assert r2.headers["content-disposition"].endswith('.drawio"')
+    r = c.get("/dashboard/landing-zone-diagram")                       # default = svg
+    assert r.status_code == 200 and r.text.startswith("<svg")
+    assert r.headers["content-type"].startswith("image/svg+xml")
+    r2 = c.get("/dashboard/landing-zone-diagram?fmt=drawio&download=1")
+    assert r2.text.startswith("<mxfile") and r2.headers["content-disposition"].endswith('.drawio"')
 
     html = (webapp._HERE / "dashboard.html").read_text(encoding="utf-8")
     assert "landing-zone-diagram" in html and "renderLZDiagram" in html
