@@ -5,6 +5,81 @@ Operating model: [`landfall-5x5-prd.md` §7](landfall-5x5-prd.md). Tracker:
 
 ---
 
+## Cycle 43 — expert-panel review (Epic E13) + guided pipeline state (E13.2 / E12.8)
+
+**Date:** 2026-09-09 · **Owner:** panel (AI architect · cloud-arch director · FinOps ·
+Python · Foundry · UI/UX · full-stack) ·
+**Ask:** *"you are a team of experts — decide, plan, do, study, act; update
+`prd/engagement-workspaces-prd.md`."*
+
+### Plan (DECIDE)
+
+Second full-panel review of the whole solution (engine complete, 4.03/5, E11 live,
+E12 6/12). Question posed: *the highest-leverage buildable work left, every
+discipline* — not another cosmetic pass. Ten findings → **Epic E13** (PRD §4.14
+findings table + §5b work breakdown + §7 decision 15):
+
+1. **`schema.sql` DROP+CREATEs the 6 tables on every `postprovision`** — `azd
+   provision` wipes all engagement data, which blocks the *entire* provision-gated
+   backlog (C39 workbook+alert, C42 web alert, E9.3 prod live, E11.22 infra,
+   E12.11 hostname). **E13.1 — the keystone.**
+2. **No guided pipeline state** (was E12.8) — chat is live before any inventory;
+   nothing sequences Inventory → Analysis → Estimate → POE. **E13.2 — pulled
+   forward, top user-facing item, C41 unblocked it.**
+3. Agent still on `gpt-4o`; no current-gen model eval; no adversarial-prompt eval
+   (fault injection = data faults, not prompt-injection → tool abuse). **E13.3.**
+4. No budget/cost alert on Landfall's own spend; `ca-calc` 2vCPU/4GiB always-on
+   (~$70-90/mo). **E13.4.**
+5. No agent-run ceiling (runaway tool loop / unbounded response-id chain). **E13.5.**
+6. `src/web/app.py` ~1060 lines, one module. **E13.6.**
+7. `dashboard.html` + `questionnaire.html` still inline → relaxed CSP. **E13.7.**
+8. No lint/type gate in CI. **E13.8.**
+9. E12 tail: E12.9 / E12.10 / E12.12. **E13.9.**
+10. Single-region / no-DR is unrecorded. **E13.10 — write the decision.**
+
+**Sequencing:** E13.1 first (no deploy — sponsor runs the first safe provision);
+E13.2 this cycle (shippable); E13.3-5 next (guardrails); E13.6-8 sustain.
+
+### Do — E13.2 (guided pipeline state)
+
+- **`app.py`** — `GET /api/engagements/{c}/{p}/pipeline`: aggregates the 4-step
+  state (`uploads` from `_list_files`, `analysis` from `_analysis_summary`,
+  `estimate` from `latest.json`, `poe` from `landing_zone.json` `status`), each
+  step carrying `waiting_on`; returns `next` + `analysed`.
+- **`chat.html`** — `<div id=pipeline class=pipe hidden>` above the log.
+- **`chat.css`** — `.pipe` strip: done (✓, green) / next (▸, teal outline) /
+  to-do (dimmed) chips + a `.hint` "Next: <action>" line.
+- **`chat.js`** — `loadPipeline()` renders it; called from `showUpload()` (on
+  select/create), after `startAnalysis()`, and after every chat turn. A one-time,
+  **non-blocking** assistant note when `ask()` runs with `PIPE.analysed===false`
+  ("no inventory analysed yet … I'll still answer general questions"). `HINTED`
+  resets on engagement switch. All in the external asset — strict CSP holds.
+- **`tests/test_pipeline.py`** (7) — empty = all to-do; inventory advances to
+  analysis (waiting_on clears); a dq report with rows marks analysis done;
+  published estimate + POE = all done; POE `building` ≠ done; 404 unknown;
+  the chat page wires the strip + the nudge.
+
+### Check
+
+| gate | result |
+|---|---|
+| unit | **455 pytest**, 2 skipped (+7 `test_pipeline`) |
+| local | `/pipeline` returns the right 4-step state across empty / uploaded / analysed / published / POE-building; `/` + assets keep the strict CSP; no inline style/script |
+| evals | 32/32 + 8/8 + 30/30; `evals/SCORECARD.md` no drift; `evidence/SCORECARD.md` unchanged (Usability 2.0 needs the trials — a strip doesn't move the number, it makes the eventual trial pass) |
+| live | `azd deploy web`; `scripts/smoke.py` re-run |
+| scope | PRD + **production web code** → `azd deploy web` (no infra, no agent change, no eval change) |
+
+### Act
+
+- `c43-pipeline` → merged `--no-ff` to `main`, pushed. **`azd deploy web`.**
+- PRD updated: §4.14 (E13 review) + §5b (E13 breakdown) + §7 decision 15 + C43
+  cadence row + status line. `tracker.md`: Epic E13 section, E12.8 → done,
+  progress rows, cycle-43 index row.
+- Next by leverage: **E13.1** (idempotent `schema.sql` — the keystone; no deploy,
+  unblocks 5 items) or E13.3 (model + adversarial evals) or the human trials.
+
+---
+
 ## Cycle 42 — web-tier log + request forwarding (E9.4)
 
 **Date:** 2026-09-09 · **Owner:** SRE ·

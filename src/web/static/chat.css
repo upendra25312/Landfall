@@ -78,3 +78,14 @@
  #dqsummary ul li{margin:3px 0}
  .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:84px;background:#152430;border:1px solid var(--line);border-radius:8px;padding:10px 16px;font-size:13px;z-index:20;opacity:0;pointer-events:none;transition:opacity .3s}
  .toast.show{opacity:1}
+ .pipe{max-width:820px;margin:14px auto 0;padding:0 20px;display:flex;flex-wrap:wrap;gap:8px;align-items:stretch}
+ .pipe .step{flex:1;min-width:132px;display:flex;flex-direction:column;gap:2px;border:1px solid var(--line);border-radius:9px;background:var(--panel);padding:8px 10px}
+ .pipe .step .hd{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:var(--ink)}
+ .pipe .step .dt{font-size:11px;color:var(--muted)}
+ .pipe .step .mk{width:15px;height:15px;border-radius:50%;flex:none;display:flex;align-items:center;justify-content:center;font-size:10px;border:1px solid var(--line);color:var(--muted)}
+ .pipe .step.done .mk{background:#1f6f43;border-color:#1f6f43;color:#fff}
+ .pipe .step.done .hd{color:#6fce9a}
+ .pipe .step.next{border-color:#7fd3dd}
+ .pipe .step.next .mk{border-color:#7fd3dd;color:#7fd3dd}
+ .pipe .step.todo{opacity:.62}
+ .pipe .hint{flex-basis:100%;font-size:11.5px;color:#f0a35e;padding:2px 2px 0}
