@@ -188,20 +188,24 @@ def rubric(live: dict) -> list[dict]:
                   "timeout; no client SQL in logs; per-engagement access control (visibility "
                   "+ audit trail); chat threads bound to the caller's visibility (E8.6); "
                   "isolation tests in the suite (E8.2–8.4, E11.3, E11.10). A written threat "
-                  "model + a 16-check self-assessment (evidence/pentest/) — 15 pass, the "
-                  "one finding (no CSP/nosniff) folds into E12.7; the SQL guard rejects 11 "
+                  "model + a self-assessment (evidence/pentest/); the SQL guard rejects 11 "
                   "injection payloads + neutralises comment tricks. `ca-web` EasyAuth is "
-                  "now param-gated in Bicep (was imperative). Data-handling statement "
-                  "drafted, not signed.",
+                  "now param-gated in Bicep (was imperative). Chat page `/` + `/static/*` "
+                  "serve a strict CSP (no `unsafe-inline`) + nosniff / frame / referrer on "
+                  "every response (E12.7, C41) — closes the one self-assessment finding. "
+                  "Private endpoints descoped on cost (RLS + sqlguard + Entra-only auth are "
+                  "the SQL data-plane control). Data-handling statement drafted, not signed.",
          "evidence": [("threat model", "pentest/threat-model.md"),
                       ("self-assessment", "pentest/RESULTS.md"),
                       ("SQL guard", "../src/api/sqlguard.py"),
                       ("isolation + chat-binding tests", "../tests/test_access_control.py"),
                       ("data-handling statement", "data-handling-statement.md")],
-         "gap": "external pen test → evidence/pentest/external-<date>/; CISO signature on "
-                "the data-handling statement (E8.7); E8.5 private endpoints + drop the "
-                "all-Azure SQL firewall rule; migrate the live web-auth config to the "
-                "Bicep param + pin functionAuthAllowedClientIds to the Foundry MSI."},
+         "gap": "external pen test → evidence/pentest/external-<date>/, with the tester "
+                "signing off that public-SQL + RLS + sqlguard + Entra-only auth is an "
+                "acceptable data-plane posture (private endpoints are descoped on cost); "
+                "CISO signature on the data-handling statement (E8.7); migrate the live "
+                "web-auth config to the Bicep param + pin functionAuthAllowedClientIds to "
+                "the Foundry MSI; tighten the SQL firewall from all-Azure to own-compute IPs."},
 
         {"dim": "Reliability", "score": 5.0 if ev_ok else 2.0,
          "bar": "Eval CI gate: ≥95% text-to-SQL, 0 un-sourced numbers, byte-identical "

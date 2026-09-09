@@ -10,6 +10,9 @@ evidence/ops/*.json           text eol=lf
 evidence/chaos/*.json         text eol=lf
 evidence/pentest/*.json       text eol=lf
 src/web/questionnaire.html    text eol=lf
+src/web/chat.html             text eol=lf
+src/web/static/chat.css       text eol=lf
+src/web/static/chat.js        text eol=lf
 src/web/discovery_catalog.json text eol=lf
 
 # UTF-16 test fixture — never touch its bytes

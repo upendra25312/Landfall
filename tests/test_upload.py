@@ -191,8 +191,9 @@ def test_files_manifest_and_delete(client):
 def test_chat_page_has_upload_panel(client):
     _w, c, _s = client
     html = c.get("/").text
+    js = c.get("/static/chat.js").text                # E12.7 — behaviour is an external asset now
     assert "uploadpanel" in html and "Drop files here" in html
-    assert "/upload" in html and "showUpload" in html
+    assert "/upload" in js and "showUpload" in js
 
 
 def test_upload_panel_is_a_collapsible_details_that_does_not_lead(client):
@@ -201,20 +202,23 @@ def test_upload_panel_is_a_collapsible_details_that_does_not_lead(client):
     that sits above the intro but collapses so the value prop leads."""
     _w, c, _s = client
     html = c.get("/").text
+    css = c.get("/static/chat.css").text
+    js = c.get("/static/chat.js").text
     assert "<details id=uploadpanel" in html          # collapsible, not a always-open <div>
     assert "<summary>Inventory" in html
-    assert ".uz{display:flex" in html                 # the render fix — no more inline-label overlap
+    assert ".uz{display:flex" in css                  # the render fix — no more inline-label overlap
     assert "class=uzt" in html and "class=uzh" in html  # prompt line vs muted hint lines
     # the panel auto-opens only when the engagement has no inventory yet
-    assert "if(!hasInv)upanel.open=true" in html
+    assert "if(!hasInv)upanel.open=true" in js
 
 
 def test_start_analysis_is_a_secondary_button(client):
     """C34 / E12.4 — one filled primary per view; Start analysis is outline."""
     _w, c, _s = client
     page = c.get("/").text
+    css = c.get("/static/chat.css").text
     assert 'class="send secondary" id=startanalysis' in page
-    assert "button.send.secondary{background:transparent" in page
+    assert "button.send.secondary{background:transparent" in css
 
 
 # --- C20 / E11.6+E11.24: Start analysis + data-quality summary -------------
@@ -283,7 +287,8 @@ def test_pending_lists_uploaded_files_with_no_report_yet(analysed):
 def test_chat_page_has_start_analysis(client):
     _w, c, _s = client
     html = c.get("/").text
-    assert "startanalysis" in html and "Start analysis" in html and "/analyze" in html
+    assert "startanalysis" in html and "Start analysis" in html
+    assert "/analyze" in c.get("/static/chat.js").text
 
 
 # --- C21 / E11.8: published-version history -------------------------------
@@ -354,5 +359,5 @@ def test_answer_to_xlsx_requires_an_answer(client):
 
 def test_chat_page_has_excel_download(client):
     _w, c, _s = client
-    html = c.get("/").text
-    assert "xlsxFromAnswer" in html and "/api/answer_to_xlsx" in html and "Download as Excel" in html
+    js = c.get("/static/chat.js").text
+    assert "xlsxFromAnswer" in js and "/api/answer_to_xlsx" in js and "Download as Excel" in js

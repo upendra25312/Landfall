@@ -340,8 +340,10 @@ One switch moves the stack off the Free tiers. Default is `free`; set
 **Rough total: +$300–450/month**, dominated by Search `basic` and SQL leaving the
 Free offer.
 
-`prod` does **not** touch: private networking or the all-Azure SQL firewall rule
-(that is E8.5), model TPM, the Function tier, or DR / multi-region.
+`prod` does **not** touch: private networking (private endpoints are descoped —
+sponsor decision, cost; RLS + `sqlguard` + Entra-only auth carry the SQL data
+plane), the all-Azure SQL firewall rule, model TPM, the Function tier, or
+DR / multi-region.
 
 **Moving an existing `free` deployment to `prod`:** AI Search and the SQL
 free-limit are **not** in-place editable. A fresh `azd up --e prod-env` is clean;
