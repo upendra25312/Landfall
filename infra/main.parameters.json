@@ -16,6 +16,9 @@
     "enableFunctionAuth": { "value": "${ENABLE_FUNCTION_AUTH=false}" },
     "functionAuthClientId": { "value": "${FUNCTION_AUTH_CLIENT_ID=}" },
     "alertEmail": { "value": "${ALERT_EMAIL=}" },
+    "monthlyBudget": { "value": "${MONTHLY_BUDGET=50}" },
+    "logAnalyticsDailyCapGb": { "value": "${LOG_ANALYTICS_DAILY_CAP_GB=0.5}" },
+    "calcMinReplicas": { "value": "${CALC_MIN_REPLICAS=1}" },
     "webAuthClientId": { "value": "${WEB_AUTH_CLIENT_ID=}" },
     "webAuthClientSecret": { "value": "${WEB_AUTH_CLIENT_SECRET=}" },
     "deploymentTier": { "value": "${DEPLOYMENT_TIER=free}" }

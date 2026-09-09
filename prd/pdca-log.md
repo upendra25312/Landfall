@@ -5,6 +5,86 @@ Operating model: [`landfall-5x5-prd.md` §7](landfall-5x5-prd.md). Tracker:
 
 ---
 
+## Cycle 44 — cost guardrail for a fixed budget (E13.4)
+
+**Date:** 2026-09-09 · **Owner:** FinOps + SRE ·
+**Tracker:** E13.4, promoted to P1 by §7 decision 16 (sponsor: **$40–50/month,
+deployed on demand with `azd up` / `azd down --purge`, `free` tier only**; also a
+learning vehicle for Foundry / ACA / enterprise design).
+
+### Plan
+
+- Put a real cost guardrail in the **default `azd up`** — a budget + alert, an
+  ingestion cap, a `ca-calc` replica knob — so an ephemeral deploy is protected
+  from minute one without a param dance.
+- A `scripts/spend.py` so the sponsor can *see* month-to-date spend vs budget
+  (also: hands-on Azure Cost Management, a stated learning goal).
+- No `azd provision` (drops SQL) — ships dormant; the sponsor's next fresh
+  `azd up` picks it up.
+
+### Do
+
+- **`infra/main.bicep` + `infra/resources.bicep`** — new params
+  `monthlyBudget int = 50`, `budgetStartDate string = utcNow('yyyy-MM-01')`,
+  `logAnalyticsDailyCapGb string = '0.5'`, `calcMinReplicas int = 1`, threaded
+  through the module.
+  - `resource costBudget 'Microsoft.Consumption/budgets@2023-11-01' = if (monthlyBudget > 0)`
+    — RG-scoped, `timeGrain: Monthly`, three notifications: **actual ≥ 50 %**,
+    **actual ≥ 80 %**, **forecast ≥ 100 %**; each notifies `contactEmails`
+    (`alertEmail` if set) **and always `contactRoles: ['Owner']`** so it works out
+    of the box.
+  - Log Analytics `workspaceCapping.dailyQuotaGb = isProd ? -1 : json(logAnalyticsDailyCapGb)`.
+  - `ca-calc` scale `minReplicas: calcMinReplicas` (was hard `1`). Default stays 1
+    — C25b proved KEDA MI-auth doesn't scale the worker *up* on a queued job, so
+    `0` risks an unprocessed POE run; documented as a knob, not defaulted.
+- **`infra/main.parameters.json`** — `${MONTHLY_BUDGET=50}`,
+  `${LOG_ANALYTICS_DAILY_CAP_GB=0.5}`, `${CALC_MIN_REPLICAS=1}`.
+- **`scripts/spend.py`** (NEW — named `spend`, not `cost`, to dodge the
+  `src/api/cost` package collision in the test namespace, cf. C40/C42). Stdlib +
+  `az rest` against the **Cost Management query API** (no `costmanagement` CLI
+  extension needed; one retry on HTTP 429). Month-to-date **actual** cost for the
+  RG, % of budget now + projected (MTD ÷ day × days), a verdict (OK / WATCH /
+  OVER), top cost by resource type, and a currency note.
+- **`DEPLOY.md`** — "Cost guardrails (E13.4)" subsection: the table, the levers
+  (never `prod` first; `azd down --purge`; VS spending limit), `scripts/spend.py`.
+- **`tests/test_cost_guardrail.py`** (8) — params declared + threaded; budget
+  default-on with 3 thresholds + Owner role; the LA cap + `ca-calc` knob;
+  `az bicep build` compiles with `Microsoft.Consumption/budgets` + `Forecasted`
+  + `workspaceCapping`; `spend.py` projection math + verdict boundaries + the
+  no-RG exit path.
+
+**Grounded the cost live** (`scripts/spend.py` against `rg-landfall`): the
+subscription is **VS Enterprise, billed in INR**; month-to-date **~₹384 ≈
+$4.5/mo projected** with the stack up ~9 days. The earlier "$35–65/mo always-on"
+estimate was **wrong** — the ACA free grant absorbs `ca-calc` idle; real
+always-on is **~$5–12/mo**. §4.15 + decision 16 + the memory corrected. So the
+budget has huge headroom and the one real risk is `DEPLOYMENT_TIER=prod`. The
+`MONTHLY_BUDGET` param + `--budget` are in the **billing currency** (INR here),
+not USD — documented, and `spend.py` prints the currency.
+
+### Check
+
+| gate | result |
+|---|---|
+| unit | **463 pytest**, 2 skipped (+8 `test_cost_guardrail`; `spend.py` renamed from `cost.py` — collision) |
+| bicep | `az bicep build infra/main.bicep` rc 0; ARM carries the budget (default 50), the forecast notification, the LA cap, `calcMinReplicas` (default 1) |
+| live | `scripts/spend.py --rg rg-landfall` → currency INR, MTD ₹115 (day 9), projected ₹384 ≈ $4.5/mo |
+| evals | 32/32 + 8/8 + 30/30; `evals/SCORECARD.md` no drift; `evidence/SCORECARD.md` unchanged (a cost guardrail isn't a 5/5-rubric dimension) |
+| scope | infra params + a script + docs → **no deploy, no `azd provision`**. Ships on the next `azd up`. |
+
+### Act
+
+- `c44-cost` → merged `--no-ff` to `main`, pushed. No `azd` anything.
+- PRD §4.15 (cost table rewritten with the grounded numbers) + decision 16 +
+  E13.4 row + tracker updated. The sponsor: `azd env set MONTHLY_BUDGET 4200`
+  (INR) + `azd env set ALERT_EMAIL …` then `azd up`; and check the VS
+  **spending limit** is on.
+- Next: **E13.11** (one-command safe teardown / rehydrate — and it must first
+  make `azd up` reproduce `ca-drawio` + web Easy Auth, which are param-gated
+  off today); or E13.12 (`docs/learning-path.md`).
+
+---
+
 ## Cycle 43 — expert-panel review (Epic E13) + guided pipeline state (E13.2 / E12.8)
 
 **Date:** 2026-09-09 · **Owner:** panel (AI architect · cloud-arch director · FinOps ·

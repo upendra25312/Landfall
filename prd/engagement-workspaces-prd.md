@@ -848,15 +848,29 @@ The sponsor sets a **hard USD 40–50 / month budget** and will run the solution
 **ephemerally** — `azd up` when an engagement needs work, **`azd down --purge`**
 when it doesn't — and also uses Landfall to **learn Azure AI Foundry, Azure
 Container Apps and enterprise-scale solution design**. This section is the FinOps +
-cloud-architecture panel's grounded read (against live `rg-landfall`, 2026-09-09).
+cloud-architecture panel's grounded read — the numbers below are from **Azure Cost
+Management** for the live `rg-landfall` (2026-09-09), not estimates.
 
-**Does it fit?**
+**Subscription:** *Visual Studio Enterprise* — has a **monthly Azure credit** and,
+by default, a **spending limit** (a hard $0 stop when the credit runs out — the
+ultimate guardrail; verify it is on). Billed in **INR**, so the `MONTHLY_BUDGET`
+Bicep param and `scripts/spend.py --budget` are in **INR** (~₹4 200 ≈ $50).
+
+**Does it fit? — comfortably.**
 
 | Operating pattern | ~Monthly cost | Verdict |
 |---|---|---|
-| **Ephemeral — deployed ~40 h/month, `azd down --purge` otherwise** | **$8–20 all-in** (mostly model tokens) | Comfortably under budget |
-| **Left always-on** | **$35–65 baseline + tokens** | Marginal; `ca-calc` (`minReplicas: 1`, 2 vCPU / 4 GiB — the only always-on container) is ~$25–45 of it |
+| **Actual, this session** (stack up ~9 days, light use) | **~₹384 ≈ $4.5/month projected** (Cost Management) | Far under budget |
+| **Left always-on, light use** | **~$5–12/month** — ACR Basic (~$5), a little Log Analytics + storage + model tokens; `ca-calc` idle is covered by the ACA free grant; SQL + AI Search = $0 | Under budget |
+| **Ephemeral, deployed only when working** | **~$2–8/month** (mostly model tokens + prorated ACR) | Trivially under budget |
 | **`DEPLOYMENT_TIER=prod`** | **+$350–450/month** | **Never, for this budget** — flips AI Search free→`basic` (~$75) + SQL off the Free offer |
+
+The earlier estimate of "$35–65/month always-on" was **too high** — it over-counted
+`ca-calc` idle, which the ACA free grant (180 k vCPU-s + 360 k GiB-s / sub / month)
+largely absorbs. The real always-on cost is **~$5–12/month**. So the $40–50 budget
+has large headroom; ephemeral operation is a *good habit* and a learning exercise
+more than a hard necessity. The one thing that would actually blow it is
+`DEPLOYMENT_TIER=prod`.
 
 **Why ephemeral is cheap here** — with `--purge`, a torn-down deployment costs
 **$0** (no soft-delete retention on Cognitive Services / Key Vault / Log
@@ -871,16 +885,17 @@ SQL **serverless + Free offer + 60-min auto-pause**, `ca-web` + `ca-drawio`
 1. **`azd down --purge` between sessions** — the single biggest control. `--purge`
    (not plain `azd down`) so nothing lingers in soft-delete.
 2. **Never `DEPLOYMENT_TIER=prod`.** `free` (default) is byte-identical to today.
-3. **A Cost-Management budget + alert** (E13.4, now **P1**) at $50 with
-   50 / 80 / 100 % email thresholds — the safety net for "forgot to tear down".
-   Default **ON** now that there is a real number.
-4. **`ca-calc` `minReplicas: 1 → 0`** (E13.4) — it only costs while the stack is
-   up, but it is the thing that runs up a bill if a teardown is missed. C25b's
-   KEDA scale-to-zero didn't scale *up* on a queued message (MI-auth path); the
-   fallbacks are an HTTP wake-ping before the queue drop, a newer-API KEDA retry,
-   or a `scripts/` scale-to-0 toggle.
-5. **A small Log Analytics daily cap** (~0.5 GB, E13.4) so a telemetry loop can't
-   run up ingestion.
+3. **A Cost-Management budget + alert** — **done (C44)**, in the default `azd up`:
+   `MONTHLY_BUDGET=50` → a resource-group budget with actual-50 % / actual-80 % /
+   forecast-100 % alerts to `ALERT_EMAIL` **and always the RG Owner**. The safety
+   net for "forgot to tear down". `scripts/spend.py` shows month-to-date vs budget.
+4. **`ca-calc` replicas** — **done as a `CALC_MIN_REPLICAS` knob (C44)**, default 1.
+   It only costs while the stack is up; under ephemeral operation the ~$2–3/session
+   is negligible, so 1 (reliable POE processing) stays the default. `=0` is
+   documented for anyone minimising even the "up" cost — C25b's KEDA MI-auth
+   scale-*up* was unproven, so a POE run may sit unprocessed at 0.
+5. **A Log Analytics daily cap** — **done (C44)**: `LOG_ANALYTICS_DAILY_CAP_GB=0.5`
+   so a telemetry loop can't run up ingestion (`prod` uncaps).
 
 **Teardown / rehydrate flow** (E13.11 makes this two scripts):
 
@@ -1046,7 +1061,7 @@ worth doing but is no longer a keystone (the DB is recreated every session anywa
 | **E13.1** | **Idempotent `schema.sql` → safe `azd provision`** — rewrite every object as `CREATE … IF NOT EXISTS` / guarded `ALTER TABLE … ADD`; the RLS predicate + `SECURITY POLICY` re-asserted, never dropped-and-recreated; `scripts/apply_sql.py` gains a hard guard that refuses any statement matching `DROP TABLE`/`TRUNCATE`. Static + structural test. **No deploy** — the change ships dormant; the sponsor runs the first safe `azd provision` (which also lands the C39 workbook + failure-rate alert and the C42 web-tier signals). | P0 | backlog | `schema.sql` re-applied against a populated DB is a no-op (0 rows lost); `apply_sql.py` raises on a `DROP TABLE`; `tests/test_schema_idempotent.py` proves no destructive DDL + every object guarded; `DEPLOY.md` documents "`azd provision` is now safe". |
 | **E13.2** | **Guided pipeline state** (= E12.8, pulled forward) — `GET /api/engagements/<c>/<p>/pipeline` aggregates Inventory / Analysis / Estimate / Calculator-POE state from the existing blob + report reads; a compact status strip on the chat page (done ✓ / next / to-do chips); a one-time, **non-blocking** inline hint when the chat is used before analysis has run. All JS in `chat.js` (strict CSP holds). | P1 | backlog | The strip shows the four steps with the right state for the active engagement and refreshes after Start analysis + after a publish; asking for an estimate on an un-analysed engagement gets a hint, not a block; `azd deploy web`. |
 | **E13.3** | **Model review + adversarial-prompt eval** — run `evals/runner.py` against a current-generation model (Foundry agent version bump), record the delta; add `evals/adversarial.py` (≈10 prompt-injection / coerced-cross-engagement / tool-abuse cases) to the harness as a **gate** — a jailbreak that reaches another engagement's rows or an out-of-scope tool call fails CI. | P1 | backlog | The scorecard records the model decision with eval numbers; `evals/runner.py` runs the adversarial set; a regression that weakens injection resistance fails CI. |
-| **E13.4** | **Cost guardrail on Landfall's own spend** (see §4.15) — a `Microsoft.Consumption/budgets` at `monthlyBudgetUsd` (**default 50, ON** — the sponsor has a real number) with 50 / 80 / 100 % email alerts to `alertEmail` (reuse the C39 param); a Log Analytics `dailyQuotaGb` cap (~0.5); `ca-calc` `minReplicas: 1 → 0` (HTTP wake-ping before the queue drop, or a newer-API KEDA retry, or a `scripts/` scale toggle). All in the **default `azd up`** path (not param-gated-off) so an ephemeral deploy has the guardrail from minute one. | **P1** | backlog | A fresh `azd up` creates the $50 budget + 3 thresholds + the LA cap; `ca-calc` scales to zero (POE first-run cold start acceptable) **or** its always-on cost is written down; `DEPLOY.md` + §4.15 documented. |
+| **E13.4** | **Cost guardrail on Landfall's own spend** (see §4.15) — a `Microsoft.Consumption/budgets` at `monthlyBudget` (**default 50, ON**) with 50 % / 80 % actual + 100 % forecast alerts to `alertEmail` **and always the RG Owner**; a Log Analytics `dailyQuotaGb` cap (0.5, `prod` uncaps); `ca-calc` `minReplicas` as a `calcMinReplicas` knob (default 1 — KEDA MI-auth scale-up still unproven from C25b, so 0 is documented-but-not-default); `scripts/spend.py` month-to-date check. All in the **default `azd up`** path. | **P1** | **done (C44)** | _Done — `infra/{main,resources}.bicep` + `main.parameters.json` (`MONTHLY_BUDGET=50`, `LOG_ANALYTICS_DAILY_CAP_GB=0.5`, `CALC_MIN_REPLICAS=1`); `costBudget` gated on `monthlyBudget > 0`; `scripts/spend.py` (MTD actual vs budget + burn projection + top cost by resource type); `tests/test_cost_guardrail.py` (8, incl. `az bicep build`); `DEPLOY.md` "Cost guardrails". **Ships on the next `azd up`** — no `azd provision` run (drops SQL). `ca-calc → 0` left as a documented `CALC_MIN_REPLICAS` knob; under ephemeral operation it barely matters._ |
 | **E13.5** | **Agent-run ceiling** — a wall-clock + tool-call cap on a chat turn (the chat handler already times out the Responses call at 180 s for analyze; apply a turn budget to `/api/chat` too), and a documented `previous_response_id`-chain cap (archive → new thread after N turns or M tokens, surfaced as "start a fresh thread for a clean estimate"). | P2 | backlog | A pathological turn is cut with a clear message, not an open-ended spend; the chain length is bounded + the behaviour documented. |
 | **E13.6** | **Split `src/web/app.py`** into `APIRouter` modules (`routes/chat.py`, `routes/engagements.py`, `routes/dashboard.py`, `routes/questionnaire.py`), `app.py` wires them + the middleware. No behaviour change; the existing web tests are the safety net. | P2 | backlog | `app.py` < 150 lines; every route module < 300; full web-test suite green; `azd deploy web`. |
 | **E13.7** | **`dashboard.html` + `questionnaire.html` → external assets + strict CSP** — the E12.7 treatment for the other two pages; drop `_CSP_RELAXED` once nothing needs it. | P2 | backlog | All three pages serve the strict CSP; `_security_headers` has one policy; dashboard/questionnaire tests green. |
@@ -1186,15 +1201,19 @@ Each cycle logged in [`pdca-log.md`](pdca-log.md) (Plan / Do / Check / Act).
     explicit decision. See §4.14 + §5b. **Re-weighted by decision 16 (2026-09-09) — E13.1
     is no longer a keystone; E13.4 + E13.11 lead.**
 16. **Budget USD 40–50/month; ephemeral operation; `free` tier only (2026-09-09).** The
-    sponsor runs Landfall on a hard $40–50/mo budget, deployed **on demand** (`azd up`)
-    and **torn down** (`azd down --purge`) between engagements, and uses it to learn
-    Azure AI Foundry, Azure Container Apps and enterprise-scale design. Grounded cost
-    (§4.15): **ephemeral ≈ $8–20/mo all-in; always-on ≈ $35–65 + tokens;
-    `DEPLOYMENT_TIER=prod` = +$350–450 — forbidden for this budget.** Consequences:
-    E13.4 (Cost-Management budget + alert, **default ON at $50**) → **P1**; E13.11
-    (one-command safe teardown / rehydrate, export-first) → **P1**; `ca-calc`
-    `minReplicas` → 0; a Log Analytics daily cap; the C39/C42 guardrail IaC folded into
-    the default `azd up`. E13.12 adds `docs/learning-path.md` for the learning goal. See
+    sponsor runs Landfall on a $40–50/mo budget, deployed **on demand** (`azd up`) and
+    **torn down** (`azd down --purge`) between engagements, and uses it to learn Azure AI
+    Foundry, Azure Container Apps and enterprise-scale design. **Grounded via Cost
+    Management (C44): actual ≈ $4.5/mo; always-on light use ≈ $5–12/mo; ephemeral ≈
+    $2–8/mo — large headroom.** The one real risk is `DEPLOYMENT_TIER=prod`
+    (+$350–450). Subscription is *VS Enterprise* (credit + spending-limit option),
+    **billed in INR** — `MONTHLY_BUDGET` is in INR (~₹4200 ≈ $50). **E13.4 done (C44)** —
+    `Microsoft.Consumption/budgets` (default ON) + actual-50/80 + forecast-100 alerts
+    (`ALERT_EMAIL` + RG Owner), Log Analytics 0.5 GB/day cap, `CALC_MIN_REPLICAS` knob
+    (default 1 — the ACA free grant covers `ca-calc` idle, so 0 buys little),
+    `scripts/spend.py` MTD check; ships on the next `azd up`. **E13.11 → P1**
+    (one-command safe teardown / rehydrate — needed because a fresh `azd up` does not
+    yet reproduce `ca-drawio` or web Easy Auth). E13.12 adds `docs/learning-path.md`. See
     §4.15 + §5b.
 
 **Build order:** C18 done (E11.1–E11.3, live). C24 done. **C25 in progress** — `ca-calc`

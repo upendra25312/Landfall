@@ -47,6 +47,18 @@ param deploymentTier string = 'free'
 @description('Email for the answer-quality alert (E9.4 — Function tool error rate > 5% over 15 min). Empty = the answer-quality workbook is still deployed, but no alert / action group. azd env set ALERT_EMAIL you@example.com')
 param alertEmail string = ''
 
+@description('Monthly cost budget for this deployment (E13.4 / §4.15), in the SUBSCRIPTION BILLING CURRENCY (not necessarily USD — `python scripts/cost.py` prints yours). A resource-group Cost Management budget with actual-50%, actual-80% and forecast-100% alerts to ALERT_EMAIL (if set) and always the RG Owner. 0 disables it. Default 50 (fine for a USD sub; on e.g. an INR sub set ~4200 for a $50 target). azd env set MONTHLY_BUDGET 50')
+param monthlyBudget int = 50
+
+@description('First day of the current month (yyyy-MM-01) — the Cost Management budget start date must be the 1st. Leave as the default.')
+param budgetStartDate string = utcNow('yyyy-MM-01')
+
+@description('Log Analytics daily ingestion cap in GB (E13.4) — a runaway-telemetry brake. "-1" = uncapped (the prod tier always uncaps). Default 0.5. azd env set LOG_ANALYTICS_DAILY_CAP_GB 1')
+param logAnalyticsDailyCapGb string = '0.5'
+
+@description('ca-calc always-on replicas (E13.4 / §4.15). 1 (default) = the POE queue worker is always running while the stack is up (a few $/month; the ACA free grant covers most of it). 0 = cheaper but a POE run may sit unprocessed — KEDA queue scale-up on managed-identity auth did not work in C25b. azd env set CALC_MIN_REPLICAS 0')
+param calcMinReplicas int = 1
+
 @description('Entra app-registration client id for ca-web Easy Auth (E8.2). Empty = a fresh deploy has NO web auth. Set WEB_AUTH_CLIENT_ID + WEB_AUTH_CLIENT_SECRET to manage it as IaC — see DEPLOY.md.')
 param webAuthClientId string = ''
 @secure()
@@ -84,6 +96,10 @@ module resources './resources.bicep' = {
     functionAuthAllowedClientIds: functionAuthAllowedClientIds
     deploymentTier: deploymentTier
     alertEmail: alertEmail
+    monthlyBudget: monthlyBudget
+    budgetStartDate: budgetStartDate
+    logAnalyticsDailyCapGb: logAnalyticsDailyCapGb
+    calcMinReplicas: calcMinReplicas
     webAuthClientId: webAuthClientId
     webAuthClientSecret: webAuthClientSecret
   }

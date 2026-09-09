@@ -33,6 +33,18 @@ var isProd = deploymentTier == 'prod'
 @description('Email for the answer-quality alert (E9.4). Empty = workbook only, no alert.')
 param alertEmail string = ''
 
+@description('Monthly cost budget for the resource group, in the subscription billing currency (E13.4 / §4.15). 0 disables the budget resource.')
+param monthlyBudget int = 50
+
+@description('Cost Management budget start date (yyyy-MM-01) — must be the 1st of a month.')
+param budgetStartDate string = utcNow('yyyy-MM-01')
+
+@description('Log Analytics daily ingestion cap in GB (E13.4). "-1" = uncapped; prod is always uncapped.')
+param logAnalyticsDailyCapGb string = '0.5'
+
+@description('ca-calc always-on replicas (E13.4 / §4.15). 1 = POE queue worker always running; 0 = cheaper but a POE run may not process (see C25b).')
+param calcMinReplicas int = 1
+
 @description('Entra app-registration client id for ca-web Easy Auth (E8.2/E8.5). Empty = no Bicep-managed web auth — a fresh deploy has NO web auth (the live env keeps whatever was set with `az containerapp auth`). Set WEB_AUTH_CLIENT_ID + WEB_AUTH_CLIENT_SECRET and re-provision to manage it as IaC. See DEPLOY.md.')
 param webAuthClientId string = ''
 @secure()
@@ -84,6 +96,10 @@ resource logAnalytics 'Microsoft.OperationalInsights/workspaces@2023-09-01' = {
   properties: {
     sku: { name: 'PerGB2018' }
     retentionInDays: isProd ? 90 : 30
+    // E13.4 — a daily ingestion cap so a telemetry loop can't run up cost. prod uncaps.
+    workspaceCapping: {
+      dailyQuotaGb: isProd ? json('-1') : json(logAnalyticsDailyCapGb)
+    }
   }
 }
 
@@ -152,6 +168,52 @@ resource toolErrorRateAlert 'Microsoft.Insights/scheduledQueryRules@2023-03-15-p
     }
     autoMitigate: true
     actions: { actionGroups: [ alertActionGroup.id ] }
+  }
+}
+
+// ---- Cost guardrail (E13.4 / engagement-workspaces-prd.md §4.15) -------------
+// A resource-group Cost Management budget. Ephemeral operation ($40-50/mo target)
+// is protected mainly by `azd down --purge` + never using DEPLOYMENT_TIER=prod;
+// this is the safety net for a missed teardown. Notifies ALERT_EMAIL if set and
+// always the RG Owner. Set MONTHLY_BUDGET=0 to opt out.
+var hasBudget = monthlyBudget > 0
+var budgetEmails = empty(alertEmail) ? [] : [ alertEmail ]
+
+resource costBudget 'Microsoft.Consumption/budgets@2023-11-01' = if (hasBudget) {
+  name: 'landfall-monthly-${resourceToken}'
+  properties: {
+    category: 'Cost'
+    amount: monthlyBudget
+    timeGrain: 'Monthly'
+    timePeriod: {
+      startDate: budgetStartDate
+    }
+    notifications: {
+      actual_50: {
+        enabled: true
+        operator: 'GreaterThanOrEqualTo'
+        threshold: 50
+        thresholdType: 'Actual'
+        contactEmails: budgetEmails
+        contactRoles: [ 'Owner' ]
+      }
+      actual_80: {
+        enabled: true
+        operator: 'GreaterThanOrEqualTo'
+        threshold: 80
+        thresholdType: 'Actual'
+        contactEmails: budgetEmails
+        contactRoles: [ 'Owner' ]
+      }
+      forecast_100: {
+        enabled: true
+        operator: 'GreaterThanOrEqualTo'
+        threshold: 100
+        thresholdType: 'Forecasted'
+        contactEmails: budgetEmails
+        contactRoles: [ 'Owner' ]
+      }
+    }
   }
 }
 
@@ -496,7 +558,7 @@ resource calcApp 'Microsoft.App/containerApps@2024-10-02-preview' = {
       // load. Real scale-to-zero needs the worker to hold the queue metric > 0
       // while it drives the calculator (or a different trigger).
       scale: {
-        minReplicas: 1
+        minReplicas: calcMinReplicas   // E13.4 — 1 by default; CALC_MIN_REPLICAS=0 to cut cost (POE runs may not process, see C25b)
         maxReplicas: 2
         rules: [
           {
