@@ -6,6 +6,7 @@
 infra/*.json
 !infra/main.parameters.json
 !infra/abbreviations.json
+!infra/workbook-answer-quality.json
 
 # python
 __pycache__/

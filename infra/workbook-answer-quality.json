@@ -1,0 +1,78 @@
+{
+  "version": "Notebook/1.0",
+  "$schema": "https://github.com/Microsoft/Application-Insights-Workbooks/blob/master/schema/workbook.json",
+  "items": [
+    {
+      "type": 1,
+      "content": {
+        "json": "# Landfall — answer quality (E9.4)\n\nCan an operator see a bad answer? Volume, latency and error rate per tool; `query_inventory` outcomes; the confidence mix of every published estimate; recent errors. All from telemetry the deployment already emits (`requests` per function invocation, `traces` from `obs.event`)."
+      }
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "requests\n| where timestamp > ago(24h)\n| summarize calls=count(), failed=countif(success==false), p50_ms=round(percentile(duration,50)), p95_ms=round(percentile(duration,95)) by tool=operation_Name\n| order by calls desc",
+        "size": 0,
+        "title": "Tool calls — last 24h (volume, failures, latency)",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components"
+      }
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "requests\n| where timestamp > ago(24h)\n| summarize failRate=round(100.0*countif(success==false)/count(),1), calls=count()\n| extend status = iff(failRate > 5.0, 'ELEVATED', 'ok')",
+        "size": 4,
+        "title": "Function failure rate (24h) — alert fires above 5%",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components"
+      }
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "traces\n| where timestamp > ago(24h)\n| where customDimensions.event == 'query_inventory'\n| summarize count() by status=tostring(customDimensions.status)\n| order by count_ desc",
+        "size": 1,
+        "title": "query_inventory outcomes (ok / rejected / text_to_sql_error / query_error)",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components"
+      }
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "traces\n| where timestamp > ago(7d)\n| where customDimensions.event == 'estimate_assembled'\n| project timestamp, engagement=tostring(customDimensions.engagement), status=tostring(customDimensions.status), overall=tostring(customDimensions.overall_confidence), low=toint(customDimensions.low), medium=toint(customDimensions.medium), high=toint(customDimensions.high), figures=toint(customDimensions.figures)\n| order by timestamp desc",
+        "size": 0,
+        "title": "Estimates assembled / published — confidence mix (7d)",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components"
+      }
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "traces\n| where timestamp > ago(24h)\n| where severityLevel >= 3\n| project timestamp, tool=operation_Name, message\n| order by timestamp desc\n| take 50",
+        "size": 0,
+        "title": "Errors — last 24h (severity >= Error)",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components"
+      }
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "requests\n| where timestamp > ago(24h)\n| where success == false\n| summarize failures=count() by tool=operation_Name, resultCode\n| order by failures desc",
+        "size": 0,
+        "title": "Failures by tool + result code (24h)",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components"
+      }
+    }
+  ]
+}

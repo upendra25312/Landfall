@@ -35,6 +35,23 @@ ESTIMATE_CONTAINER = eng.ANSWERS_CONTAINER
 _blob_state: dict = {}
 
 
+def _obs_estimate(engagement, package, *, status, error=None):
+    """E9.4 — one telemetry event per assemble/publish, carrying the confidence
+    mix so an operator can see how many Low-confidence deliverables go out."""
+    try:
+        from obs import eng_hash, event
+        figs = (package or {}).get("figures") or []
+        by = {}
+        for f in figs:
+            by[f.get("confidence")] = by.get(f.get("confidence"), 0) + 1
+        event("estimate_assembled", engagement=eng_hash(engagement), status=status,
+              error=error, figures=len(figs),
+              overall_confidence=((package or {}).get("meta") or {}).get("overall_confidence"),
+              low=by.get("Low", 0), medium=by.get("Medium", 0), high=by.get("High", 0))
+    except Exception:                                 # noqa: BLE001
+        pass
+
+
 def _engagement_of(req, body: dict) -> str:
     raw = body.get("engagement") or req.params.get("engagement")
     if not raw:
@@ -87,7 +104,9 @@ def assemble_estimate_route(req: func.HttpRequest) -> func.HttpResponse:
         package.setdefault("meta", {})["engagement"] = engagement
     except Exception as exc:                       # noqa: BLE001
         logging.exception("assemble_estimate failed")
+        _obs_estimate(engagement, None, status="error", error=type(exc).__name__)
         return _json({"error": f"assemble failed: {exc}"}, 500)
+    _obs_estimate(engagement, package, status="ok")
     return _json(package)
 
 
@@ -196,7 +215,10 @@ def publish_estimate_route(req: func.HttpRequest) -> func.HttpResponse:
         package.pop("landing_zone_png_b64", None)   # transient embed payload — not persisted
     except Exception as exc:                       # noqa: BLE001
         logging.exception("publish_estimate failed")
+        _obs_estimate(locals().get("engagement"), locals().get("package"),
+                      status="error", error=type(exc).__name__)
         return _json({"error": f"publish failed: {exc}"}, 500)
+    _obs_estimate(engagement, package, status="published")
 
     # E11.18 hook — optionally kick the Azure Pricing Calculator POE run now that
     # latest.json + tools_raw.json are in place. Best-effort: a publish must not
