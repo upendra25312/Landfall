@@ -125,23 +125,32 @@ def rubric(live: dict) -> list[dict]:
          "bar": "3 pre-sales people, 3 estates, no engineer, median < 1 day, all accepted.",
          "basis": "The no-code path exists end-to-end — engagements home, upload panel, "
                   "\"start analysis\", embedded chat + prompt cards, in-page export, "
-                  "history versions (E11.6 / E11.7 / E11.8) — but has not been timed with "
-                  "real pre-sales users.",
+                  "history versions (E11.6 / E11.7 / E11.8). The timed trial kit is ready "
+                  "(evidence/trials/protocol.md Trial B + results-template.md + 3 distinct "
+                  "estates from the back-test generator) but the trial has not been run "
+                  "with real pre-sales users.",
          "evidence": [("dashboard", "../src/web/dashboard.html"),
-                      ("operating SOP", "../docs/operating-sop.html")],
-         "gap": "run the timed usability trial (3 users × 3 estates); record outcomes in "
-                "evidence/trials/."},
+                      ("operating SOP", "../docs/operating-sop.html"),
+                      ("trial kit", "trials/protocol.md")],
+         "gap": "run the timed usability trial (3 pre-sales × 3 fresh estates + an "
+                "architect reviewer, protocol.md Trial B); record in evidence/trials/."},
 
-        {"dim": "Understandability", "score": 2.0,
+        {"dim": "Understandability", "score": 3.0,
          "bar": "3 new consultants, 60 min with the docs, then succeed at a real task "
                 "unaided.",
-         "basis": "Operating SOP (v1.3), discovery questionnaire, and the PRD/tracker exist; "
-                  "no comprehension trial has been run.",
-         "evidence": [("operating SOP", "../docs/operating-sop.html"),
-                      ("questionnaire", "../docs/discovery-questionnaire.html")],
-         "gap": "run the 60-minute comprehension test with 3 consultants new to Landfall; "
-                "record in evidence/trials/. A \"how Landfall works\" walkthrough (D2) is "
-                "still to write."},
+         "basis": "The Build half is done: docs match what's built; the D2 \"how Landfall "
+                  "works\" walkthrough (docs/how-landfall-works.html v1.0 — pipeline, 12 "
+                  "tools, answer contract, confidence model incl. the cost-capped-at-Low "
+                  "rule, DRAFT boundary) + a worked example over the sample estate "
+                  "reconciled to evals/pipeline.py. The comprehension task set + answer "
+                  "key are apparatus-validated (evidence/trials/dry-run-2026-09-09.md). "
+                  "The Proof half — the 3-person trial — is designed and ready but not run.",
+         "evidence": [("how Landfall works (D2)", "../docs/how-landfall-works.html"),
+                      ("operating SOP", "../docs/operating-sop.html"),
+                      ("comprehension tasks + key", "trials/comprehension-answer-key.md"),
+                      ("apparatus dry run", "trials/dry-run-2026-09-09.md")],
+         "gap": "run the 60-minute comprehension test with 3 consultants new to Landfall "
+                "(protocol.md Trial A); record in evidence/trials/."},
 
         {"dim": "Operability", "score": 3.5,
          "bar": "CI `azd up → smoke → azd down` on Linux + Windows every PR; chaos drill "
