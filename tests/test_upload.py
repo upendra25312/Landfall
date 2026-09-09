@@ -262,3 +262,75 @@ def test_chat_page_has_start_analysis(client):
     _w, c, _s = client
     html = c.get("/").text
     assert "startanalysis" in html and "Start analysis" in html and "/analyze" in html
+
+
+# --- C21 / E11.8: published-version history -------------------------------
+
+def test_history_lists_snapshots(client, monkeypatch):
+    webapp, c, _s = client
+    hp = "engagements/contoso-ltd/dc-exit/history"
+    store = {
+        f"{hp}/20260908T120000Z/latest.json": {
+            "data": json.dumps({"meta": {"published_at": "2026-09-08T12:00:00+00:00",
+                                         "package_id": "PKG-1"}}).encode(),
+            "metadata": {}, "mtime": _dt.datetime(2026, 9, 8, tzinfo=_dt.timezone.utc)},
+        f"{hp}/20260908T120000Z/latest.xlsx": {
+            "data": b"xlsxbytes", "metadata": {}, "mtime": _dt.datetime(2026, 9, 8, tzinfo=_dt.timezone.utc)},
+        f"{hp}/20260909T090000Z/latest.json": {
+            "data": json.dumps({"meta": {"published_at": "2026-09-09T09:00:00+00:00",
+                                         "package_id": "PKG-2"}}).encode(),
+            "metadata": {}, "mtime": _dt.datetime(2026, 9, 9, tzinfo=_dt.timezone.utc)},
+    }
+    monkeypatch.setattr(webapp, "_estimate_container", lambda: _Container(store))
+    j = c.get("/api/engagements/contoso-ltd/dc-exit/history").json()
+    assert j["count"] == 2
+    assert [v["stamp"] for v in j["versions"]] == ["20260909T090000Z", "20260908T120000Z"]  # newest first
+    assert j["versions"][0]["package_id"] == "PKG-2"
+
+
+def test_dashboard_data_reads_a_snapshot(client, monkeypatch):
+    webapp, c, _s = client
+    store = {
+        "engagements/contoso-ltd/dc-exit/history/20260908T120000Z/latest.json": {
+            "data": json.dumps({"meta": {"package_id": "OLD"}, "figures": []}).encode(),
+            "metadata": {}, "mtime": _dt.datetime(2026, 9, 8, tzinfo=_dt.timezone.utc)},
+    }
+    monkeypatch.setattr(webapp, "_estimate_container", lambda: _Container(store))
+    r = c.get("/dashboard/data?e=contoso-ltd/dc-exit&snapshot=20260908T120000Z")
+    assert r.status_code == 200 and r.json()["meta"]["package_id"] == "OLD"
+
+
+def test_dashboard_has_version_picker(client):
+    _w, c, _s = client
+    html = c.get("/dashboard").text
+    assert "verSel" in html and "loadVersions" in html and "snapshot" in html
+
+
+# --- C21 / E11.14: ask & export to Excel ---------------------------------
+
+def test_answer_to_xlsx_returns_a_workbook(client):
+    _w, c, _s = client
+    r = c.post("/api/answer_to_xlsx", json={
+        "engagement": "contoso-ltd/dc-exit",
+        "question": "how many prod windows servers?",
+        "answer": "42 servers.",
+        "tables": [{"name": "prod win", "columns": ["os", "n"], "rows": [["WS2019", 42]]}],
+        "sql": "SELECT 1",
+    })
+    assert r.status_code == 200
+    assert r.headers["content-type"].startswith(
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+    assert r.content[:2] == b"PK"                       # a real xlsx (zip) container
+    assert "contoso-ltd-dc-exit-answer.xlsx" in r.headers.get("content-disposition", "")
+
+
+def test_answer_to_xlsx_requires_an_answer(client):
+    _w, c, _s = client
+    r = c.post("/api/answer_to_xlsx", json={"question": "q?"})
+    assert r.status_code == 400
+
+
+def test_chat_page_has_excel_download(client):
+    _w, c, _s = client
+    html = c.get("/").text
+    assert "xlsxFromAnswer" in html and "/api/answer_to_xlsx" in html and "Download as Excel" in html

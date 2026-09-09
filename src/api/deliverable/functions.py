@@ -122,6 +122,11 @@ def publish_estimate_route(req: func.HttpRequest) -> func.HttpResponse:
         prefix = eng.estimate_prefix(engagement)
         written = []
 
+        # E11.8 — snapshot the version being replaced into history/<its-ts>/ so a
+        # re-publish never destroys the prior estimate.
+        snapshot = _snapshot_previous(cc, engagement, prefix)
+
+        package["meta"]["published_at"] = _now()
         payload = json.dumps(package, default=str).encode("utf-8")
         cc.upload_blob(f"{prefix}/latest.json", payload, overwrite=True)
         written.append("latest.json")
@@ -164,8 +169,54 @@ def publish_estimate_route(req: func.HttpRequest) -> func.HttpResponse:
         "package_id": package.get("meta", {}).get("package_id"),
         "figures": len(package.get("figures", [])),
         "poe": poe,
+        "snapshot": snapshot,
         "dashboard_hint": f"open the Container App at /e/{engagement}",
     })
+
+
+def _now() -> str:
+    import datetime as _dt
+    return _dt.datetime.now(_dt.timezone.utc).isoformat(timespec="seconds")
+
+
+def _history_stamp(iso: str | None) -> str:
+    """A published_at ISO string -> a sortable folder name like 20260909T091500Z."""
+    import datetime as _dt
+    import re as _re
+    if iso:
+        m = _re.match(r"(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2}):(\d{2})", iso)
+        if m:
+            return "".join(m.groups()[:3]) + "T" + "".join(m.groups()[3:]) + "Z"
+    return _dt.datetime.now(_dt.timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+
+
+def _snapshot_previous(cc, engagement: str, prefix: str) -> str | None:
+    """Copy the current latest.* (+ tools_raw.json) into history/<prev-ts>/ before
+    they are overwritten. Best-effort: a snapshot failure must not block a publish."""
+    try:
+        prev = cc.download_blob(f"{prefix}/latest.json").readall()
+    except Exception:                              # noqa: BLE001 - nothing published yet
+        return None
+    try:
+        stamp = _history_stamp((json.loads(prev).get("meta") or {}).get("published_at"))
+    except Exception:                              # noqa: BLE001
+        stamp = _history_stamp(None)
+    hp = eng.history_prefix(engagement, stamp)
+    copied = 0
+    for name in ("latest.json", "latest.xlsx", "latest.docx", "latest.pptx", "tools_raw.json"):
+        try:
+            data = cc.download_blob(f"{prefix}/{name}").readall()
+        except Exception:                          # noqa: BLE001
+            continue
+        try:
+            cc.upload_blob(f"{hp}/{name}", data, overwrite=True)
+            copied += 1
+        except Exception:                          # noqa: BLE001
+            logging.warning("snapshot: could not write %s/%s", hp, name)
+    if not copied:
+        return None
+    logging.info("publish_estimate: snapshotted the prior version to %s (%d files)", hp, copied)
+    return stamp
 
 
 def _truthy(v) -> bool:

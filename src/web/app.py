@@ -173,10 +173,20 @@ async def chat(req: Request):
                 status_code=502,
             )
         cites = _citations(resp)
+        try:
+            from answer_xlsx import tables_from_response
+            tables, last_sql = tables_from_response(resp)
+        except Exception:  # noqa: BLE001
+            tables, last_sql = [], None
         if engagement:
             ts = _now()
             chat_doc.setdefault("turns", []).append({"role": "user", "text": question, "ts": ts})
-            chat_doc["turns"].append({"role": "assistant", "text": text, "ts": ts, "citations": cites})
+            a_turn = {"role": "assistant", "text": text, "ts": ts, "citations": cites}
+            if tables:
+                a_turn["tables"] = tables
+            if last_sql:
+                a_turn["sql"] = last_sql
+            chat_doc["turns"].append(a_turn)
             chat_doc["current_response_id"] = resp.id
             chat_doc["engagement"] = engagement
             chat_doc.setdefault("started_at", ts)
@@ -184,7 +194,8 @@ async def chat(req: Request):
                 _save_chat(engagement, chat_doc)
             except Exception:  # noqa: BLE001
                 logging.exception("could not persist the conversation for %s", engagement)
-        return {"answer": text, "citations": cites, "thread_id": resp.id}
+        return {"answer": text, "citations": cites, "thread_id": resp.id,
+                "tables": tables, "sql": last_sql}
     except Exception as exc:  # noqa: BLE001
         logging.exception("chat failed")
         return JSONResponse({"error": str(exc)}, status_code=500)
@@ -564,6 +575,38 @@ async def engagement_analyze(customer: str, project: str):
     return JSONResponse(result)
 
 
+@app.get("/api/engagements/{customer}/{project}/history")
+def engagement_history(customer: str, project: str):
+    """Published-estimate version history (E11.8). Each re-publish snapshots the
+    version it replaces into answers/engagements/<eid>/history/<ts>/."""
+    eng = _engagement(customer, project)
+    if not eng:
+        return JSONResponse({"error": "unknown engagement"}, status_code=404)
+    eid, _ = eng
+    cc = _estimate_container()
+    root = f"engagements/{eid}/history/"
+    stamps: dict[str, dict] = {}
+    try:
+        for b in cc.list_blobs(name_starts_with=root):
+            rest = b.name[len(root):]
+            if "/" not in rest:
+                continue
+            stamp, fname = rest.split("/", 1)
+            e = stamps.setdefault(stamp, {"stamp": stamp, "files": []})
+            e["files"].append(fname)
+            if fname == "latest.json":
+                try:
+                    meta = (json.loads(cc.download_blob(b.name).readall()).get("meta") or {})
+                    e["published_at"] = meta.get("published_at")
+                    e["package_id"] = meta.get("package_id")
+                except Exception:  # noqa: BLE001
+                    pass
+    except Exception:  # noqa: BLE001
+        pass
+    versions = sorted(stamps.values(), key=lambda v: v["stamp"], reverse=True)
+    return JSONResponse({"engagement": eid, "versions": versions, "count": len(versions)})
+
+
 @app.get("/api/engagements/{customer}/{project}/chat")
 def engagement_chat_get(customer: str, project: str):
     """The saved conversation for this engagement (E11.26) — the page renders it on
@@ -710,26 +753,67 @@ def prompt_cards():
                                        "capabilities": []}, "cards": []})
 
 
+@app.post("/api/answer_to_xlsx")
+async def answer_to_xlsx(req: Request):
+    """E11.14 — download a chat answer (+ any tabular tool output it carried) as an
+    Excel workbook: an Answer sheet, a sheet per table, and a Provenance sheet."""
+    try:
+        body = await req.json()
+    except Exception:  # noqa: BLE001
+        body = {}
+    question = (body.get("question") or "").strip()
+    answer = (body.get("answer") or "").strip()
+    if not answer:
+        return JSONResponse({"error": "nothing to export — 'answer' is required"}, status_code=400)
+    engagement = (body.get("engagement") or "").strip().strip("/") or None
+    tables = body.get("tables") if isinstance(body.get("tables"), list) else []
+    try:
+        from answer_xlsx import build_answer_workbook
+        blob = build_answer_workbook(engagement, question, answer, tables, body.get("sql"))
+    except Exception as exc:  # noqa: BLE001
+        logging.exception("answer_to_xlsx failed")
+        return JSONResponse({"error": f"could not build the workbook: {exc}"}, status_code=500)
+    stem = (engagement or "landfall").replace("/", "-")
+    return Response(blob, media_type=_EXPORT_MIME["xlsx"], headers={
+        "Content-Disposition": f'attachment; filename="{stem}-answer.xlsx"'})
+
+
 @app.get("/dashboard", response_class=HTMLResponse)
 def dashboard():
     """The assessment dashboard — an Azure Migrate–style read of the published estimate."""
     return (_HERE / "dashboard.html").read_text(encoding="utf-8")
 
 
+def _snapshot_blob(name: str, engagement: str | None, snapshot: str | None) -> bytes | None:
+    """Read `name` from a history/<snapshot>/ folder, or the live latest.* if no
+    snapshot is given (E11.8)."""
+    if not snapshot:
+        return _read_estimate_blob(name, engagement)
+    eid = (engagement or "").strip().strip("/")
+    stamp = "".join(ch for ch in snapshot if ch.isalnum() or ch == "Z")
+    if not eid or not stamp:
+        return None
+    try:
+        return _estimate_container().download_blob(
+            f"engagements/{eid}/history/{stamp}/{name}").readall()
+    except Exception:  # noqa: BLE001
+        return None
+
+
 @app.get("/dashboard/data")
-def dashboard_data(e: str | None = None):
-    blob = _read_estimate_blob("latest.json", e)
+def dashboard_data(e: str | None = None, snapshot: str | None = None):
+    blob = _snapshot_blob("latest.json", e, snapshot)
     if blob is None:
         return JSONResponse({"error": "no estimate published"}, status_code=404)
     return JSONResponse(json.loads(blob))
 
 
 @app.get("/dashboard/download/{fmt}")
-def dashboard_download(fmt: str, e: str | None = None):
+def dashboard_download(fmt: str, e: str | None = None, snapshot: str | None = None):
     fmt = fmt.lower().lstrip(".")
     if fmt not in _EXPORT_MIME:
         return JSONResponse({"error": "format must be xlsx | docx | pptx"}, status_code=400)
-    blob = _read_estimate_blob(f"latest.{fmt}", e)
+    blob = _snapshot_blob(f"latest.{fmt}", e, snapshot)
     if blob is None:
         return JSONResponse({"error": f"no {fmt} export published"}, status_code=404)
     name = (e or "landfall-estimate").replace("/", "-")
@@ -840,7 +924,7 @@ def index():
  <input type=file id=impfile accept=".zip" hidden>
  <span class=sp></span>
  <button class=link id=newchat title="Archive this conversation and start a fresh one">+ New chat</button>
- <a href="/dashboard">Assessment dashboard &rarr;</a>
+ <a href="/dashboard" id=dashlink>Assessment dashboard &rarr;</a>
 </header>
 <div class=mini id=engform hidden>
  <form id=ef>
@@ -886,10 +970,26 @@ let busy=false,CARDS=[],ENG=localStorage.getItem('landfall.eng')||'';
 const log=document.getElementById('log'),q=document.getElementById('q'),send=document.getElementById('send');
 const engsel=document.getElementById('engsel'),engform=document.getElementById('engform');
 
-function add(t,cls,cites){
+function add(t,cls,cites,extra){
  const d=document.createElement('div');d.className='m '+cls;d.textContent=t;
  if(cites&&cites.length){const c=document.createElement('div');c.className='c';c.textContent='Sources: '+cites.join(', ');d.appendChild(c);}
+ if(cls==='a'&&t&&(extra&&(extra.tables&&extra.tables.length))){
+  const b=document.createElement('button');b.className='link';b.style.marginTop='6px';
+  b.textContent='⭳ Download as Excel';
+  b.onclick=()=>xlsxFromAnswer(extra.question||'',t,extra.tables||[],extra.sql||'');
+  d.appendChild(b);
+ }
  log.appendChild(d);d.scrollIntoView({block:'end'});return d;
+}
+async function xlsxFromAnswer(question,answer,tables,sql){
+ try{
+  const r=await fetch('/api/answer_to_xlsx',{method:'POST',headers:{'content-type':'application/json'},
+    body:JSON.stringify({engagement:ENG,question:question,answer:answer,tables:tables,sql:sql})});
+  if(!r.ok){toast('Excel export failed');return;}
+  const blob=await r.blob(),u=URL.createObjectURL(blob),a=document.createElement('a');
+  a.href=u;a.download=(ENG||'landfall').replace('/','-')+'-answer.xlsx';a.click();
+  setTimeout(()=>URL.revokeObjectURL(u),4000);
+ }catch(e){toast('Excel export failed');}
 }
 function working(){
  const d=document.createElement('div');d.className='m a';
@@ -943,10 +1043,12 @@ async function loadEngagements(){
  if(ENG && list.some(e=>e.engagement===ENG)) engsel.value=ENG;
  else { ENG=engsel.value||''; localStorage.setItem('landfall.eng',ENG); }
  document.getElementById('expeng').hidden=!ENG;
- renderWelcome();showUpload();loadChat();
+ renderWelcome();showUpload();loadChat();syncDashLink();
 }
+function syncDashLink(){const a=document.getElementById('dashlink');
+ if(a)a.href=ENG?('/dashboard?e='+encodeURIComponent(ENG)):'/dashboard';}
 engsel.onchange=()=>{ENG=engsel.value;localStorage.setItem('landfall.eng',ENG);
- document.getElementById('expeng').hidden=!ENG;renderWelcome();showUpload();loadChat();};
+ document.getElementById('expeng').hidden=!ENG;renderWelcome();showUpload();loadChat();syncDashLink();};
 
 // --- per-engagement conversation (E11.26) ------------------------------
 async function loadChat(){
@@ -958,7 +1060,8 @@ async function loadChat(){
  log.innerHTML='<div id=welcome></div>';
  if(!turns.length){renderWelcome();return;}
  document.getElementById('welcome').remove();
- turns.forEach(t=>add(t.text,t.role==='user'?'u':'a',t.citations));
+ turns.forEach((t,i)=>add(t.text,t.role==='user'?'u':'a',t.citations,
+   t.role==='assistant'?{tables:t.tables,sql:t.sql,question:(turns[i-1]||{}).text||''}:null));
 }
 document.getElementById('expeng').onclick=()=>{
  if(!ENG)return;const [c,p]=ENG.split('/');
@@ -1141,7 +1244,7 @@ async function ask(v){
   const j=await r.json();
   clearInterval(ph._timer);ph.remove();
   if(j.error){add('Error: '+j.error,'a');}
-  else{add(j.answer,'a',j.citations);}
+  else{add(j.answer,'a',j.citations,{tables:j.tables,sql:j.sql,question:v});}
  }catch(err){clearInterval(ph._timer);ph.remove();add('Error: '+err,'a');}
  setBusy(false);
 }
