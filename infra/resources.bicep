@@ -326,7 +326,7 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
 @description('ca-calc container image. Empty on first provision; azd sets SERVICE_CALC_IMAGE_NAME after the first deploy.')
 param calcImageName string = ''
 
-resource calcApp 'Microsoft.App/containerApps@2024-03-01' = {
+resource calcApp 'Microsoft.App/containerApps@2024-10-02-preview' = {
   name: '${abbrs.appContainerApps}calc-${resourceToken}'
   location: location
   tags: union(tags, { 'azd-service-name': 'calc' })
@@ -364,11 +364,33 @@ resource calcApp 'Microsoft.App/containerApps@2024-03-01' = {
           ]
         }
       ]
-      // One always-on replica drains the calc-jobs queue (a background poller in
-      // app.py). KEDA queue-scale-to-zero with the workload identity is the
-      // follow-up optimisation (E11.16) — the scale-rule MI auth shape isn't in
-      // this Bicep type version and shared-key auth is disabled on the account.
-      scale: { minReplicas: 1, maxReplicas: 1 }
+      // KEDA queue-scale-to-zero (E11.16 / C25b): 0 replicas at rest, KEDA spins
+      // one up when a message lands on calc-jobs; worker.py `consume_forever()`
+      // drains it and writes landing_zone.*. The scaler authenticates with the
+      // workload identity `uami` (Storage Queue Data Contributor, `ra_uami_queue`)
+      // — no account key (shared-key auth is off on the storage account).
+      // cooldownPeriod 900s > the worst-case calculator drive so KEDA never
+      // scales a replica out from under an in-flight job (an in-flight message is
+      // invisible, so queueLength reads 0 during processing); a job that is
+      // killed anyway reappears after the 1800s visibility timeout and retries
+      // (worker `_MAX_DEQUEUE` = 3).
+      scale: {
+        minReplicas: 0
+        maxReplicas: 2
+        pollingInterval: 30
+        cooldownPeriod: 900
+        rules: [
+          {
+            name: 'calc-jobs-queue'
+            azureQueue: {
+              queueName: calcJobsQueue.name
+              queueLength: 1
+              accountName: storage.name
+              identity: uami.id
+            }
+          }
+        ]
+      }
     }
   }
 }

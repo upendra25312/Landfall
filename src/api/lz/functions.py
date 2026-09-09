@@ -131,11 +131,48 @@ def build_calculator_estimate_route(req: func.HttpRequest) -> func.HttpResponse:
     if not os.environ.get("STORAGE_QUEUE_URL"):
         return _json({"error": "STORAGE_QUEUE_URL not configured — the ca-calc queue is not wired yet"}, 503)
 
+    try:
+        result = stage_calc_run(engagement, include_dr_compute=bool(body.get("include_dr_compute")))
+    except _CalcSpecError as exc:
+        return _json({"error": str(exc)}, exc.status)
+
+    return _json({
+        "engagement": engagement,
+        "status": "building",
+        "spec_line_count": result["spec_line_count"],
+        "internal_monthly_estimate": result["internal_monthly_estimate"],
+        "poll": f"GET /api/build_calculator_estimate?engagement={engagement}",
+        "dashboard_hint": f"the calculator run takes a few minutes — open the dashboard "
+                          f"for {engagement} and watch the 'Azure landing zone — Pricing "
+                          f"Calculator POE' card; it will show the monthly total and a "
+                          f"Download Excel (POE) button when ready",
+    }, 202)
+
+
+class _CalcSpecError(Exception):
+    def __init__(self, message: str, status: int = 400):
+        super().__init__(message)
+        self.status = status
+
+
+def stage_calc_run(engagement: str, *, include_dr_compute: bool = False) -> dict:
+    """Build the Azure Pricing Calculator spec from the engagement's published
+    estimate, stage it at `{prefix}/_calc_spec.json` + a `building` marker, and
+    drop one `calc-jobs` message. Shared by the `build_calculator_estimate` route
+    and the `publish_estimate` auto-kick (E11.18). Raises `_CalcSpecError`
+    (carrying an HTTP status) on any hard failure.
+
+    `engagement` must already be normalized (`eng.normalize_engagement`).
+    """
+    if not os.environ.get("STORAGE_QUEUE_URL"):
+        raise _CalcSpecError("STORAGE_QUEUE_URL not configured — the ca-calc queue is not wired yet", 503)
+
+    prefix = eng.estimate_prefix(engagement)
     latest = _read_json(eng.ANSWERS_CONTAINER, f"{prefix}/latest.json")
     tools_raw = _read_json(eng.ANSWERS_CONTAINER, f"{prefix}/tools_raw.json") or {}
     manifest = _read_json(eng.RAW_CONTAINER, eng.engagement_file(engagement)) or {}
     if not latest and not tools_raw:
-        return _json({"error": f"no published estimate for {engagement} — run publish_estimate first"}, 409)
+        raise _CalcSpecError(f"no published estimate for {engagement} — run publish_estimate first", 409)
 
     meta = (latest or {}).get("meta", {})
     engagement_meta = {
@@ -155,11 +192,11 @@ def build_calculator_estimate_route(req: func.HttpRequest) -> func.HttpResponse:
             compute=tools_raw.get("compute_cost"),
             storage=tools_raw.get("storage_cost"),
             run_rate=tools_raw.get("run_rate_extras"),
-            include_dr_compute=bool(body.get("include_dr_compute")),
+            include_dr_compute=include_dr_compute,
             generated_on=meta.get("generated_on"),
         )
     except ValueError as exc:
-        return _json({"error": f"cannot build a calculator spec: {exc}"}, 400)
+        raise _CalcSpecError(f"cannot build a calculator spec: {exc}", 400) from exc
 
     marker = {
         "engagement": engagement,
@@ -179,7 +216,7 @@ def build_calculator_estimate_route(req: func.HttpRequest) -> func.HttpResponse:
                        overwrite=True)
     except Exception as exc:                       # noqa: BLE001
         logging.exception("could not stage the calculator spec")
-        return _json({"error": f"could not stage the calculator run: {exc}"}, 500)
+        raise _CalcSpecError(f"could not stage the calculator run: {exc}", 500) from exc
 
     try:
         _queue().send_message(json.dumps({
@@ -191,20 +228,11 @@ def build_calculator_estimate_route(req: func.HttpRequest) -> func.HttpResponse:
         }))
     except Exception as exc:                       # noqa: BLE001
         logging.exception("could not enqueue the calculator job")
-        return _json({"error": f"could not start the calculator run: {exc}"}, 502)
-    kicked = {"status": "building"}
+        raise _CalcSpecError(f"could not start the calculator run: {exc}", 502) from exc
 
-    return _json({
-        "engagement": engagement,
-        "status": kicked.get("status", "building"),
-        "spec_line_count": marker["spec_line_count"],
-        "internal_monthly_estimate": marker["internal_monthly_estimate"],
-        "poll": f"GET /api/build_calculator_estimate?engagement={engagement}",
-        "dashboard_hint": f"the calculator run takes a few minutes — open the dashboard "
-                          f"for {engagement} and watch the 'Azure landing zone — Pricing "
-                          f"Calculator POE' card; it will show the monthly total and a "
-                          f"Download Excel (POE) button when ready",
-    }, 202)
+    return {"engagement": engagement, "status": "building",
+            "spec_line_count": marker["spec_line_count"],
+            "internal_monthly_estimate": marker["internal_monthly_estimate"]}
 
 
 def _json(body: dict, status: int = 200) -> func.HttpResponse:
