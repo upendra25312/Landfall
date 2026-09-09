@@ -86,12 +86,19 @@ raster + deck embed) becomes C27b, gated on a safe provision.
   serves `?fmt=png`. `infra/resources.bicep` gains a param-gated `drawioApp`
   (`deployDrawio=false` — imperative today, flip to reconcile into IaC) + `azure.yaml` a
   `drawio` service. `tests/test_lz_render.py` (7). **337 pass**, evals PASS, no drift.
-- **C27b (deferred, needs `azd provision`):** the `ca-drawio` Container App
-  (`simonkurtzmsft/drawio-mcp-server` mirrored to ACR + `drawio-export`) for server-side
-  `.svg`/`.png`, the `to_pptx` / `to_docx` SVG embed (replacing the hand-drawn slide),
-  the full `mxgraph.azure.*` icon set via the engine, and the optional raw MCP tool.
-  Bicep + `DRAWIO_MCP_URL`. Do the provision with `postprovision:` commented out in
-  `azure.yaml` (schema DROP), then `git checkout azure.yaml`.
+- **C27b deployed + live-verified (2026-09-09, `main`@`a567023` → `e86c43e`):** `azd deploy
+  api` + `azd deploy web` (both exit 0, no provision). `ca-drawio-tmglwfatwcsa2` `/healthz`
+  OK; `POST /render` turned the real stored 14.7 KB `_default_` SVG into a 5416×1192 PNG
+  (140 KB). Agent `build_landing_zone_diagram` for `_default_/_default_` → `stored` now
+  includes `landing_zone.png`. `_default_/_default_` SQL still returns **250 servers** — no
+  schema drop. **Cold-start fix (`e86c43e`):** the first build after `ca-drawio` scaled to
+  zero timed out `rasterize()` (20 s) and silently dropped the PNG; bumped to 45 s + one
+  retry after a 3 s pause.
+- **Still optional (not blocking E11.22):** swap CairoSVG for the `simonkurtz-MSFT/drawio-mcp-server`
+  engine to get the full `mxgraph.azure.*` icon set + an optional raw MCP "tweak the diagram"
+  tool; reconcile `ca-drawio` into IaC by flipping `deployDrawio=true` and running `azd
+  provision` with `postprovision:` commented out in `azure.yaml` (schema DROP), then
+  `git checkout azure.yaml`.
 
 ---
 
