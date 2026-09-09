@@ -5,6 +5,61 @@ Operating model: [`landfall-5x5-prd.md` §7](landfall-5x5-prd.md). Tracker:
 
 ---
 
+## Cycle 30 — cost-method back-test (E10.1, Phase 2 evidence)
+
+**Date:** 2026-09-09 · **Owner:** FinOps + Architect ·
+**Tracker:** E10.1 — first Phase 2 (Evidence) artefact.
+
+### Plan
+
+Stand up `evidence/backtest/`: estimate the same estate's Azure run-rate three
+independent ways and show they agree within ±15%, with the divergences explained.
+Acceptance (PRD E10.1): "Portfolio totals within ±15% across methods; variances
+explained." Deferred: real-price accuracy (that's E11.16 POE + S2 re-benchmark);
+the broken-dump corpus (E10.2); `evidence/SCORECARD.md` (E10.6).
+
+### Do
+
+- **`estate_gen.py`** — `build_estate(preset)` for `small` (~40 srv, no compliance,
+  45% monitored), `midmarket` (~230, PCI+HIPAA, 70%), `enterprise` (~620, +SOX,
+  DB-heavy, 82%). Seeded per preset; keys match `scripts/schema.sql`.
+- **`pricebook.py`** — a deterministic synthetic price book with **realistic
+  non-linearity** (per-vCPU rate eases ~12% with size; family multipliers F 0.86 /
+  D 1.00 / E 1.28; Windows licence adder; RI 0.63x / 0.44x). Without this a linear
+  book makes linear methods agree trivially.
+- **`methods.py`** — three costers over the **same** right-sized footprint
+  (`rightsize_many`) and the **same** storage + run-rate-extras; only VM compute
+  differs: `engine` (`estimate_compute_cost`, per-SKU), `blended` ($/vCPU median of
+  D+F × right-sized vCPU, ×1.4 memory-opt), `bands` (T-shirt XS/S/M/L/XL priced at
+  the D/F mean at the band ceiling, ×1.15 memory-opt).
+- **`backtest.py`** — `run()` → per estate: 3 totals, spread `(max−min)/median`,
+  PASS ≤ 15%, data-driven variance notes. `main()` writes `RESULTS.md`.
+- **`tests/test_backtest.py`** (7) + an `evals.yml` step that fails on a stale
+  `RESULTS.md` (mirrors the SCORECARD drift gate). `evidence/README.md` indexes it.
+
+### Check
+
+| estate | engine | blended | bands | spread | verdict |
+|---|--:|--:|--:|--:|:--:|
+| small | $16,451 | $15,923 | $15,548 | 5.7% | ✅ |
+| midmarket | $86,648 | $83,646 | $82,328 | 5.2% | ✅ |
+| enterprise | $249,921 | $242,459 | $237,313 | 5.2% | ✅ |
+
+- **363 pytest** (+7), evals 32/32 + 30/30 + 8/8, `SCORECARD.md` no drift.
+- Engine sits highest on every estate: it prices the exact right-sized SKU, so
+  memory-heavy VMs pick up the E-family's ~1.28× premium that the linear rate and
+  the D/F bands only partly carry. Compute is 70–76% of each total; shared storage
+  + extras damp the spread.
+
+### Act
+
+- One commit on `c30-backtest`, merged to `main`, pushed. **Code-only — no deploy**
+  (evidence tooling + tests). CI (`evals #NN`) gates it.
+- Next Phase 2: E10.2 broken-dump corpus, then E10.3/E10.6 scorecard, E8.5–8.7,
+  E9.2–9.5, E5.6.
+
+---
+
 ## Cycle 29 — Phase 1 tail: wave duration model, resource loading, mapping override (E4.3 / E6.2 / E1.7)
 
 **Date:** 2026-09-09 · **Owner:** PMO + SWE ·
