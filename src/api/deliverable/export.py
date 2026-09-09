@@ -963,9 +963,13 @@ def _body_lines(section: dict) -> list[str]:
                 f"{body.get('services_cost', {}).get('currency')}",
                 body.get("basis", "")]
     if key == "assumptions_register":
-        return [f"{len(body.get('assumptions', []))} assumptions, "
-                f"{len(body.get('exclusions', []))} exclusions, "
-                f"{len(body.get('data_gaps', []))} data gaps"]
+        out = [f"{len(body.get('assumptions', []))} assumptions, "
+               f"{len(body.get('exclusions', []))} exclusions, "
+               f"{len(body.get('data_gaps', []))} data gaps"]
+        disc = body.get("discovery")
+        if disc:
+            out.append(f"Discovery questionnaire: {disc.get('headline')}")
+        return out
     if key == "next_steps":
         return list(body.get("actions", []))
     return [str(body)]

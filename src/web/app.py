@@ -20,6 +20,7 @@ from azure.identity import DefaultAzureCredential
 from azure.ai.projects import AIProjectClient
 
 import access as _acl
+import discovery as _disc
 import uploads as _up
 
 logging.basicConfig(level=logging.INFO)
@@ -460,12 +461,34 @@ async def engagement_upload(customer: str, project: str, request: Request,
         logging.exception("upload commit failed")
         return JSONResponse({"error": f"could not store {name}: {exc}"}, status_code=500)
 
-    return JSONResponse({
+    resp = {
         "name": name, "kind": kind_folder, "size": total, "engagement": eid,
         "profile": info.get("profile") or "", "rows": info.get("rows") or 0,
         "columns": info.get("columns") or 0,
         "path": f"raw/{base}/{kind_folder}/{name}",
-    }, status_code=201)
+    }
+
+    # E11.25 — a completed discovery questionnaire dropped into docs/ is recognised
+    # by its question codes and its answers are written to _discovery.json.
+    if kind_folder == "docs" and name.lower().endswith((".xlsx", ".docx", ".pdf")) \
+            and total <= PEEK_CAP:
+        try:
+            parsed = _disc.parse_upload(bytes(buf), name)
+            if parsed["is_template"]:
+                rec = _disc.discovery_record(parsed["answers"], parsed["matched"], name,
+                                             _principal_name(request))
+                _raw_container().upload_blob(f"{base}/_discovery.json",
+                                             json.dumps(rec, indent=2).encode(), overwrite=True)
+                resp["discovery"] = {"answered": len(parsed["answers"]),
+                                     "matched": parsed["matched"],
+                                     "gaps": rec["gaps"]["headline"]}
+            elif parsed["format"] == "pdf":
+                resp["discovery_note"] = ("PDF questionnaires aren't parsed — re-export "
+                                          "the answers as .xlsx or .docx to feed the estimate")
+        except Exception as exc:  # noqa: BLE001
+            logging.warning("discovery import skipped for %s: %s", name, exc)
+
+    return JSONResponse(resp, status_code=201)
 
 
 @app.delete("/api/engagements/{customer}/{project}/files/{name}")
@@ -759,6 +782,60 @@ async def engagement_import(request: Request, file: UploadFile, overwrite: str =
         manifest = {"engagement": eid}
     return JSONResponse({"engagement": eid, "imported": written, "manifest": manifest},
                         status_code=201)
+
+
+@app.get("/questionnaire", response_class=HTMLResponse)
+def questionnaire_page():
+    """The discovery questionnaire (E11.25) — a pre-sales architect sends the client
+    this URL, or exports the Word/Excel version to fill offline."""
+    try:
+        return (_HERE / "questionnaire.html").read_text(encoding="utf-8")
+    except Exception:  # noqa: BLE001
+        return HTMLResponse("<h1>Discovery questionnaire</h1><p>Template unavailable — "
+                            "download it as <a href='/questionnaire.xlsx'>Excel</a> or "
+                            "<a href='/questionnaire.docx'>Word</a>.</p>")
+
+
+@app.get("/questionnaire.{fmt}")
+def questionnaire_export(fmt: str, request: Request, e: str | None = None):
+    """Blank questionnaire as .xlsx / .docx, or pre-filled with `?e=<engagement>`'s
+    saved answers so a partly-done questionnaire can be topped up."""
+    fmt = fmt.lower()
+    if fmt not in ("xlsx", "docx"):
+        return JSONResponse({"error": "format must be xlsx or docx"}, status_code=400)
+    answers = None
+    if e:
+        if (g := _guard_eid(request, e)):
+            return g
+        try:
+            rec = json.loads(_raw_container().download_blob(
+                f"engagements/{e.strip().strip('/')}/_discovery.json").readall())
+            answers = rec.get("answer_map") or {}
+        except Exception:  # noqa: BLE001
+            answers = None
+    blob = _disc.render_xlsx(answers) if fmt == "xlsx" else _disc.render_docx(answers)
+    return Response(blob, media_type=_EXPORT_MIME[fmt], headers={
+        "Content-Disposition": f'attachment; filename="landfall-discovery-questionnaire.{fmt}"'})
+
+
+@app.get("/api/engagements/{customer}/{project}/discovery")
+def engagement_discovery(customer: str, project: str, request: Request):
+    """The engagement's saved discovery answers + the 'ask the client' gap list (E11.25)."""
+    eng = _engagement(customer, project, request)
+    if not eng:
+        return JSONResponse({"error": "unknown engagement"}, status_code=404)
+    eid, _ = eng
+    try:
+        rec = json.loads(_raw_container().download_blob(
+            f"engagements/{eid}/_discovery.json").readall())
+    except Exception:  # noqa: BLE001
+        return JSONResponse({"engagement": eid, "imported": False,
+                             "gaps": _disc.gaps({}), "answers": {}})
+    return JSONResponse({"engagement": eid, "imported": True,
+                         "imported_from": rec.get("imported_from"),
+                         "imported_at": rec.get("imported_at"),
+                         "answers": rec.get("answers") or {},
+                         "gaps": rec.get("gaps") or _disc.gaps(rec.get("answer_map") or {})})
 
 
 @app.get("/api/prompt_cards")

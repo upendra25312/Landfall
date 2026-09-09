@@ -1,0 +1,738 @@
+[
+ {
+  "id": "B1",
+  "section": "Business & programme context",
+  "section_id": "biz",
+  "text": "What is the primary driver — data-centre exit / lease end, cost, resilience, M&A, regulatory, capability? Is there a hard date?",
+  "priority": "MUST",
+  "feeds": null
+ },
+ {
+  "id": "B2",
+  "section": "Business & programme context",
+  "section_id": "biz",
+  "text": "Is there a fixed budget envelope or funding model for the migration programme?",
+  "priority": "MUST",
+  "feeds": null
+ },
+ {
+  "id": "B3",
+  "section": "Business & programme context",
+  "section_id": "biz",
+  "text": "What does “done” look like — full exit, hybrid steady-state, or a first tranche only?",
+  "priority": "MUST",
+  "feeds": null
+ },
+ {
+  "id": "B4",
+  "section": "Business & programme context",
+  "section_id": "biz",
+  "text": "Target Azure region(s) and any data-residency constraint on region choice?",
+  "priority": "MUST",
+  "feeds": "target_region"
+ },
+ {
+  "id": "B5",
+  "section": "Business & programme context",
+  "section_id": "biz",
+  "text": "Appetite for change during migration — pure rehost (“lift & shift”) vs opportunistic modernisation?",
+  "priority": "SHOULD",
+  "feeds": null
+ },
+ {
+  "id": "B6",
+  "section": "Business & programme context",
+  "section_id": "biz",
+  "text": "Known business blackout periods (year-end, peak trading, regulatory reporting)?",
+  "priority": "SHOULD",
+  "feeds": null
+ },
+ {
+  "id": "B7",
+  "section": "Business & programme context",
+  "section_id": "biz",
+  "text": "Who is the executive sponsor, and who signs off wave go/no-go?",
+  "priority": "SHOULD",
+  "feeds": null
+ },
+ {
+  "id": "B8",
+  "section": "Business & programme context",
+  "section_id": "biz",
+  "text": "Is there an incumbent partner / MSP whose scope or contracts we must work around?",
+  "priority": "SHOULD",
+  "feeds": null
+ },
+ {
+  "id": "C1",
+  "section": "Commercial & Microsoft programmes",
+  "section_id": "comm",
+  "text": "Existing agreement type — EA, MCA, CSP? Renewal date?",
+  "priority": "SHOULD",
+  "feeds": "licensing_program"
+ },
+ {
+  "id": "C2",
+  "section": "Commercial & Microsoft programmes",
+  "section_id": "comm",
+  "text": "Is there an Azure Consumption Commitment (MACC) this programme could retire against?",
+  "priority": "SHOULD",
+  "feeds": null
+ },
+ {
+  "id": "C3",
+  "section": "Commercial & Microsoft programmes",
+  "section_id": "comm",
+  "text": "Any active Microsoft funding (AMM / Azure Migrate and Modernize, ECIF) already in play, and which Microsoft account team?",
+  "priority": "SHOULD",
+  "feeds": null
+ },
+ {
+  "id": "C4",
+  "section": "Commercial & Microsoft programmes",
+  "section_id": "comm",
+  "text": "Software Assurance coverage on Windows Server / SQL Server — quantities eligible for Azure Hybrid Benefit?",
+  "priority": "SHOULD",
+  "feeds": "azure_hybrid_benefit"
+ },
+ {
+  "id": "C5",
+  "section": "Commercial & Microsoft programmes",
+  "section_id": "comm",
+  "text": "Commitment appetite for Reserved Instances / Savings Plans (1yr / 3yr) to reduce run-rate?",
+  "priority": "NICE",
+  "feeds": "reserved_instances"
+ },
+ {
+  "id": "C6",
+  "section": "Commercial & Microsoft programmes",
+  "section_id": "comm",
+  "text": "Is a post-migration managed-run service in scope of this RFP or separate?",
+  "priority": "SHOULD",
+  "feeds": null
+ },
+ {
+  "id": "I1",
+  "section": "Compute & virtualisation",
+  "section_id": "infra",
+  "text": "Hypervisor(s) and version — VMware (vSphere ver.), Hyper-V, Nutanix, bare metal count?",
+  "priority": "MUST",
+  "feeds": null
+ },
+ {
+  "id": "I2",
+  "section": "Compute & virtualisation",
+  "section_id": "infra",
+  "text": "Total VMs by environment (prod / non-prod / dev / DR) and by OS family + version?",
+  "priority": "MUST",
+  "feeds": null
+ },
+ {
+  "id": "I3",
+  "section": "Compute & virtualisation",
+  "section_id": "infra",
+  "text": "Any unsupported / end-of-life OS (Windows 2008/2012, RHEL 6, etc.) — counts?",
+  "priority": "MUST",
+  "feeds": null
+ },
+ {
+  "id": "I4",
+  "section": "Compute & virtualisation",
+  "section_id": "infra",
+  "text": "Physical servers that cannot be virtualised, and why?",
+  "priority": "SHOULD",
+  "feeds": null
+ },
+ {
+  "id": "I5",
+  "section": "Compute & virtualisation",
+  "section_id": "infra",
+  "text": "Specialised compute — GPU, HPC clusters, large-memory (> 512 GB) hosts?",
+  "priority": "SHOULD",
+  "feeds": null
+ },
+ {
+  "id": "I6",
+  "section": "Compute & virtualisation",
+  "section_id": "infra",
+  "text": "Appliances / non-x86 — mainframe, AS/400, network appliances, hardware dongles?",
+  "priority": "MUST",
+  "feeds": null
+ },
+ {
+  "id": "I7",
+  "section": "Compute & virtualisation",
+  "section_id": "infra",
+  "text": "Typical utilisation profile — are hosts heavily over-provisioned? Any known idle/zombie servers?",
+  "priority": "SHOULD",
+  "feeds": null
+ },
+ {
+  "id": "I8",
+  "section": "Compute & virtualisation",
+  "section_id": "infra",
+  "text": "Server build standard / golden image, and patching toolset?",
+  "priority": "NICE",
+  "feeds": null
+ },
+ {
+  "id": "S1",
+  "section": "Storage & backup",
+  "section_id": "stor",
+  "text": "Total allocated vs used capacity — block, file, object — by tier?",
+  "priority": "MUST",
+  "feeds": null
+ },
+ {
+  "id": "S2",
+  "section": "Storage & backup",
+  "section_id": "stor",
+  "text": "Storage arrays / NAS in use, and any that back multiple apps (shared LUNs, CIFS/NFS shares)?",
+  "priority": "SHOULD",
+  "feeds": null
+ },
+ {
+  "id": "S3",
+  "section": "Storage & backup",
+  "section_id": "stor",
+  "text": "Performance-sensitive volumes — IOPS / throughput / latency targets?",
+  "priority": "SHOULD",
+  "feeds": null
+ },
+ {
+  "id": "S4",
+  "section": "Storage & backup",
+  "section_id": "stor",
+  "text": "Backup product, backup windows, retention policy, and off-site / immutable copy?",
+  "priority": "MUST",
+  "feeds": null
+ },
+ {
+  "id": "S5",
+  "section": "Storage & backup",
+  "section_id": "stor",
+  "text": "Any archive / WORM / regulatory-retention data, and volumes?",
+  "priority": "SHOULD",
+  "feeds": null
+ },
+ {
+  "id": "S6",
+  "section": "Storage & backup",
+  "section_id": "stor",
+  "text": "Large data sets to seed to Azure — is offline transfer (Data Box) needed, or is bandwidth sufficient?",
+  "priority": "SHOULD",
+  "feeds": null
+ },
+ {
+  "id": "D1",
+  "section": "Databases & middleware",
+  "section_id": "data2",
+  "text": "Database engines, versions, and instance/DB counts — SQL Server, Oracle, PostgreSQL, MySQL, others?",
+  "priority": "MUST",
+  "feeds": null
+ },
+ {
+  "id": "D2",
+  "section": "Databases & middleware",
+  "section_id": "data2",
+  "text": "Largest databases (size), and any with strict RPO/RTO or 24×7 no-downtime needs?",
+  "priority": "MUST",
+  "feeds": null
+ },
+ {
+  "id": "D3",
+  "section": "Databases & middleware",
+  "section_id": "data2",
+  "text": "HA/DR config today — Always On AG, clustering, log shipping, Data Guard, RAC?",
+  "priority": "SHOULD",
+  "feeds": null
+ },
+ {
+  "id": "D4",
+  "section": "Databases & middleware",
+  "section_id": "data2",
+  "text": "Openness to PaaS targets (Azure SQL MI / Flexible Server) vs IaaS-only?",
+  "priority": "SHOULD",
+  "feeds": null
+ },
+ {
+  "id": "D5",
+  "section": "Databases & middleware",
+  "section_id": "data2",
+  "text": "Oracle licensing model and any constraint on running Oracle in Azure?",
+  "priority": "SHOULD",
+  "feeds": null
+ },
+ {
+  "id": "D6",
+  "section": "Databases & middleware",
+  "section_id": "data2",
+  "text": "Middleware / integration — message brokers, ESB, MFT, batch schedulers, app servers?",
+  "priority": "SHOULD",
+  "feeds": null
+ },
+ {
+  "id": "D7",
+  "section": "Databases & middleware",
+  "section_id": "data2",
+  "text": "Certificates, service accounts, hardcoded IPs / hostnames known to be embedded in apps?",
+  "priority": "SHOULD",
+  "feeds": null
+ },
+ {
+  "id": "A1",
+  "section": "Application portfolio",
+  "section_id": "apps",
+  "text": "Confirmed application count, and completeness of the portfolio list (is it maintained?)",
+  "priority": "MUST",
+  "feeds": null
+ },
+ {
+  "id": "A2",
+  "section": "Application portfolio",
+  "section_id": "apps",
+  "text": "For each app: business criticality (1–4), user base, peak usage pattern?",
+  "priority": "MUST",
+  "feeds": null
+ },
+ {
+  "id": "A3",
+  "section": "Application portfolio",
+  "section_id": "apps",
+  "text": "Apps already earmarked to Retire or replace with SaaS in the next 12–18 months?",
+  "priority": "MUST",
+  "feeds": null
+ },
+ {
+  "id": "A4",
+  "section": "Application portfolio",
+  "section_id": "apps",
+  "text": "COTS/vendor apps — is the vendor's support statement for Azure known? Any that block migration?",
+  "priority": "SHOULD",
+  "feeds": null
+ },
+ {
+  "id": "A5",
+  "section": "Application portfolio",
+  "section_id": "apps",
+  "text": "Custom/in-house apps — source code availability, active dev team, build pipeline?",
+  "priority": "SHOULD",
+  "feeds": null
+ },
+ {
+  "id": "A6",
+  "section": "Application portfolio",
+  "section_id": "apps",
+  "text": "Internet-facing apps and their current WAF / load-balancer / CDN arrangement?",
+  "priority": "SHOULD",
+  "feeds": "internet_facing"
+ },
+ {
+  "id": "A7",
+  "section": "Application portfolio",
+  "section_id": "apps",
+  "text": "Apps with hardware dependencies (dongles, fax, telephony, SCADA, lab equipment)?",
+  "priority": "MUST",
+  "feeds": null
+ },
+ {
+  "id": "A8",
+  "section": "Application portfolio",
+  "section_id": "apps",
+  "text": "Apps under active change freeze, audit, or major project that constrains timing?",
+  "priority": "SHOULD",
+  "feeds": null
+ },
+ {
+  "id": "A9",
+  "section": "Application portfolio",
+  "section_id": "apps",
+  "text": "Who can authorise and perform UAT for each app, and is that capacity available?",
+  "priority": "MUST",
+  "feeds": null
+ },
+ {
+  "id": "X1",
+  "section": "Dependencies & integration",
+  "section_id": "dep",
+  "text": "Is a dependency map maintained? If not, how are integrations currently understood — SMEs, docs, tribal knowledge?",
+  "priority": "MUST",
+  "feeds": null
+ },
+ {
+  "id": "X2",
+  "section": "Dependencies & integration",
+  "section_id": "dep",
+  "text": "Known “chatty” app-to-app or app-to-DB pairs that must move together?",
+  "priority": "MUST",
+  "feeds": null
+ },
+ {
+  "id": "X3",
+  "section": "Dependencies & integration",
+  "section_id": "dep",
+  "text": "External / third-party integrations (partners, SaaS, payment, gov) and how they authenticate / whitelist IPs?",
+  "priority": "SHOULD",
+  "feeds": null
+ },
+ {
+  "id": "X4",
+  "section": "Dependencies & integration",
+  "section_id": "dep",
+  "text": "Shared services everything depends on — AD, DNS, NTP, SMTP, file shares, print, monitoring?",
+  "priority": "MUST",
+  "feeds": null
+ },
+ {
+  "id": "X5",
+  "section": "Dependencies & integration",
+  "section_id": "dep",
+  "text": "Latency-sensitive integrations that will not tolerate a hybrid (on-prem ↔ Azure) hop during transition?",
+  "priority": "SHOULD",
+  "feeds": null
+ },
+ {
+  "id": "N1",
+  "section": "Network & connectivity",
+  "section_id": "net",
+  "text": "Current WAN — carrier, bandwidth, MPLS/SD-WAN, and spare capacity for migration traffic?",
+  "priority": "MUST",
+  "feeds": null
+ },
+ {
+  "id": "N2",
+  "section": "Network & connectivity",
+  "section_id": "net",
+  "text": "Preferred Azure connectivity — ExpressRoute (bandwidth?), VPN, or both? Is a circuit already ordered?",
+  "priority": "MUST",
+  "feeds": "connectivity"
+ },
+ {
+  "id": "N3",
+  "section": "Network & connectivity",
+  "section_id": "net",
+  "text": "On-prem IP address plan — RFC1918 ranges in use, and any overlap risk with Azure/partners?",
+  "priority": "MUST",
+  "feeds": null
+ },
+ {
+  "id": "N4",
+  "section": "Network & connectivity",
+  "section_id": "net",
+  "text": "Can applications tolerate re-IP, or must IPs be preserved (hardcoded, firewall rules, licences)?",
+  "priority": "MUST",
+  "feeds": "ip_preservation"
+ },
+ {
+  "id": "N5",
+  "section": "Network & connectivity",
+  "section_id": "net",
+  "text": "DNS design — internal zones, split-horizon, who manages it?",
+  "priority": "SHOULD",
+  "feeds": null
+ },
+ {
+  "id": "N6",
+  "section": "Network & connectivity",
+  "section_id": "net",
+  "text": "Perimeter today — firewalls (vendor), IDS/IPS, proxy, DDoS — and which must be replicated in Azure?",
+  "priority": "SHOULD",
+  "feeds": null
+ },
+ {
+  "id": "N7",
+  "section": "Network & connectivity",
+  "section_id": "net",
+  "text": "Egress / internet breakout model, and any forced-tunnelling or inspection requirement?",
+  "priority": "SHOULD",
+  "feeds": null
+ },
+ {
+  "id": "N8",
+  "section": "Network & connectivity",
+  "section_id": "net",
+  "text": "Existing Azure footprint / networking we must integrate with (existing hub, subscriptions)?",
+  "priority": "SHOULD",
+  "feeds": null
+ },
+ {
+  "id": "ID1",
+  "section": "Identity & directory",
+  "section_id": "id",
+  "text": "Active Directory — forest/domain structure, DC locations, functional level?",
+  "priority": "MUST",
+  "feeds": null
+ },
+ {
+  "id": "ID2",
+  "section": "Identity & directory",
+  "section_id": "id",
+  "text": "Entra ID (Azure AD) in use today? Entra Connect / federation (ADFS)? Licence tier (P1/P2)?",
+  "priority": "MUST",
+  "feeds": null
+ },
+ {
+  "id": "ID3",
+  "section": "Identity & directory",
+  "section_id": "id",
+  "text": "Will AD extend to Azure (DCs in Azure / Entra Domain Services), or is greenfield identity possible?",
+  "priority": "SHOULD",
+  "feeds": null
+ },
+ {
+  "id": "ID4",
+  "section": "Identity & directory",
+  "section_id": "id",
+  "text": "Privileged access model — PAM tooling, break-glass, admin tiering?",
+  "priority": "SHOULD",
+  "feeds": null
+ },
+ {
+  "id": "ID5",
+  "section": "Identity & directory",
+  "section_id": "id",
+  "text": "Service accounts / Kerberos / gMSA usage that migration must preserve?",
+  "priority": "SHOULD",
+  "feeds": null
+ },
+ {
+  "id": "SC1",
+  "section": "Security & compliance",
+  "section_id": "sec",
+  "text": "Regulatory / compliance regimes in scope — PCI-DSS, HIPAA, GDPR, SOX, ISO 27001, local data laws?",
+  "priority": "MUST",
+  "feeds": "compliance_scope"
+ },
+ {
+  "id": "SC2",
+  "section": "Security & compliance",
+  "section_id": "sec",
+  "text": "Data classification scheme, and any data that may not leave a jurisdiction or must be encrypted with customer-managed keys?",
+  "priority": "MUST",
+  "feeds": "data_residency"
+ },
+ {
+  "id": "SC3",
+  "section": "Security & compliance",
+  "section_id": "sec",
+  "text": "Mandated security controls / baselines (CIS, NIST, internal standard) the landing zone must meet?",
+  "priority": "SHOULD",
+  "feeds": "security_baseline"
+ },
+ {
+  "id": "SC4",
+  "section": "Security & compliance",
+  "section_id": "sec",
+  "text": "Current SIEM / SOC — will it consume Azure logs, or is Microsoft Sentinel in scope?",
+  "priority": "SHOULD",
+  "feeds": null
+ },
+ {
+  "id": "SC5",
+  "section": "Security & compliance",
+  "section_id": "sec",
+  "text": "Vulnerability management, endpoint protection, and CASB tooling to carry forward or replace?",
+  "priority": "SHOULD",
+  "feeds": null
+ },
+ {
+  "id": "SC6",
+  "section": "Security & compliance",
+  "section_id": "sec",
+  "text": "Pen-test / security sign-off gates required before go-live?",
+  "priority": "SHOULD",
+  "feeds": null
+ },
+ {
+  "id": "SC7",
+  "section": "Security & compliance",
+  "section_id": "sec",
+  "text": "Approval needed to place client data in our Data Lake for this assessment — who signs, and any redaction required?",
+  "priority": "MUST",
+  "feeds": null
+ },
+ {
+  "id": "O1",
+  "section": "Operations & ITSM",
+  "section_id": "ops",
+  "text": "ITSM platform (ServiceNow, etc.) and change-management process / CAB cadence?",
+  "priority": "SHOULD",
+  "feeds": null
+ },
+ {
+  "id": "O2",
+  "section": "Operations & ITSM",
+  "section_id": "ops",
+  "text": "Monitoring & alerting stack today, and target — Azure Monitor, keep existing, hybrid?",
+  "priority": "SHOULD",
+  "feeds": null
+ },
+ {
+  "id": "O3",
+  "section": "Operations & ITSM",
+  "section_id": "ops",
+  "text": "Standard maintenance windows by environment, and typical approved downtime for a cutover?",
+  "priority": "MUST",
+  "feeds": "maintenance_windows"
+ },
+ {
+  "id": "O4",
+  "section": "Operations & ITSM",
+  "section_id": "ops",
+  "text": "Runbook / automation maturity — IaC, config management (Ansible, DSC, Puppet)?",
+  "priority": "NICE",
+  "feeds": null
+ },
+ {
+  "id": "O5",
+  "section": "Operations & ITSM",
+  "section_id": "ops",
+  "text": "Who operates the estate post-migration — client, us, third party — and target operating model?",
+  "priority": "SHOULD",
+  "feeds": null
+ },
+ {
+  "id": "O6",
+  "section": "Operations & ITSM",
+  "section_id": "ops",
+  "text": "Tagging / naming / cost-allocation standards to enforce in Azure?",
+  "priority": "NICE",
+  "feeds": null
+ },
+ {
+  "id": "R1",
+  "section": "Resilience & DR",
+  "section_id": "dr",
+  "text": "RPO / RTO targets by application tier?",
+  "priority": "MUST",
+  "feeds": "rpo_rto"
+ },
+ {
+  "id": "R2",
+  "section": "Resilience & DR",
+  "section_id": "dr",
+  "text": "Current DR approach — second DC, cold/warm/hot, and when it was last tested?",
+  "priority": "SHOULD",
+  "feeds": null
+ },
+ {
+  "id": "R3",
+  "section": "Resilience & DR",
+  "section_id": "dr",
+  "text": "Target Azure resilience — single region + AZ, region pair, active/active? Any app that needs multi-region?",
+  "priority": "MUST",
+  "feeds": "target_resilience"
+ },
+ {
+  "id": "R4",
+  "section": "Resilience & DR",
+  "section_id": "dr",
+  "text": "Backup retention & restore-test obligations to meet in Azure?",
+  "priority": "SHOULD",
+  "feeds": null
+ },
+ {
+  "id": "R5",
+  "section": "Resilience & DR",
+  "section_id": "dr",
+  "text": "Is the migration itself the DR event (i.e. no rollback), or is a fallback to on-prem required per wave?",
+  "priority": "MUST",
+  "feeds": null
+ },
+ {
+  "id": "F1",
+  "section": "Non-functional & constraints",
+  "section_id": "nfr",
+  "text": "Performance SLAs users expect (response time, batch completion) that must be held or improved?",
+  "priority": "SHOULD",
+  "feeds": null
+ },
+ {
+  "id": "F2",
+  "section": "Non-functional & constraints",
+  "section_id": "nfr",
+  "text": "Availability SLAs contractually committed to the business or to external customers?",
+  "priority": "SHOULD",
+  "feeds": null
+ },
+ {
+  "id": "F3",
+  "section": "Non-functional & constraints",
+  "section_id": "nfr",
+  "text": "Sustainability / carbon reporting objectives tied to this programme?",
+  "priority": "NICE",
+  "feeds": null
+ },
+ {
+  "id": "F4",
+  "section": "Non-functional & constraints",
+  "section_id": "nfr",
+  "text": "Constraints on our team — security clearance, on-site presence, working hours, nationality, background checks?",
+  "priority": "MUST",
+  "feeds": null
+ },
+ {
+  "id": "F5",
+  "section": "Non-functional & constraints",
+  "section_id": "nfr",
+  "text": "Tooling constraints — can we use ASR, DMS, Azure Migrate agentless from Azure side, or is even that disallowed?",
+  "priority": "MUST",
+  "feeds": null
+ },
+ {
+  "id": "F6",
+  "section": "Non-functional & constraints",
+  "section_id": "nfr",
+  "text": "Language / documentation / handover format requirements?",
+  "priority": "NICE",
+  "feeds": null
+ },
+ {
+  "id": "M1",
+  "section": "Migration preferences",
+  "section_id": "mig",
+  "text": "Preferred wave sizing — by business unit, by DC rack, by app affinity, by risk?",
+  "priority": "SHOULD",
+  "feeds": null
+ },
+ {
+  "id": "M2",
+  "section": "Migration preferences",
+  "section_id": "mig",
+  "text": "Any “wave zero” pilot candidates — low-risk apps the client is happy to move first?",
+  "priority": "SHOULD",
+  "feeds": null
+ },
+ {
+  "id": "M3",
+  "section": "Migration preferences",
+  "section_id": "mig",
+  "text": "Cutover windows available — weeknights, weekends, how many per month?",
+  "priority": "MUST",
+  "feeds": "cutover_windows"
+ },
+ {
+  "id": "M4",
+  "section": "Migration preferences",
+  "section_id": "mig",
+  "text": "Acceptable coexistence period (how long on-prem and Azure run in parallel)?",
+  "priority": "SHOULD",
+  "feeds": null
+ },
+ {
+  "id": "M5",
+  "section": "Migration preferences",
+  "section_id": "mig",
+  "text": "Data-centre exit hard stop / lease end date driving the overall schedule?",
+  "priority": "MUST",
+  "feeds": "hard_stop_date"
+ },
+ {
+  "id": "M6",
+  "section": "Migration preferences",
+  "section_id": "mig",
+  "text": "Client resources committed to the programme (app owners, DBAs, testers, network) — named and available?",
+  "priority": "MUST",
+  "feeds": null
+ }
+]

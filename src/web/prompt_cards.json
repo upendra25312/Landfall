@@ -7,7 +7,8 @@
       "Azure run-rate cost — compute, storage, egress, backup, monitoring; PAYG / reserved / AHB; low–expected–high",
       "Landing zone — management groups, subscriptions, hub-spoke networking, identity, policy, DR",
       "Disposition & waves — 6R per application, risk-ordered migration waves",
-      "Deliverables — estimate package, Excel workbook, Word doc, PowerPoint deck, live dashboard"
+      "Deliverables — estimate package, Excel workbook, Word doc, PowerPoint deck, live dashboard",
+      "Discovery questionnaire — send the client /questionnaire (or the Word/Excel export); its answers feed the estimate's assumptions"
     ]
   },
   "cards": [
@@ -19,7 +20,7 @@
     { "label": "Right-sizing & compute","icon": "⚙", "prompt": "Right-size the servers and estimate the monthly Azure compute cost — quote the SKU mix, the range, and any servers with no performance history." },
     { "label": "Client deck (PPT)",     "icon": "▣", "prompt": "Assemble the estimate and generate the PowerPoint assessment deck." },
     { "label": "Excel workbook",        "icon": "▤", "prompt": "Generate the Excel workbook with the full calculation appendix and the assumptions register." },
-    { "label": "What's missing?",       "icon": "?",      "prompt": "What inventory data is missing or low-confidence, and what specifically should I ask the client for before finalising the estimate?" },
+    { "label": "What's missing?",       "icon": "?",      "prompt": "What inventory data is missing or low-confidence, and which required discovery-questionnaire questions are still unanswered? Give me the specific list to send the client." },
     { "label": "Explain a figure",      "icon": "ℹ", "prompt": "Explain figure F8 — where did that number come from, which tool produced it, and under what assumptions?" }
   ]
 }

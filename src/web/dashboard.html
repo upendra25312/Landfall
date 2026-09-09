@@ -257,12 +257,15 @@ function render(pkg){
 
   // --- register + appendix (wide)
   const reg=pkg.register||{};
+  const disc=reg.discovery||null;
   grid.append(card("Assumptions, exclusions & data gaps",null, `
     <div class="kv">
       <b>Assumptions</b><span>${(reg.assumptions||[]).length}</span>
       <b>Exclusions</b><span>${(reg.exclusions||[]).length}</span>
       <b>Data gaps</b><span>${(reg.data_gaps||[]).length}</span>
     </div>
+    ${disc? `<p style="font-size:12px;margin:6px 0 0"><b>Discovery questionnaire</b> — ${disc.headline||""}
+      ${disc.must_open? `· <a href="/questionnaire">ask the client</a>`:``}</p>`:``}
     ${regList("Assumptions",reg.assumptions)}
     ${regList("Exclusions",reg.exclusions)}
     ${regList("Data gaps",reg.data_gaps)}`,true));

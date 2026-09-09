@@ -5,3 +5,4 @@ azure-identity==1.19.*
 azure-ai-projects==2.6.0
 azure-storage-blob==12.23.*
 openpyxl==3.1.*
+python-docx>=1.1          # discovery.py — questionnaire .docx export / import (E11.25)

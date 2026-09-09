@@ -5,6 +5,74 @@ Operating model: [`landfall-5x5-prd.md` §7](landfall-5x5-prd.md). Tracker:
 
 ---
 
+## Cycle 20b — discovery questionnaire, served and round-trippable (E11.25)
+
+**Date:** 2026-09-09 · **Owner:** App Eng + Pre-sales Architect ·
+**Tracker:** E11.25 (done) · **Decisions:**
+[`engagement-workspaces-prd.md`](engagement-workspaces-prd.md) §4.5b + decision 13 —
+the questionnaire is delivered *through the solution*: served, exported for offline
+completion, re-imported, and its answers feed the estimate's assumptions.
+
+### Plan
+
+`docs/discovery-questionnaire.html` was a static file with no route. It carries the
+inputs the inventory can't — compliance scope, RPO/RTO, licensing, cutover windows —
+so it needs to be a first-class artifact: a URL to send the client, a Word/Excel
+export they fill offline, and an importer that turns the returned file into structured
+answers the estimate cites.
+
+### Do
+
+- **`scripts/gen_discovery_catalog.py`** — parses the HTML (92 questions, 14 sections)
+  into `src/web/discovery_catalog.json` and copies the HTML byte-for-byte to
+  `src/web/questionnaire.html` (the web container ships only `src/web/`). A hand-kept
+  `FEEDS` map marks the ~15 questions that ground a model input. `tests/test_discovery.py`
+  fails on drift — same pattern as `evals/SCORECARD.md`.
+- **`src/web/discovery.py`** — `render_xlsx` / `render_docx` (blank, or pre-filled from a
+  saved `_discovery.json`); `parse_upload` (xlsx via openpyxl, docx via python-docx —
+  matches rows/paragraphs on the question codes, ≥3 hits = the template, skips headings
+  and the "…" placeholder); `gaps` (unanswered MUST/SHOULD by section); `discovery_record`
+  (the `_discovery.json` payload). `python-docx` added to `src/web/requirements.txt`.
+- **Web routes** — `GET /questionnaire` (serves the HTML), `GET /questionnaire.{xlsx,docx}`
+  (`?e=` pre-fills), `GET /api/engagements/<c>/<p>/discovery` (answers + gap list). The
+  **upload route** now recognises a completed questionnaire dropped into `docs/` and
+  writes `raw/engagements/<c>/<p>/_discovery.json`, returning `discovery: {answered, gaps}`.
+- **API** — `deliverable/functions.py::_discovery_for(engagement)` reads `_discovery.json`
+  and injects it into `assemble_estimate` / `publish_estimate`. `assemble.py` folds each
+  answer into the register as a **cited `discovery:<id>` assumption** and the top-12
+  unanswered MUST questions as `discovery:*` data-gaps (`+N more` line past 12);
+  `register.discovery` carries the headline. `export.py` renders the headline in the
+  register section.
+- **Surfacing** — dashboard register card shows the discovery headline + an "ask the
+  client" link; `create_agent.py` gains a prompt line (read `register.discovery` +
+  `discovery:*` gaps for "what's missing?"); the "What's missing?" prompt card + the
+  intro capability list mention `/questionnaire`.
+- **`tests/test_discovery.py`** (15) — catalog drift gate, catalog shape, xlsx + docx
+  round-trip, blank-export sanity, non-questionnaire rejection, `gaps`, `discovery_record`,
+  assemble folds it (cited + capped) / is unchanged without it, and the web routes
+  (serve, export both formats, upload → `_discovery.json` → `GET …/discovery`).
+
+### Study
+
+| # | Result |
+|---|---|
+| round-trip | fill 4 answers → export .docx → re-upload → `_discovery.json.answer_map` identical; same for .xlsx |
+| template detection | a `servers.csv` / a blank export / a fake `.pdf` are all correctly *not* the template |
+| estimate wiring | `assemble_estimate` → `register.assumptions` has `A1 discovery:SC1`, `A2 discovery:R1`; 12 `discovery:*` "Ask the client" gaps + a "+N more"; `register.discovery.headline` = "4/92 answered · 34 required questions still open" |
+| exports | docx / xlsx / pptx all render with the discovery lines |
+| suite | **315 pytest** (+15 −0), evals **PASS**, scorecard no drift |
+
+### Act
+
+- Committed on `c20b-discovery-questionnaire`, merged to `main`, pushed. Deploy:
+  `azd deploy api` + `azd deploy web` + re-run `create_agent.py` (prompt changed).
+- **Carry:** `design_landing_zone` doesn't yet *consume* the compliance/DR answers
+  (it only lands them as cited assumptions via `assemble`) — a follow-up could have
+  `SC1` seed a regulated spoke and `R1`/`R3` drive the DR block. PDF questionnaires
+  aren't parsed (the route says so). The `_discovery.json` write is last-write-wins.
+
+---
+
 ## Cycle 28 — `design_landing_zone` scored against the Azure (AI) Landing Zone design checklist (E11.23)
 
 **Date:** 2026-09-09 · **Owner:** Azure AI Architect + Cloud Architect ·
