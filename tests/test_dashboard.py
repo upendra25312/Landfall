@@ -73,6 +73,60 @@ def test_publish_estimate_rejects_empty_body(monkeypatch):
     assert resp.status_code == 400
 
 
+def test_publish_estimate_build_poe_kicks_calculator_run(monkeypatch):
+    """E11.18 hook — build_poe=true stages the POE run after publishing."""
+    from deliverable import functions as dfn
+    import lz.functions as lzf
+
+    fake = _FakeContainer()
+    monkeypatch.setattr(dfn, "_container_client", lambda: fake)
+    calls = []
+    monkeypatch.setattr(lzf, "stage_calc_run",
+                        lambda eng, **kw: calls.append((eng, kw)) or
+                        {"engagement": eng, "status": "building", "spec_line_count": 12,
+                         "internal_monthly_estimate": 9000.0})
+
+    pkg = P.run()
+    body = {"package": pkg, "engagement": "contoso-ltd/dc-exit", "build_poe": True,
+            "compute_cost": {"line_items": [{"sku": "x"}]}}   # `raw` non-empty
+    resp = dfn.publish_estimate_route(_req(body))
+    assert resp.status_code == 200
+    out = json.loads(resp.get_body())
+    assert out["poe"]["status"] == "building" and out["poe"]["spec_line_count"] == 12
+    assert calls == [("contoso-ltd/dc-exit", {"include_dr_compute": False})]
+
+
+def test_publish_estimate_build_poe_failure_does_not_fail_publish(monkeypatch):
+    from deliverable import functions as dfn
+    import lz.functions as lzf
+
+    fake = _FakeContainer()
+    monkeypatch.setattr(dfn, "_container_client", lambda: fake)
+
+    def _boom(eng, **kw):
+        raise lzf._CalcSpecError("no queue wired", 503)
+
+    monkeypatch.setattr(lzf, "stage_calc_run", _boom)
+    resp = dfn.publish_estimate_route(
+        _req({"package": P.run(), "build_poe": True, "storage_cost": {"line_items": []}}))
+    assert resp.status_code == 200
+    out = json.loads(resp.get_body())
+    assert out["poe"]["status"] == "skipped" and "no queue wired" in out["poe"]["reason"]
+    assert "latest.json" in out["published"]
+
+
+def test_publish_estimate_no_build_poe_flag_skips_the_run(monkeypatch):
+    from deliverable import functions as dfn
+    import lz.functions as lzf
+
+    monkeypatch.setattr(dfn, "_container_client", lambda: _FakeContainer())
+    monkeypatch.setattr(lzf, "stage_calc_run",
+                        lambda *a, **k: (_ for _ in ()).throw(AssertionError("should not be called")))
+    resp = dfn.publish_estimate_route(_req({"package": P.run(), "compute_cost": {"x": 1}}))
+    assert resp.status_code == 200
+    assert json.loads(resp.get_body())["poe"] is None
+
+
 # --- dashboard web app ------------------------------------------------
 
 @pytest.fixture()

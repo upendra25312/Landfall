@@ -142,14 +142,31 @@ def publish_estimate_route(req: func.HttpRequest) -> func.HttpResponse:
         logging.exception("publish_estimate failed")
         return _json({"error": f"publish failed: {exc}"}, 500)
 
+    # E11.18 hook — optionally kick the Azure Pricing Calculator POE run now that
+    # latest.json + tools_raw.json are in place. Best-effort: a publish must not
+    # fail because the POE couldn't be queued (no queue wired, no DR region, …).
+    poe = None
+    if _truthy(body.get("build_poe")) and raw:
+        try:
+            from lz.functions import stage_calc_run
+            poe = stage_calc_run(engagement, include_dr_compute=_truthy(body.get("include_dr_compute")))
+        except Exception as exc:                   # noqa: BLE001
+            logging.warning("publish_estimate: POE auto-kick skipped — %s", exc)
+            poe = {"status": "skipped", "reason": str(exc)}
+
     return _json({
         "engagement": engagement,
         "published": written,
         "prefix": prefix,
         "package_id": package.get("meta", {}).get("package_id"),
         "figures": len(package.get("figures", [])),
+        "poe": poe,
         "dashboard_hint": f"open the Container App at /e/{engagement}",
     })
+
+
+def _truthy(v) -> bool:
+    return str(v).strip().lower() in ("1", "true", "yes", "on") if v is not None else False
 
 
 def _json(body: dict, status: int = 200) -> func.HttpResponse:

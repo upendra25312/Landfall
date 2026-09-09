@@ -54,7 +54,7 @@ _OPENAPI_TOOLS = {
     "plan_waves": "Risk-ordered migration wave plan - server dependency graph -> affinity move-groups -> waves (pilot first, regulated last) with entry/exit criteria and cross-wave blocking dependencies. Pass applications + servers + dependencies.",
     "assemble_estimate": "Assembles every other tool's output + an inventory summary into ONE structured estimate package: 8 sections, a stable ID + calculation appendix on every figure, an assumptions/exclusions/data-gaps register, a parametric effort + services-cost estimate, and a markdown render. Call this last.",
     "export_estimate": "Renders the assembled estimate package into a client-ready file - Excel workbook, Word document, or PowerPoint deck (format = xlsx|docx|pptx). Pass the assemble_estimate result. Returns the file.",
-    "publish_estimate": "Assembles the estimate and writes it + the Excel/Word/PPT exports to blob so the assessment dashboard web app shows it. Call after assembling; then point the user at the Container App /dashboard URL.",
+    "publish_estimate": "Assembles the estimate and writes it + the Excel/Word/PPT exports to blob so the assessment dashboard web app shows it. Call after assembling; then point the user at the Container App /dashboard URL. Pass build_poe=true to also kick the Azure Pricing Calculator POE run in the same call (same effect as calling build_calculator_estimate straight after) - useful when the user wants the deliverable AND the funding POE.",
     "azure_retail_prices": "Live Azure pay-as-you-go and reserved prices (cached proxy over prices.azure.com) - for ad-hoc price lookups outside the compute BoM.",
 }
 
@@ -112,7 +112,8 @@ across engagements.
   `publish_estimate` with the `assemble_estimate` result, then give the user the
   chat-UI Container App URL with `/dashboard` (they download Excel/Word/PPT from there).
 - For a **Microsoft migration-funding Proof of Estimate (POE)**, call
-  `build_calculator_estimate` with the `engagement` AFTER `publish_estimate`. It starts an
+  `build_calculator_estimate` with the `engagement` AFTER `publish_estimate` (or just pass
+  `build_poe=true` to `publish_estimate` to do both in one step). It starts an
   async run of the real Azure Pricing Calculator (a few minutes) and returns 202
   `building` — it does NOT give you the total. Tell the user the POE is being built in the
   background and to watch the dashboard's 'Azure landing zone — Pricing Calculator POE'

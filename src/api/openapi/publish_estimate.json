@@ -66,6 +66,14 @@
                   "engagement": {
                     "type": "string",
                     "description": "Engagement id as '<customer>/<project>' (lowercase, [a-z0-9-] per segment). Scopes the data and where the deliverables are written. Omit only for the legacy single-estate flow (defaults to '_default_/_default_')."
+                  },
+                  "build_poe": {
+                    "type": "boolean",
+                    "description": "When true, also start the Azure Pricing Calculator POE run for this engagement right after publishing (equivalent to calling build_calculator_estimate). Best-effort — publishing still succeeds if the POE run can't be queued. The POE takes a few minutes; poll get_calculator_estimate or watch the dashboard card."
+                  },
+                  "include_dr_compute": {
+                    "type": "boolean",
+                    "description": "Only used with build_poe: price standing warm-standby DR compute in the calculator POE (default false — DR runs on failover only)."
                   }
                 }
               }
@@ -94,6 +102,11 @@
                     },
                     "dashboard_hint": {
                       "type": "string"
+                    },
+                    "poe": {
+                      "type": "object",
+                      "nullable": true,
+                      "description": "Present when build_poe was set: {status:'building', spec_line_count, internal_monthly_estimate} once the calculator run is queued, or {status:'skipped', reason} if it couldn't start."
                     }
                   }
                 }
