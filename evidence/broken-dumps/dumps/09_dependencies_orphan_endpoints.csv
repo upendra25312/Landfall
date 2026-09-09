@@ -1,0 +1,9 @@
+src_id,dst_id,port,protocol,direction,confidence,bytes_30d_gb,flows_30d,last_seen
+srv-9001,srv-8001,1433,TDS,outbound,high,120,500000,2026-09-05
+srv-9002,srv-8002,1433,TDS,outbound,high,120,500000,2026-09-05
+srv-9003,srv-8003,1433,TDS,outbound,high,120,500000,2026-09-05
+srv-9004,srv-8004,1433,TDS,outbound,high,120,500000,2026-09-05
+srv-9005,srv-8005,1433,TDS,outbound,high,120,500000,2026-09-05
+srv-9006,srv-8006,1433,TDS,outbound,high,120,500000,2026-09-05
+srv-9007,srv-8007,1433,TDS,outbound,high,120,500000,2026-09-05
+srv-9008,srv-8008,1433,TDS,outbound,high,120,500000,2026-09-05

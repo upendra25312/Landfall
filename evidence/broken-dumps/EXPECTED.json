@@ -1,0 +1,49 @@
+{
+  "_note": "E10.2 — the ingestion pipeline's expected handling of each damaged file. 'status' is what _process() classifies it as (unrecognised | rejected | ok). 'rows_loaded' is what reaches SQL. 'must_say' are substrings that must appear (case-insensitive) in the rendered data-quality report. E1.4: never a silent partial load — every file is either not loaded (unrecognised/rejected) or loaded with the gap named.",
+
+  "01_unrecognised_firewall_export.csv": {
+    "failure_mode": "headers match no source profile (a firewall rule export, not an inventory)",
+    "status": "unrecognised", "table": null, "rows_loaded": 0, "min_confidence": "Low",
+    "must_say": ["could not be recognised", "not loaded"]
+  },
+  "02_empty.csv": {
+    "failure_mode": "zero-byte file",
+    "status": "unrecognised", "table": null, "rows_loaded": 0, "min_confidence": "Low",
+    "must_say": ["could not be recognised"]
+  },
+  "03_servers_header_only.csv": {
+    "failure_mode": "valid servers header, no data rows",
+    "status": "ok", "table": "servers", "rows_loaded": 0, "min_confidence": "Low",
+    "must_say": ["contained no data rows", "nothing was loaded"]
+  },
+  "04_performance_no_dates.csv": {
+    "failure_mode": "performance export missing the required sample_date column",
+    "status": "rejected", "table": "performance", "rows_loaded": 0, "min_confidence": "Low",
+    "must_say": ["missing required column sample_date"]
+  },
+  "05_servers_ragged_rows.csv": {
+    "failure_mode": "inconsistent field counts — short rows lose OS/app, long rows have trailing junk",
+    "status": "ok", "table": "servers", "rows_loaded": 12, "min_confidence": "Medium",
+    "must_say": ["os is missing on >10%", "not mapped to an application"]
+  },
+  "06_servers_garbage_numerics.csv": {
+    "failure_mode": "non-numeric values in vcpu / ram_gb ('N/A', 'eight', '16 GB')",
+    "status": "ok", "table": "servers", "rows_loaded": 12, "min_confidence": "Low",
+    "must_say": ["vcpu is missing or unparseable", "ram is missing or unparseable"]
+  },
+  "07_servers_duplicate_ids.csv": {
+    "failure_mode": "the same server_id on three rows with different specs",
+    "status": "ok", "table": "servers", "rows_loaded": 9, "min_confidence": "Medium",
+    "must_say": ["duplicate key(s) in servers", "srv-0001"]
+  },
+  "08_servers_utf16.csv": {
+    "failure_mode": "UTF-16 encoding — the reader expects UTF-8, headers decode to nonsense",
+    "status": "unrecognised", "table": null, "rows_loaded": 0, "min_confidence": "Low",
+    "must_say": ["could not be recognised"]
+  },
+  "09_dependencies_orphan_endpoints.csv": {
+    "failure_mode": "every dependency endpoint references a server not in any uploaded file",
+    "status": "ok", "table": "dependencies", "rows_loaded": 8, "min_confidence": "Low",
+    "must_say": ["dependency endpoints are not known servers"]
+  }
+}

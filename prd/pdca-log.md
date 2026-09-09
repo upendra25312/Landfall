@@ -5,6 +5,65 @@ Operating model: [`landfall-5x5-prd.md` §7](landfall-5x5-prd.md). Tracker:
 
 ---
 
+## Cycle 31 — broken-dump corpus (E10.2, Phase 2 evidence)
+
+**Date:** 2026-09-09 · **Owner:** SWE ·
+**Tracker:** E10.2 — the second Phase 2 evidence artefact.
+
+### Plan
+
+`evidence/broken-dumps/`: 6+ deliberately damaged client inventory exports, each
+with a documented expected handling, proving **E1.4** — a broken input is never a
+silent partial load; the data-quality report says why. Deferred: a live blob-trigger
+round-trip (the E1.4 contract surface is `normalize` + `build_report` + the
+`_process` classifier, all unit-testable).
+
+### Do
+
+- **`gen_dumps.py`** → 9 files in `dumps/`, one failure mode each: (1) headers match
+  no profile, (2) zero bytes, (3) header only, (4) performance export missing the
+  required `sample_date`, (5) ragged field counts, (6) non-numeric `vcpu`/`ram_gb`,
+  (7) one `server_id` on three rows, (8) UTF-16 encoding, (9) dependency endpoints
+  that reference unknown servers.
+- **`EXPECTED.json`** — per file: `status` (unrecognised | rejected | ok), rows to
+  SQL, `min_confidence`, and `must_say` phrases the rendered DQ report must contain.
+- **`check.py`** — `normalize` → `build_report` → the `_process` classifier over
+  every dump; asserts the outcome and that the report names the problem; writes
+  `RESULTS.md`.
+- **`src/api/ingest/dq.py`** — three new `_findings` (a recognised file with no data
+  rows; duplicate primary keys; `vcpu`/`ram_gb` unparseable on >30%) and a
+  `_confidence` rule (→ Low when vCPU/RAM is unparseable on >50% of servers).
+- **`tests/test_broken_dumps.py`** (12, parametrised) + an `evals.yml` step that
+  regenerates the corpus and fails on any diff. `.gitattributes` pins the generated
+  artefacts + `SCORECARD.md` to LF (autocrlf on Windows would trip the drift gates)
+  and marks the UTF-16 dump binary. `evidence/README.md` + SOP v1.3 updated.
+
+### Check
+
+| # | Dump | Outcome | Rows | Confidence |
+|--|---|---|--:|:--:|
+| 1 | unrecognised firewall export | `unrecognised` | 0 | Low |
+| 2 | empty file | `unrecognised` | 0 | Low |
+| 3 | servers header only | `ok`, "no data rows" | 0 | Low |
+| 4 | performance, no `sample_date` | `rejected` | 0 | Low |
+| 5 | ragged rows | `ok`, OS/app gaps named | 12 | Medium |
+| 6 | garbage numerics | `ok`, "vCPU unparseable 100%" | 12 | Low |
+| 7 | duplicate `server_id` | `ok`, duplicate key named | 9 | Medium |
+| 8 | UTF-16 | `unrecognised` | 0 | Low |
+| 9 | orphan dependency endpoints | `ok`, orphans named | 8 | Low |
+
+- **375 pytest** (+12), evals 32/32 + 30/30 + 8/8, `SCORECARD.md` no drift.
+- **9/9 handled per E1.4** — no silent partial load anywhere.
+
+### Act
+
+- One commit on `c31-broken-dumps`, merged to `main`, pushed. `azd deploy api`
+  (`dq.py` changed — new findings reach the live DQ reports); no web/agent change.
+- Next Phase 2: E10.3/E10.6 (`evidence/SCORECARD.md` — rubric + score + links),
+  then E8.5–8.7, E9.2–9.5, E5.6.
+
+---
+
 ## Cycle 30 — cost-method back-test (E10.1, Phase 2 evidence)
 
 **Date:** 2026-09-09 · **Owner:** FinOps + Architect ·

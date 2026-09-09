@@ -1,0 +1,1 @@
+server_id,hostname,env,os_name,os_version,os_eol_date,vcpu,ram_gb,provisioned_disk_gb,used_disk_gb,cpu_avg_pct,cpu_peak_pct,cpu_p95_pct,ram_avg_pct,ram_p95_pct,cluster,datacenter,powerstate,app_id,notes

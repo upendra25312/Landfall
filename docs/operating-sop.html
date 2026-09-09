@@ -392,6 +392,7 @@ az rest --method post --resource https://search.azure.com \
         <tr><td>Chat returns <code>503 — AGENT_ID not set</code></td><td>The deploy's post-provision step didn't finish. Ask the operator to re-run it (<code>azd hooks run postprovision</code>).</td></tr>
         <tr><td><code>query_inventory</code> answers <code>0</code> or errors</td><td>Data isn't loaded, or the Free SQL database auto-paused after an hour idle — the first query wakes it (~30–60 s); retry once.</td></tr>
         <tr><td>A count looks wrong</td><td>Read the SQL the agent shows. Almost always a column-mapping mismatch in Phase 1 step 3 — drop a <code>_mapping.json</code> at the engagement root and re-run (E1.7).</td></tr>
+        <tr><td>An uploaded file didn't load</td><td>Open its <code>.dq.md</code>. <em>Unrecognised</em> = no source profile matched (wrong export, or UTF-16 — re-save as UTF-8 CSV, or pin a profile with <code>_mapping.json</code>). <em>Rejected</em> = a required column is missing on every row. A damaged file is never partially loaded silently — the report says which rows and why.</td></tr>
         <tr><td>Document search returns nothing</td><td>Docs aren't in <code>raw/docs/</code>, or the indexer hasn't run since you uploaded. Trigger it (Phase 1 step 4) and wait for <code>success</code>.</td></tr>
         <tr><td>Batch sheet never produces an answered file</td><td>The Event Grid subscription on <code>questions/</code> is missing. Operator: <code>azd hooks run postdeploy</code>.</td></tr>
         <tr><td>First request after a quiet period is slow (~10 s)</td><td>Expected — the chat app scales to zero and the SQL database auto-pauses. It warms up on the first request.</td></tr>
@@ -414,6 +415,6 @@ az rest --method post --resource https://search.azure.com \
     </ul>
   </section>
 
-  <footer>Landfall · Operating Guide v1.2 · 2026-09-09 · Outputs are DRAFT estimates and require architect review before external use</footer>
+  <footer>Landfall · Operating Guide v1.3 · 2026-09-09 · Outputs are DRAFT estimates and require architect review before external use</footer>
 
 </div>
