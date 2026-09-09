@@ -35,7 +35,10 @@ _blob_state: dict = {}
 
 
 def _engagement_of(req, body: dict) -> str:
-    raw = body.get("engagement") or req.params.get("engagement") or eng.DEFAULT_ENGAGEMENT
+    raw = body.get("engagement") or req.params.get("engagement")
+    if not raw:
+        raise ValueError('need "engagement": "<customer>/<project>" — this tool writes '
+                         "engagement-scoped output (no shared default)")
     return eng.normalize_engagement(raw)
 
 

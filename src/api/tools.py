@@ -28,7 +28,7 @@ from azure.identity import DefaultAzureCredential
 from azure.ai.projects import AIProjectClient
 
 from sqlguard import safe_select as _safe_select, signature as _sql_signature
-from engagement import normalize_engagement as _norm_engagement, DEFAULT_ENGAGEMENT as _DEFAULT_ENGAGEMENT
+from engagement import normalize_engagement as _norm_engagement
 from engagement_sql import set_engagement as _set_engagement
 
 bp = func.Blueprint()
@@ -145,7 +145,10 @@ def query_inventory(req: func.HttpRequest) -> func.HttpResponse:
     question = (body.get("question") or "").strip()
     if not question:
         return _json({"error": "body must be {\"engagement\": \"<customer>/<project>\", \"question\": \"...\"}"}, 400)
-    raw_eng = body.get("engagement") or req.params.get("engagement") or _DEFAULT_ENGAGEMENT
+    raw_eng = body.get("engagement") or req.params.get("engagement")
+    if not raw_eng:
+        return _json({"error": 'body must include "engagement": "<customer>/<project>" — '
+                               'query_inventory is engagement-scoped (no shared default)'}, 400)
     try:
         engagement = _norm_engagement(raw_eng)
     except ValueError as exc:

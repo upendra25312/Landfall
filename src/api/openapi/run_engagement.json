@@ -1,0 +1,82 @@
+{
+  "openapi": "3.0.1",
+  "info": {
+    "title": "run_engagement",
+    "description": "Ingest every inventory file currently sitting in an engagement's raw/…/inventory/ folder in one call: detect format, map columns, and load the rows into Azure SQL scoped to that engagement, writing a data-quality report per file. Use this when the client has uploaded inventory but query_inventory returns nothing, or after new files are added to an existing engagement (re-loading a file replaces only its own rows).",
+    "version": "1.0.0"
+  },
+  "servers": [{ "url": "https://REPLACE/api" }],
+  "paths": {
+    "/run_engagement": {
+      "post": {
+        "operationId": "run_engagement",
+        "summary": "Bulk-ingest an engagement's uploaded inventory folder",
+        "description": "Pass {\"engagement\": \"<customer>/<project>\"}. Loads every file under that engagement's inventory/ folder (skipping names that start with '_'). Returns a per-file summary plus the row totals. Safe to re-run — each file's rows are replaced, not duplicated. After this, query_inventory will see the data.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["engagement"],
+                "properties": {
+                  "engagement": {
+                    "type": "string",
+                    "description": "Engagement id '<customer>/<project>'."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Ingestion run summary",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "engagement": { "type": "string" },
+                    "file_count": { "type": "integer" },
+                    "rows_loaded": { "type": "integer" },
+                    "rows_rejected": { "type": "integer" },
+                    "ran_at": { "type": "string" },
+                    "files": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "file": { "type": "string" },
+                          "table": { "type": "string", "nullable": true },
+                          "profile": { "type": "string", "nullable": true },
+                          "rows_in": { "type": "integer" },
+                          "rows_loaded": { "type": "integer" },
+                          "rows_rejected": { "type": "integer" },
+                          "status": { "type": "string" },
+                          "confidence_hint": { "type": "string", "nullable": true }
+                        }
+                      }
+                    },
+                    "hint": { "type": "string", "nullable": true }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Missing or malformed engagement id",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": { "error": { "type": "string" } }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
