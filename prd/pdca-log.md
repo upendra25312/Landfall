@@ -58,12 +58,12 @@ the one part of "can an operator see a bad answer" still missing.
 | unit | **448 pytest**, 2 skipped (+7 `test_web_telemetry`, chaos C6 check fixed) |
 | local | `import app` OK with `telemetry` no-op; `web_chat` record is flat, `None` dropped, reserved keys not shadowed |
 | evals | 32/32 + 8/8 + 30/30; `evals/SCORECARD.md` no drift; `evidence/SCORECARD.md` regenerated — **OVERALL 4.00 → 4.03** |
-| live | `azd deploy web`; `scripts/smoke.py` + `sec_probe.py` re-run |
+| live | `azd deploy web` → SUCCESS (1m50s), revision Healthy. `scripts/smoke.py` **8/8**. Container logs confirm `azure.monitor.opentelemetry.exporter` — *"Transmission succeeded: Items accepted: 8"* — telemetry is flowing to App Insights. |
 | scope | **production web code** → `azd deploy web` (no infra — env var already present) |
 
 ### Act
 
-- `c42-webobs` → merged `--no-ff` to `main`, pushed. **`azd deploy web`.**
+- `c42-webobs` → merged `--no-ff` to `main` (`a0b6b4f`), pushed. **`azd deploy web`.**
 - E9.4 gap now just: the workbook row + a web-tier alert (both need `azd
   provision`, which drops SQL — deferred with the C39 workbook/alert).
 - Next by leverage: E12.8 guided pipeline state (Usability, unblocked by C41),
