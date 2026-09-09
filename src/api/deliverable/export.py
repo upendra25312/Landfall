@@ -21,6 +21,7 @@ Pure — the package is the only input; no external assets, no network.
 from __future__ import annotations
 
 import io
+import logging
 
 _ACCENT = "243A5E"        # deep Azure blue
 _ACCENT2 = "0E7C8B"
@@ -130,6 +131,13 @@ def to_xlsx(package: dict) -> bytes:
              _kv(a.get("inputs")), ", ".join(a.get("assumptions_applied") or []) or "—", a["confidence"]]
             for a in package.get("calculation_appendix", [])])
 
+    # live model — derived cells as formulas that reflow on an input change (E11.12)
+    try:
+        from .xlsx_model import write_model_sheet
+        write_model_sheet(wb, package)
+    except Exception:  # noqa: BLE001 - the model sheet is a bonus, never break the export
+        logging.getLogger(__name__).warning("xlsx model sheet skipped", exc_info=True)
+
     # register
     ws = _sheet("Register")
     reg = package.get("register", {})
@@ -149,10 +157,15 @@ def to_xlsx(package: dict) -> bytes:
 def to_docx(package: dict) -> bytes:
     from docx import Document
     from docx.enum.text import WD_ALIGN_PARAGRAPH
-    from docx.shared import Pt, RGBColor
+    from docx.shared import Inches, Pt, RGBColor
 
     meta = package.get("meta", {})
     doc = Document()
+    # US-Letter in DXA (E5.4q / E11.12) — explicit so the doc renders the same for
+    # every reviewer regardless of their Word default; 1" margins.
+    for sec in doc.sections:
+        sec.page_width, sec.page_height = Inches(8.5), Inches(11)
+        sec.left_margin = sec.right_margin = sec.top_margin = sec.bottom_margin = Inches(1)
     accent = RGBColor(0x24, 0x3A, 0x5E)
 
     def _h(text, level=1):

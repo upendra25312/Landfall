@@ -31,6 +31,14 @@ jobs:
       - name: Unit tests
         run: pytest tests -q
 
+      - name: Install LibreOffice (workbook recalc gate — E11.12)
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libreoffice-calc
+
+      - name: Workbook recalc gate (formulas recalc with 0 errors)
+        env:
+          RECALC: "1"
+        run: pytest tests/test_xlsx_recalc.py -q
+
       - name: Eval harness (golden SQL + scenarios + fault injection)
         run: python evals/runner.py            # writes evals/SCORECARD.md, non-zero on failure
 
