@@ -51,7 +51,17 @@ def _connect():
     )
 
 
-_ONLY_COMMENTS = re.compile(r"\A(?:\s|--[^\n]*|/\*.*?\*/)*\Z", re.DOTALL)
+_LINE_COMMENT = re.compile(r"--[^\n]*")
+_BLOCK_COMMENT = re.compile(r"/\*.*?\*/", re.DOTALL)
+
+
+def _is_only_comments(sql: str) -> bool:
+    """True if the batch is nothing but whitespace + SQL comments. Strips the
+    comments first — a single `\\A(?:\\s|--…|/\\*…\\*/)*\\Z` regex over a batch that
+    ends in real SQL backtracks catastrophically (observed: 10 min at 100% CPU
+    on schema.sql)."""
+    stripped = _BLOCK_COMMENT.sub("", _LINE_COMMENT.sub("", sql))
+    return not stripped.strip()
 
 
 def _run_batches(cur, script: str) -> int:
@@ -60,7 +70,7 @@ def _run_batches(cur, script: str) -> int:
     done = 0
     parts = re.split(r"(?im)^\s*GO\s*$", script)
     for sql in (p.strip() for p in parts):
-        if sql and not _ONLY_COMMENTS.match(sql):
+        if sql and not _is_only_comments(sql):
             cur.execute(sql)
             done += 1
     return done
