@@ -364,21 +364,18 @@ resource calcApp 'Microsoft.App/containerApps@2024-10-02-preview' = {
           ]
         }
       ]
-      // KEDA queue-scale-to-zero (E11.16 / C25b): 0 replicas at rest, KEDA spins
-      // one up when a message lands on calc-jobs; worker.py `consume_forever()`
-      // drains it and writes landing_zone.*. The scaler authenticates with the
-      // workload identity `uami` (Storage Queue Data Contributor, `ra_uami_queue`)
-      // — no account key (shared-key auth is off on the storage account).
-      // cooldownPeriod 900s > the worst-case calculator drive so KEDA never
-      // scales a replica out from under an in-flight job (an in-flight message is
-      // invisible, so queueLength reads 0 during processing); a job that is
-      // killed anyway reappears after the 1800s visibility timeout and retries
-      // (worker `_MAX_DEQUEUE` = 3).
+      // One always-on replica runs worker.py `consume_forever()` and drains the
+      // calc-jobs queue. True scale-to-zero was tried (C25b) — a KEDA azure-queue
+      // rule with workload-identity auth (`identity: uami.id`, no account key
+      // since shared-key auth is off) — but KEDA never scaled the replica up on a
+      // queued message (the MI-auth shape for the scaler isn't wired through in
+      // this Container Apps / KEDA version), so a POE job just sat unprocessed.
+      // Reverted to minReplicas 1; the queue rule stays only to burst to 2 under
+      // load. Real scale-to-zero needs the worker to hold the queue metric > 0
+      // while it drives the calculator (or a different trigger).
       scale: {
-        minReplicas: 0
+        minReplicas: 1
         maxReplicas: 2
-        pollingInterval: 30
-        cooldownPeriod: 900
         rules: [
           {
             name: 'calc-jobs-queue'
