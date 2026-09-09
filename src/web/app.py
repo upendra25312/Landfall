@@ -453,6 +453,117 @@ def engagement_file_delete(customer: str, project: str, name: str):
     return JSONResponse({"error": f"{safe} not found"}, status_code=404)
 
 
+_CONF_RANK = {"low": 0, "medium": 1, "high": 2}
+
+
+def _analysis_reports(eid: str) -> list[dict]:
+    """Read the per-file data-quality reports the ingestion pipeline writes to
+    answers/engagements/<eid>/_ingest/<stem>.dq.json (E11.6 / E11.24)."""
+    prefix = f"engagements/{eid}/_ingest"
+    cc = _estimate_container()
+    out = []
+    try:
+        names = [b.name for b in cc.list_blobs(name_starts_with=f"{prefix}/")
+                 if b.name.endswith(".dq.json")]
+    except Exception:  # noqa: BLE001
+        return out
+    for n in names:
+        try:
+            doc = json.loads(cc.download_blob(n).readall())
+        except Exception:  # noqa: BLE001
+            continue
+        s = doc.get("summary") or {}
+        out.append({
+            "file": s.get("file") or n.rsplit("/", 1)[-1].replace(".dq.json", ""),
+            "table": s.get("table"),
+            "profile": s.get("profile") or "",
+            "status": s.get("status") or "ok",
+            "rows_in": s.get("rows_in") or 0,
+            "rows_loaded": s.get("rows_loaded") or 0,
+            "rows_rejected": s.get("rows_rejected") or 0,
+            "confidence": s.get("confidence_hint") or "",
+            "findings": s.get("findings") or [],
+        })
+    out.sort(key=lambda r: r["file"])
+    return out
+
+
+def _analysis_summary(eid: str, base: str) -> dict:
+    reports = _analysis_reports(eid)
+    inv = [f["name"] for f in _list_files(base) if f["kind"] == "inventory"]
+    have = {r["file"] for r in reports}
+    tables, rows_loaded, findings = {}, 0, []
+    worst = None
+    for r in reports:
+        if r["table"]:
+            tables[r["table"]] = tables.get(r["table"], 0) + r["rows_loaded"]
+        rows_loaded += r["rows_loaded"]
+        for f in r["findings"]:
+            if f not in findings:
+                findings.append(f)
+        c = _CONF_RANK.get((r["confidence"] or "").lower())
+        if c is not None:
+            worst = c if worst is None else min(worst, c)
+    conf = {0: "Low", 1: "Medium", 2: "High"}.get(worst, "")
+    return {
+        "engagement": eid,
+        "reports": reports,
+        "summary": {
+            "files_ingested": len(reports),
+            "rows_loaded": rows_loaded,
+            "tables": tables,
+            "confidence": conf,
+            "findings": findings,
+            "pending": [f for f in inv if f not in have],
+        },
+    }
+
+
+@app.get("/api/engagements/{customer}/{project}/analysis")
+def engagement_analysis(customer: str, project: str):
+    """Current data-quality picture for the engagement — what ingestion has loaded so
+    far and what it flagged. The page polls this after 'Start analysis'."""
+    eng = _engagement(customer, project)
+    if not eng:
+        return JSONResponse({"error": "unknown engagement"}, status_code=404)
+    eid, base = eng
+    return JSONResponse(_analysis_summary(eid, base))
+
+
+@app.post("/api/engagements/{customer}/{project}/analyze")
+async def engagement_analyze(customer: str, project: str):
+    """'Start analysis' — force a catch-up ingest of everything in the engagement's
+    inventory/ folder (the per-file Event Grid trigger normally does this on upload;
+    this covers a dropped event or a file added before the subscription existed), then
+    return the data-quality summary. The ingest itself runs through the agent's
+    `run_engagement` tool so the web tier needs no Function credentials."""
+    eng = _engagement(customer, project)
+    if not eng:
+        return JSONResponse({"error": "unknown engagement"}, status_code=404)
+    eid, base = eng
+
+    inv = [f for f in _list_files(base) if f["kind"] == "inventory"]
+    if not inv:
+        return JSONResponse({"error": "no inventory files uploaded yet"}, status_code=400)
+
+    triggered = False
+    if AGENT_NAME:
+        try:
+            _openai_client().with_options(timeout=180.0).responses.create(
+                input=(f"[Active engagement: {eid}. Use exactly this value.]\n\n"
+                       f"Call run_engagement for this engagement now. Reply with only the "
+                       f"raw JSON it returns — no commentary, do not call any other tool."),
+                extra_body={"agent_reference": {"type": "agent_reference", "name": AGENT_NAME}},
+            )
+            triggered = True
+        except Exception:  # noqa: BLE001
+            logging.exception("analyze: run_engagement via agent failed for %s", eid)
+
+    result = _analysis_summary(eid, base)
+    result["triggered"] = triggered
+    return JSONResponse(result)
+
+
 @app.get("/api/engagements/{customer}/{project}/chat")
 def engagement_chat_get(customer: str, project: str):
     """The saved conversation for this engagement (E11.26) — the page renders it on
@@ -707,6 +818,16 @@ def index():
  .frow .pbar{width:74px;height:6px;border-radius:3px;background:#152430;overflow:hidden;flex:none}
  .frow .pbar i{display:block;height:100%;background:#7fd3dd;width:0;transition:width .2s}
  .frow .x{color:var(--muted);cursor:pointer;background:none;border:0;font:inherit;flex:none}
+ .frow .badge{font-size:11px;padding:2px 7px;border-radius:20px;white-space:nowrap;flex:none}
+ .badge.ing{background:#12313f;color:#7fd3dd}.badge.rej{background:#3a2118;color:#f0a35e}.badge.wait{background:#1c2732;color:var(--muted)}
+ #analysisbar{margin-top:12px;display:flex;align-items:center;gap:12px}
+ #analysisbar .st{font-size:12px}
+ #dqsummary{margin-top:12px;border:1px solid var(--line);border-radius:10px;background:var(--panel);padding:12px 14px;font-size:13px}
+ #dqsummary h4{margin:0 0 6px;font-size:13px}
+ #dqsummary .conf{font-weight:600}
+ #dqsummary .conf.High{color:#6fce9a}#dqsummary .conf.Medium{color:#e8c37a}#dqsummary .conf.Low{color:#f0a35e}
+ #dqsummary ul{margin:8px 0 0;padding-left:18px;color:var(--muted)}
+ #dqsummary ul li{margin:3px 0}
  .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:84px;background:#152430;border:1px solid var(--line);border-radius:8px;padding:10px 16px;font-size:13px;z-index:20;opacity:0;pointer-events:none;transition:opacity .3s}
  .toast.show{opacity:1}
 </style></head><body>
@@ -748,6 +869,11 @@ def index():
   <span style="font-size:11px">up to 100&nbsp;MB each &mdash; lands in this engagement's private folder</span>
  </label>
  <ul id=filerows></ul>
+ <div id=analysisbar hidden>
+  <button class=send id=startanalysis type=button>Start analysis</button>
+  <span class=st id=analysisnote></span>
+ </div>
+ <div id=dqsummary hidden></div>
 </div>
 <div id=toast class=toast></div>
 <div id=log><div id=welcome></div></div>
@@ -868,25 +994,80 @@ function showUpload(){
  if(!ENG){upanel.hidden=true;return;}
  upanel.hidden=false;document.getElementById('upeng').textContent=engLabel(ENG);loadFiles();
 }
+let ANALYSIS={};   // file name -> ingest report
+const abar=document.getElementById('analysisbar'),anote=document.getElementById('analysisnote'),
+      startBtn=document.getElementById('startanalysis'),dqEl=document.getElementById('dqsummary');
 async function loadFiles(){
- frows.innerHTML='';if(!ENG)return;
+ frows.innerHTML='';dqEl.hidden=true;abar.hidden=true;if(!ENG)return;
  const [c,p]=ENG.split('/');
+ let hasInv=false;
  try{
   const j=await (await fetch('/api/engagements/'+enc(c)+'/'+enc(p)+'/files')).json();
-  (j.files||[]).forEach(f=>frows.appendChild(doneRow(f)));
+  try{const a=await (await fetch('/api/engagements/'+enc(c)+'/'+enc(p)+'/analysis')).json();
+      ANALYSIS={};(a.reports||[]).forEach(r=>ANALYSIS[r.file]=r);
+      if((a.summary||{}).files_ingested)renderDQ(a.summary);}catch(e){}
+  (j.files||[]).forEach(f=>{if(f.kind==='inventory')hasInv=true;frows.appendChild(doneRow(f));});
   if(j.over_soft_cap)toast('This engagement is over the 2 GB soft cap.');
  }catch(e){}
+ abar.hidden=!hasInv;
 }
 function delFile(nm){
  return async()=>{if(!confirm('Remove '+nm+'?'))return;const [c,p]=ENG.split('/');
   await fetch('/api/engagements/'+enc(c)+'/'+enc(p)+'/files/'+enc(nm),{method:'DELETE'});loadFiles();};
 }
+function ingestBadge(f){
+ if(f.kind!=='inventory')return '';
+ const r=ANALYSIS[f.name];
+ if(!r)return '<span class="badge wait">not analysed</span>';
+ if(r.status&&r.status!=='ok'&&r.status!=='rejected')return '<span class="badge rej">'+esc(r.status)+'</span>';
+ let b='<span class="badge ing">✓ '+(r.rows_loaded||0)+' rows'+(r.table?(' → '+esc(r.table)):'')+'</span>';
+ if(r.rows_rejected)b+=' <span class="badge rej">'+r.rows_rejected+' rejected</span>';
+ return b;
+}
 function doneRow(f){
  const li=document.createElement('li');li.className='frow ok';
  const prof=f.profile?(' · '+esc(f.profile)):'',rows=f.rows?(' · '+f.rows+' rows'):'';
- li.innerHTML='<span class=nm>'+esc(f.name)+'</span><span class=st>✓ '+esc(f.kind)+prof+rows+' · '+fmtSize(f.size)+'</span><button class=x title=Remove>✕</button>';
+ li.innerHTML='<span class=nm>'+esc(f.name)+'</span>'+ingestBadge(f)+
+   '<span class=st>✓ '+esc(f.kind)+prof+rows+' · '+fmtSize(f.size)+'</span><button class=x title=Remove>✕</button>';
  li.querySelector('.x').onclick=delFile(f.name);return li;
 }
+function renderDQ(s){
+ if(!s||!s.files_ingested){dqEl.hidden=true;return;}
+ const tbl=Object.entries(s.tables||{}).map(([t,n])=>esc(t)+' ('+n+')').join(', ');
+ let h='<h4>Data-quality summary</h4>';
+ h+='<div>'+s.files_ingested+' file'+(s.files_ingested===1?'':'s')+' loaded · '+
+    s.rows_loaded+' rows'+(tbl?(' · '+tbl):'')+
+    (s.confidence?(' · confidence <span class="conf '+esc(s.confidence)+'">'+esc(s.confidence)+'</span>'):'')+'</div>';
+ if((s.pending||[]).length)h+='<div class=warn>still ingesting: '+s.pending.map(esc).join(', ')+'</div>';
+ if((s.findings||[]).length)h+='<ul>'+s.findings.map(f=>'<li>'+esc(f)+'</li>').join('')+'</ul>';
+ dqEl.innerHTML=h;dqEl.hidden=false;
+}
+async function startAnalysis(){
+ if(!ENG)return;const [c,p]=ENG.split('/');
+ startBtn.disabled=true;anote.textContent='ingesting the uploaded files…';
+ try{
+  const j=await (await fetch('/api/engagements/'+enc(c)+'/'+enc(p)+'/analyze',{method:'POST'})).json();
+  if(j.error){anote.textContent='✗ '+j.error;startBtn.disabled=false;return;}
+  ANALYSIS={};(j.reports||[]).forEach(r=>ANALYSIS[r.file]=r);
+  renderDQ(j.summary);await loadFiles();
+  let tries=(j.summary&&j.summary.pending||[]).length?8:0;
+  while(tries-- > 0){
+   await new Promise(r=>setTimeout(r,2500));
+   const a=await (await fetch('/api/engagements/'+enc(c)+'/'+enc(p)+'/analysis')).json();
+   ANALYSIS={};(a.reports||[]).forEach(r=>ANALYSIS[r.file]=r);
+   renderDQ(a.summary);await refreshRows();
+   if(!((a.summary||{}).pending||[]).length)break;
+  }
+  anote.textContent='';
+ }catch(e){anote.textContent='✗ '+e;}
+ startBtn.disabled=false;
+}
+async function refreshRows(){
+ if(!ENG)return;const [c,p]=ENG.split('/');
+ try{const j=await (await fetch('/api/engagements/'+enc(c)+'/'+enc(p)+'/files')).json();
+  frows.innerHTML='';(j.files||[]).forEach(f=>frows.appendChild(doneRow(f)));}catch(e){}
+}
+startBtn.onclick=startAnalysis;
 function uploadOne(file){
  const li=document.createElement('li');li.className='frow';
  li.innerHTML='<span class=nm>'+esc(file.name)+'</span><span class=pbar><i></i></span><span class=st>uploading…</span>';
