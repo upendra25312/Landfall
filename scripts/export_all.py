@@ -192,9 +192,9 @@ def main(argv=None) -> int:
             fh.write(r.pop("_data"))
         r["file"] = fn
         manifest.append(r)
+        sql_note = f", {r['sql_rows']} sql rows" if r["sql_rows"] is not None else ""
         print(f"  ok   {eid:40} {r['bytes'] / 1024:,.0f} KB  "
-              f"({r['raw_files']} raw, {r['answer_files']} answers"
-              f"{f', {r['sql_rows']} sql rows' if r['sql_rows'] is not None else ''})")
+              f"({r['raw_files']} raw, {r['answer_files']} answers{sql_note})")
 
     with open(os.path.join(out, "manifest.json"), "w", encoding="utf-8") as fh:
         json.dump({"exported_at": stamp, "engagements": manifest, "failed": failed}, fh, indent=2)
