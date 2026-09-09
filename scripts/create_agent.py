@@ -53,7 +53,7 @@ _OPENAPI_TOOLS = {
     "build_calculator_estimate": "STARTS an async run of the REAL Azure Pricing Calculator for an engagement (the ca-calc container drives it and takes a few minutes). Translates the published estimate (landing zone + right-sized workloads) into calculator line items - Landfall supplies quantities, the calculator supplies prices. Returns 202 'building' immediately - it does NOT return the total. Call publish_estimate first; after calling this, tell the user the POE is building and to watch the dashboard, or poll get_calculator_estimate.",
     "get_calculator_estimate": "Polls the state of an engagement's Pricing Calculator POE started by build_calculator_estimate: building | ready | failed | none. When ready it carries the calculator's monthly total, annual, line count and the reconciliation vs the internal run-rate. Use it to answer 'is the POE ready?'.",
     "score_dispositions": "Rule-derived 6R disposition (Rehost / Replatform / Repurchase / Retire / Retain / Refactor) + rationale + confidence per application, from OS EOL, stack, criticality, internet-facing and DB engine. Repurchase / Refactor / Retire need business sign-off.",
-    "plan_waves": "Risk-ordered migration wave plan - server dependency graph -> affinity move-groups -> waves (pilot first, regulated last) with entry/exit criteria and cross-wave blocking dependencies. Pass applications + servers + dependencies.",
+    "plan_waves": "Risk-ordered migration wave plan - server dependency graph -> affinity move-groups -> waves (pilot first, regulated last) with entry/exit criteria and cross-wave blocking dependencies. Also returns a dated `schedule` (prep/exec/soak per wave from servers / throughput, programme start/end/total_weeks, critical_path). Pass applications + servers + dependencies; optional start_date (ISO).",
     "assemble_estimate": "Assembles every other tool's output + an inventory summary into ONE structured estimate package: 8 sections, a stable ID + calculation appendix on every figure, an assumptions/exclusions/data-gaps register, a parametric effort + services-cost estimate, and a markdown render. Call this last.",
     "export_estimate": "Renders the assembled estimate package into a client-ready file - Excel workbook, Word document, or PowerPoint deck (format = xlsx|docx|pptx). Pass the assemble_estimate result. Returns the file.",
     "publish_estimate": "Assembles the estimate and writes it + the Excel/Word/PPT exports to blob so the assessment dashboard web app shows it. Call after assembling; then point the user at the Container App /dashboard URL. Pass build_poe=true to also kick the Azure Pricing Calculator POE run in the same call (same effect as calling build_calculator_estimate straight after) - useful when the user wants the deliverable AND the funding POE.",
@@ -114,6 +114,11 @@ Never combine or compare data across engagements.
   (applications + servers + dependencies). Present the disposition mix and the wave
   table with the pilot wave, the regulated wave, and blocking dependencies. The 6R
   call and the wave order are the tool's — you explain them, you don't invent them.
+  `plan_waves` also returns a `schedule` (E4.3): dated waves (prep/exec/soak from
+  servers ÷ throughput), a programme `start`/`end`/`total_weeks`, and a `critical_path`.
+  State the end date and critical path; do not invent dates the schedule didn't give.
+  `assemble_estimate` turns that into the effort `resource_loading` — a month-by-month
+  FTE curve with `peak_fte` and `avg_fte`; quote those, not a made-up team size.
 - To produce the estimate, run the tools above then call `assemble_estimate` with an
   inventory_summary, the data_quality report, and each tool's JSON output. Present its
   `summary_markdown` and headline figures verbatim; cite figure ids for traceability.

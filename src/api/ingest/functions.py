@@ -25,7 +25,7 @@ from azure.storage.blob import BlobServiceClient
 
 import audit
 import engagement as eng
-from .core import normalize
+from .core import match_mapping, normalize
 from .dq import build_report, render_markdown
 from . import loader
 
@@ -41,10 +41,23 @@ def _blob() -> BlobServiceClient:
     return _state["blob"]
 
 
+def _load_mapping(engagement: str) -> dict | None:
+    """Best-effort read of raw/engagements/<c>/<p>/_mapping.json (PRD E1.7)."""
+    try:
+        raw = (_blob().get_blob_client(eng.RAW_CONTAINER, eng.mapping_file(engagement))
+               .download_blob().readall())
+        doc = json.loads(raw)
+        return doc if isinstance(doc, dict) else None
+    except Exception:                          # noqa: BLE001 - no mapping is the normal case
+        return None
+
+
 def _process(engagement: str, name: str, data: bytes) -> dict:
     """Normalize + load one file for one engagement. `name` is the bare file name."""
     engagement = eng.normalize_engagement(engagement)
-    res = normalize(name, data)
+    mapping = _load_mapping(engagement)
+    override = match_mapping(mapping, name) if mapping else None
+    res = normalize(name, data, override)
     try:
         existing = loader.existing_keys(engagement)
     except Exception:                       # noqa: BLE001
@@ -76,6 +89,7 @@ def _process(engagement: str, name: str, data: bytes) -> dict:
         "status": status,
         "confidence_hint": report["confidence_hint"],
         "findings": report["findings"],
+        "mapping_applied": list(res.mapping_notes) or None,
     }
 
     _write_report(engagement, name, report, summary)

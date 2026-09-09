@@ -233,14 +233,19 @@ function render(pkg){
 
   // --- waves
   const wv=sectionBody(pkg,"waves");
+  const sch=wv.schedule||null;
   grid.append(card("Migration wave plan","F14", wv.note? `<p class="sub">${wv.note}</p>` : `
-    <table><thead><tr><th>Wave</th><th>Kind</th><th class="num">Apps</th><th class="num">Servers</th><th>Risk</th></tr></thead><tbody>
+    <table><thead><tr><th>Wave</th><th>Kind</th><th class="num">Apps</th><th class="num">Servers</th><th>Go-live</th><th>Risk</th></tr></thead><tbody>
     ${(wv.waves||[]).map(w=>`<tr>
       <td>${w.wave}</td><td>${w.kind}</td><td class="num">${w.app_count}</td><td class="num">${w.server_count}</td>
+      <td style="font-size:12px;color:var(--muted)">${w.go_live||"—"}${w.duration_weeks?` <span style="font-size:11px">(${w.duration_weeks}w)</span>`:""}</td>
       <td><div class="bar risk-${w.risk_band}" style="width:110px"><i style="width:${Math.min(100,w.risk_score)}%"></i></div>
           <span style="font-size:11px;color:var(--muted)">${w.risk_score} ${w.risk_band}</span></td>
     </tr>`).join("")}
-    </tbody></table>`));
+    </tbody></table>
+    ${sch? `<p style="font-size:12px;color:var(--muted);margin-top:8px">
+      <b>Schedule</b> ${sch.start} → ${sch.end} · ${sch.total_weeks} weeks · ${sch.parallel_waves} wave(s) in parallel<br>
+      <b>Critical path</b> ${(sch.critical_path||[]).map(c=>"W"+c.wave).join(" → ")||"—"}</p>`:""}`));
 
   // --- effort
   const ef=sectionBody(pkg,"migration_effort");
@@ -255,6 +260,15 @@ function render(pkg){
           <span style="width:210px;font-size:12px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${w.workstream}</span>
           <div class="bar" style="flex:1"><i style="width:${w.pd/mx*100}%"></i></div>
           <span style="width:52px;text-align:right;font-size:12px" class="num">${fmt(w.pd)}</span></div>`).join("")}</div>`;})()}
+    ${(()=>{const rl=ef.resource_loading;if(!rl||!rl.curve)return"";
+      const mx=Math.max(...rl.curve.map(c=>c.fte||0),1);
+      return `<div style="margin-top:14px">
+        <div style="font-size:12px;color:var(--muted)"><b>Resource loading</b> — peak ${rl.peak_fte} FTE (${rl.peak_month}) · avg ${rl.avg_fte} FTE · ${rl.months} months</div>
+        <div style="display:flex;align-items:flex-end;gap:2px;height:52px;margin-top:6px">
+          ${rl.curve.map(c=>`<div title="${c.month}: ${c.fte} FTE (${fmt(c.pd)} PD)" style="flex:1;background:var(--accent,#0078D4);opacity:.75;height:${Math.round((c.fte||0)/mx*100)}%;min-height:2px;border-radius:2px 2px 0 0"></div>`).join("")}
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--muted);margin-top:2px"><span>${rl.curve[0]?.month||""}</span><span>${rl.curve[rl.curve.length-1]?.month||""}</span></div>
+      </div>`;})()}
     <p style="font-size:12px;color:var(--muted);margin-top:10px">${ef.basis||""}</p>`));
 
   // --- register + appendix (wide)

@@ -44,7 +44,7 @@ def plan_waves_route(req: func.HttpRequest) -> func.HttpResponse:
     try:
         cfg = load_config(overrides=body.get("config"))
         result = plan_waves(apps[:2000], servers[:20000], deps[:200000], cfg,
-                            body.get("dispositions"))
+                            body.get("dispositions"), body.get("start_date"))
     except Exception as exc:                       # noqa: BLE001
         logging.exception("plan_waves failed")
         return _json({"error": f"wave planning failed: {exc}"}, 500)

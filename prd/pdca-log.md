@@ -5,6 +5,68 @@ Operating model: [`landfall-5x5-prd.md` §7](landfall-5x5-prd.md). Tracker:
 
 ---
 
+## Cycle 29 — Phase 1 tail: wave duration model, resource loading, mapping override (E4.3 / E6.2 / E1.7)
+
+**Date:** 2026-09-09 · **Owner:** PMO + SWE ·
+**Tracker:** E4.3, E6.2, E1.7 — the last open Phase 1 engine items.
+
+### Plan
+
+Close the three items keeping Phase 1 from "complete":
+- **E4.3** — turn the wave list into a dated schedule with a critical path.
+- **E6.2 (full)** — wave-by-wave resource loading: a month-by-month FTE curve + peak FTE.
+- **E1.7** — let an operator fix a mis-mapped column per engagement without a redeploy.
+
+Deferred: a dedicated resource-loading sheet in the workbook (the curve ships in the
+package JSON + dashboard); a holiday calendar beyond configurable blackout windows.
+
+### Do
+
+- **E4.3 — `src/api/waves/schedule.py` (pure).** `build_schedule(wave_plan, cfg, start_date)`:
+  each wave's execution weeks = `ceil(servers ÷ throughput_servers_per_week)` floored at
+  `min_wave_weeks`, with a `wave_prep_weeks` lead-in and `wave_soak_weeks` tail; waves take
+  the earliest free lane of `parallel_waves`; `blackout_windows` push a wave's prep start
+  past the window (shift recorded). Programme = `mobilisation_weeks` + waves +
+  `programme_hypercare_weeks`. `critical_path` = the lane that finishes last, ordered, with
+  the platform wave prepended (every spoke depends on it) and a `reason` per hop. New
+  `schedule` config block (defaults + `estimation_config.json`). `plan_waves` attaches
+  `result["schedule"]`; `start_date` threaded through the route + OpenAPI spec.
+- **E6.2 — `deliverable/effort.py`.** `estimate_effort(…, schedule=…)` adds `resource_loading`:
+  each workstream line carries a `phase` (mobilise / execute / cutover / hypercare); PD is
+  spread across programme months proportional to day-overlap with the phase window —
+  execution weighted by servers/wave, PM + governance + contingency level-loaded across the
+  whole programme. Returns `curve[{month, pd, fte, by_workstream}]`, `peak_fte`, `peak_month`,
+  `avg_fte` (FTE = PD ÷ `working_days_per_month`). `assemble_estimate` passes
+  `wav["schedule"]`; new figures `programme_weeks` + `peak_fte`; `_body_waves` carries the
+  schedule + per-wave dates. Deck slides 7 (Go-live column + schedule/critical-path line) +
+  9 (loading line). Dashboard: wave card schedule + critical path, effort card FTE sparkline.
+- **E1.7 — `ingest/core.py`.** `match_mapping(mapping, filename)` (pure) resolves
+  `_mapping.json` — flat `{profile, columns}` or `{files: {exact | glob: {…}}}` — to one
+  file's override. `normalize(name, data, overrides=None)` pins the profile and/or prepends
+  header aliases to target columns; `NormResult.mapping_notes` records every change.
+  `ingest/functions.py::_process` reads `raw/engagements/<c>/<p>/_mapping.json` best-effort
+  and folds the notes into the summary + `.dq.json` `mapping_applied`. `operating-sop.html`
+  v1.2 with the recipe.
+
+### Check
+
+| gate | result |
+|---|---|
+| unit | **356 pytest** (+19: 9 schedule, 5 loading, 7 mapping −2 renamed), 2 skipped |
+| evals | golden SQL 32/32 · faults 30/30 · scenarios + output guard 8/8 · `SCORECARD.md` no drift |
+| pipeline | `_default_`-shaped run: schedule 47 wk, critical path W0→W6, peak 7.8 FTE / avg 3.3 over 12 months |
+| determinism | `build_schedule` + `estimate_effort(schedule=…)` byte-identical on repeat |
+
+### Act
+
+- Three commits on `c29-phase1-tail`, merged to `main`, pushed; `azd deploy api` + `azd deploy
+  web` (dashboard) + `create_agent.py` re-run (plan_waves description + prompt: state the end
+  date, critical path, peak/avg FTE — don't invent dates or team size).
+- **Phase 1 engine is complete.** Remaining road to 5/5 is Phase 2 (Evidence): E10 evidence
+  pack, E8.5–8.7, E9.2–9.5, E5.6 studio deck.
+
+---
+
 ## Cycle 27 — target landing-zone diagram, deterministic (E11.22, core — no new infra)
 
 **Date:** 2026-09-09 · **Owner:** Azure AI Architect + App Eng ·
