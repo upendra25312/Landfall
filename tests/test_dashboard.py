@@ -248,6 +248,11 @@ def test_chat_prepends_engagement_scope(client, monkeypatch):
 
     monkeypatch.setattr(webapp, "_openai_client", lambda: _OpenAI())
     monkeypatch.setattr(webapp, "AGENT_NAME", "landfall-migration-estimator")
+    # the engagement is access-checked (E8.6) — stub the guard + the stored chat
+    monkeypatch.setattr(webapp, "_engagement",
+                        lambda c_, p_, req=None: (f"{c_}/{p_}", f"engagements/{c_}/{p_}"))
+    monkeypatch.setattr(webapp, "_load_chat", lambda eid: {})
+    monkeypatch.setattr(webapp, "_save_chat", lambda eid, doc: None)
     r = c.post("/api/chat", json={"message": "how many prod servers?",
                                   "engagement": "contoso/dc-exit"})
     assert r.status_code == 200

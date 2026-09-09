@@ -157,20 +157,23 @@ def rubric(live: dict) -> list[dict]:
                 "E9.4 answer-quality observability; E9.5 export-before-teardown; a chaos "
                 "drill logged to evidence/chaos/."},
 
-        {"dim": "Security", "score": 3.0,
+        {"dim": "Security", "score": 3.5,
          "bar": "External pen test passes; isolation test passes; data-handling statement "
                 "signed.",
          "basis": "Function EasyAuth on (anon → 401); SQL Row-Level Security fail-closed by "
                   "SESSION_CONTEXT; SQL allow-list guard + statement timeout; no client SQL "
-                  "in logs; per-engagement access control (visibility + audit trail); "
-                  "per-engagement isolation tests in the suite (E8.2–8.4, E11.3, E11.10).",
+                  "in logs; per-engagement access control (visibility + audit trail); chat "
+                  "threads bound to the caller's visibility — a leaked response id is inert "
+                  "(E8.6); per-engagement isolation tests in the suite (E8.2–8.4, E11.3, "
+                  "E11.10). Data-handling statement drafted.",
          "evidence": [("SQL guard", "../src/api/sqlguard.py"),
                       ("access control", "../src/api/engagement.py"),
-                      ("isolation tests", "../tests/test_access_control.py"),
-                      ("audit trail", "../src/api/audit.py")],
-         "gap": "external pen test (evidence/pentest/); signed data-handling statement "
-                "(E8.7); private endpoints + drop the all-Azure SQL firewall rule (E8.5); "
-                "bind chat threads to the authenticated principal (E8.6)."},
+                      ("isolation + chat-binding tests", "../tests/test_access_control.py"),
+                      ("audit trail", "../src/api/audit.py"),
+                      ("data-handling statement", "data-handling-statement.md")],
+         "gap": "external pen test (evidence/pentest/); CISO/security-officer signature on "
+                "the data-handling statement (E8.7); private endpoints + drop the all-Azure "
+                "SQL firewall rule (E8.5)."},
 
         {"dim": "Reliability", "score": 5.0 if ev_ok else 2.0,
          "bar": "Eval CI gate: ≥95% text-to-SQL, 0 un-sourced numbers, byte-identical "
@@ -248,7 +251,7 @@ def _md(sc: dict) -> str:
           "| `pentest/` | E10.4 / E8 | ⬜ not started |",
           "| `trials/` | E10.4 / Usability + Understandability | ⬜ not started |",
           "| `chaos/` | E10.4 / Operability | ⬜ not started |",
-          "| `data-handling-statement.md` | E8.7 | ⬜ not started |",
+          "| [`data-handling-statement.md`](data-handling-statement.md) | E8.7 | 🟡 drafted — pending signature |",
           "",
           "## Residual risk",
           "",

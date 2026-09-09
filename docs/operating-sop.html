@@ -218,7 +218,7 @@ az rest --method post --resource https://search.azure.com \
 
   <section id="p2">
     <h2 class="sec"><span class="n">Phase 2</span>Run an estimate in chat</h2>
-    <p class="sub">Open <code>SERVICE_WEB_URI</code>, sign in, and work through the estimate one question at a time. Each browser tab keeps its own conversation thread — open a new tab to start clean.</p>
+    <p class="sub">Open <code>SERVICE_WEB_URI</code>, sign in, pick the engagement, and work through the estimate one question at a time. The conversation is saved per engagement and reloads when you return; <em>New chat</em> archives it and starts fresh.</p>
     <ol class="steps">
       <li>
         <div><p class="do">Establish the current state</p>
@@ -328,6 +328,7 @@ az rest --method post --resource https://search.azure.com \
     </table></div>
     <p class="detail">Set it in the New-engagement form, or later by editing <code>raw/engagements/&lt;c&gt;/&lt;p&gt;/_engagement.json</code>. An engagement you can't see returns <em>404</em> (web) / <em>403</em> (API) — the same as one that doesn't exist. When no Easy Auth header is present (a local or unlocked deployment) filtering is off and everything is visible; lock the UI down (see appendix) to make visibility mean something.</p>
     <p class="detail"><strong>Audit trail</strong> — every engagement create, <code>run_engagement</code>, <code>publish_estimate</code> and calculator run appends an attributable line to <code>answers/engagements/&lt;c&gt;/&lt;p&gt;/_audit.jsonl</code>. Read it at <code>GET /api/engagements/&lt;c&gt;/&lt;p&gt;/audit</code> (newest first): each entry has <code>at</code>, <code>actor</code>, <code>event</code> and event detail.</p>
+    <p class="detail"><strong>Conversations</strong> — a chat is resumed only through the engagement's stored pointer, after the same visibility check; each saved turn records its <code>actor</code>. A chat without an engagement selected is single-turn (no memory), so a copied conversation id cannot be replayed against another engagement.</p>
   </section>
 
   <hr class="rule">
@@ -415,6 +416,6 @@ az rest --method post --resource https://search.azure.com \
     </ul>
   </section>
 
-  <footer>Landfall · Operating Guide v1.3 · 2026-09-09 · Outputs are DRAFT estimates and require architect review before external use</footer>
+  <footer>Landfall · Operating Guide v1.4 · 2026-09-09 · Outputs are DRAFT estimates and require architect review before external use</footer>
 
 </div>

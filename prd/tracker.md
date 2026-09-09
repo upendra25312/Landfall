@@ -13,6 +13,7 @@ Companion to [`prd/landfall-5x5-prd.md`](landfall-5x5-prd.md). Delivery log:
 |---|---|---|---|---|---|
 | 1 — Engine | 37 | 8 | 28 | 1 | 0 |
 | 2 — Evidence | 12 | 0 | 4 | 0 | 8 |
+| 2 — Security tail (E8.5–8.7) | 3 | 0 | 2 | 0 | 1 |
 | 3 — Sustain | 3 | 0 | 0 | 0 | 3 |
 | E11 — Engagement Workspaces | 26 | 25 | 0 | 0 | 1 (C26b, sponsor-gated) |
 
@@ -110,8 +111,8 @@ _Last updated: 2026-09-09 (PDCA cycles 1–29). Cycles 19–28 delivered Epic E1
 | ID | Item | Pri | Status | Owner | Cycle | Acceptance |
 |---|---|---|---|---|---|---|
 | E8.5 | Private-endpoint parameter set; drop all-Azure SQL firewall rule | P1 | backlog | Security | — | Hardened deploy has no public data-plane surface. |
-| E8.6 | Bind chat threads to the authenticated principal | P1 | backlog | SWE | — | A leaked thread id cannot resume another user's conversation. |
-| E8.7 | Signed data-handling statement | P0 | backlog | Security | — | Reviewed + signed by a security officer. |
+| E8.6 | Bind chat threads to the authenticated principal | P1 | in-review | SWE | 33 | A leaked thread id cannot resume another user's conversation. _Done — `POST /api/chat` runs the body `engagement` through `_engagement(…, request)` (404 if the caller's `visibility` doesn't admit them); continuation is only via the engagement's server-side response-id pointer; a client-supplied `thread_id` is never honoured (unscoped chat is stateless); each turn + `_chat.json` records the `actor`. `tests/test_access_control.py` +3. SOP v1.4._ |
+| E8.7 | Signed data-handling statement | P0 | in-review | Security | 33 | Reviewed + signed by a security officer. _Drafted — `evidence/data-handling-statement.md` (what's ingested, storage + region, access model + isolation, sub-processors, retention/deletion, residency, known limits, sign-off block). Linked from `evidence/SCORECARD.md`. **Signature still pending** — that closes the item._ |
 | E9.2 | CI: `azd up → smoke → azd down` on Linux + Windows | P1 | backlog | SRE | — | Green on every PR, both OSes. |
 | E9.3 | `--tier prod` parameter set + cost delta doc | P1 | backlog | SRE | — | One switch moves off Free tiers; delta documented. |
 | E9.4 | Answer-quality observability (traces + dashboard + alerts) | P1 | backlog | SRE | — | An operator can see a bad answer; tool error rate alerts. |
@@ -189,3 +190,4 @@ many engagements, isolated by an `<customer>/<project>` key. The Foundry agent o
 | 30 | **E10.1 cost-method back-test** — `evidence/backtest/`: 3 synthetic estates (small/midmarket/enterprise) × 3 pricing methods (catalogue SKU / blended $/vCPU / T-shirt bands) over a non-linear synthetic price book → all converge at 5.2–5.7% spread (±15% bar). `RESULTS.md` + variance analysis + CI drift gate. 363 pytest. | [pdca-log.md](pdca-log.md) · **done** |
 | 31 | **E10.2 broken-dump corpus** — `evidence/broken-dumps/`: 9 damaged inventory files (unrecognised format, empty, header-only, missing-required-column, ragged rows, garbage numerics, duplicate keys, UTF-16, orphan endpoints), each proven handled per E1.4. `dq.py` +3 findings + a Low-confidence rule. `RESULTS.md` + CI drift gate; SOP v1.3. 375 pytest. | [pdca-log.md](pdca-log.md) · **done** |
 | 32 | **E10.3 + E10.6 — 5/5 scorecard** — `evidence/scorecard.py` → `evidence/SCORECARD.md`: 9-dimension rubric, live-pulled scores (**overall 3.67/5**), per-dimension "to reach 5/5", evidence index, residual risk. `evidence/evals/` history snapshots. `tests/test_scorecard.py` (6) + CI drift gate. 381 pytest. Code-only. | [pdca-log.md](pdca-log.md) · **done** |
+| 33 | **E8.6 + E8.7 — security tail** — chat threads bound to the caller's engagement `visibility` (`/api/chat` guards + stateless unscoped + per-turn `actor`); `evidence/data-handling-statement.md` drafted (pending signature). Security dimension 3.0→3.5, **overall 3.72/5**. SOP v1.4. 384 pytest. `azd deploy web`. | [pdca-log.md](pdca-log.md) · **done** |
