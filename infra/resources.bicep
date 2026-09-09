@@ -25,6 +25,11 @@ param functionAuthAllowedClientIds array = []
 @description('Foundry agent name. Empty on first provision; the postprovision hook creates the agent and stores AGENT_ID in the azd env so re-provisioning keeps it wired to both services.')
 param agentId string = ''
 
+@description('free = Free-tier / Free-offer SKUs (default). prod = paid SKUs: AI Search basic (SLA), SQL without the free-limit cap + a 24h auto-pause, ACR Standard, ZRS storage, the web app always-warm (minReplicas 1), 90-day log retention. See DEPLOY.md section "Deployment tiers".')
+@allowed(['free', 'prod'])
+param deploymentTier string = 'free'
+var isProd = deploymentTier == 'prod'
+
 @description('Deploy the ca-drawio SVG->PNG rasteriser Container App (E11.22 / C27b). Off by default: the diagram already ships as .drawio + .svg without it; ca-drawio only adds the .png embed for .pptx / .docx. It was first stood up imperatively with `az containerapp create` to avoid a schema-dropping `azd provision`; flip this to true to reconcile it into IaC.')
 param deployDrawio bool = false
 
@@ -68,7 +73,7 @@ resource logAnalytics 'Microsoft.OperationalInsights/workspaces@2023-09-01' = {
   tags: tags
   properties: {
     sku: { name: 'PerGB2018' }
-    retentionInDays: 30
+    retentionInDays: isProd ? 90 : 30
   }
 }
 
@@ -106,7 +111,7 @@ resource storage 'Microsoft.Storage/storageAccounts@2023-05-01' = {
   name: '${abbrs.storageStorageAccounts}${resourceToken}'
   location: location
   tags: tags
-  sku: { name: 'Standard_LRS' }
+  sku: { name: isProd ? 'Standard_ZRS' : 'Standard_LRS' }
   kind: 'StorageV2'
   properties: {
     isHnsEnabled: true
@@ -148,16 +153,18 @@ resource calcJobsQueue 'Microsoft.Storage/storageAccounts/queueServices/queues@2
 }
 
 // ==================================================================
-// Azure AI Search - FREE tier (50 MB, no semantic ranker, no SLA)
+// Azure AI Search - free tier (50 MB, no semantic ranker, no SLA) or, at
+// deploymentTier=prod, basic (2 GB, 99.9% SLA with >=2 replicas).
+// NOTE: the SKU cannot be changed in place - moving tiers is a resource replace.
 // ==================================================================
 resource search 'Microsoft.Search/searchServices@2024-06-01-preview' = {
   name: '${abbrs.searchSearchServices}${resourceToken}'
   location: location
   tags: tags
-  sku: { name: 'free' }
+  sku: { name: isProd ? 'basic' : 'free' }
   identity: { type: 'SystemAssigned' }
   properties: {
-    replicaCount: 1
+    replicaCount: isProd ? 2 : 1
     partitionCount: 1
     hostingMode: 'default'
     semanticSearch: 'disabled'
@@ -243,14 +250,18 @@ resource sqlDatabase 'Microsoft.Sql/servers/databases@2023-08-01-preview' = {
   location: location
   tags: tags
   sku: { name: 'GP_S_Gen5_2', tier: 'GeneralPurpose', family: 'Gen5', capacity: 2 }
-  properties: {
-    autoPauseDelay: 60
-    minCapacity: json('0.5')
-    maxSizeBytes: 34359738368
+  // free: the Azure SQL Free offer (100k vCore-sec/mo free, then AutoPause) with a
+  // 1h auto-pause - the first query after idle throws until it wakes (~40s).
+  // prod: no free-limit cap, 24h auto-pause, 1 vCore floor, 100 GB.
+  properties: union({
+    autoPauseDelay: isProd ? 1440 : 60
+    minCapacity: json(isProd ? '1' : '0.5')
+    maxSizeBytes: isProd ? 107374182400 : 34359738368
+    zoneRedundant: false
+  }, isProd ? {} : {
     useFreeLimit: true
     freeLimitExhaustionBehavior: 'AutoPause'
-    zoneRedundant: false
-  }
+  })
 }
 
 resource sqlFirewallAzure 'Microsoft.Sql/servers/firewallRules@2023-08-01-preview' = {
@@ -266,7 +277,7 @@ resource acr 'Microsoft.ContainerRegistry/registries@2023-11-01-preview' = {
   name: '${abbrs.containerRegistryRegistries}${resourceToken}'
   location: location
   tags: tags
-  sku: { name: 'Basic' }
+  sku: { name: isProd ? 'Standard' : 'Basic' }
   properties: { adminUserEnabled: false }
 }
 
@@ -324,7 +335,8 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
           ]
         }
       ]
-      scale: { minReplicas: 0, maxReplicas: 2 }
+      // prod: keep one replica warm so there is no cold start on the chat UI.
+      scale: { minReplicas: isProd ? 1 : 0, maxReplicas: isProd ? 4 : 2 }
     }
   }
 }

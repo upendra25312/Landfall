@@ -14,6 +14,7 @@
     "calcImageName": { "value": "${SERVICE_CALC_IMAGE_NAME}" },
     "agentId": { "value": "${AGENT_ID}" },
     "enableFunctionAuth": { "value": "${ENABLE_FUNCTION_AUTH=false}" },
-    "functionAuthClientId": { "value": "${FUNCTION_AUTH_CLIENT_ID=}" }
+    "functionAuthClientId": { "value": "${FUNCTION_AUTH_CLIENT_ID=}" },
+    "deploymentTier": { "value": "${DEPLOYMENT_TIER=free}" }
   }
 }

@@ -287,11 +287,42 @@ brings the web app up with **no auth**. `smoke.py` treats both 200 and 401 on
 
 ---
 
+## Deployment tiers (`DEPLOYMENT_TIER`)
+
+One switch moves the stack off the Free tiers. Default is `free`; set
+`azd env set DEPLOYMENT_TIER prod` then `azd provision`.
+
+| Resource | `free` (default) | `prod` | ~ monthly delta |
+|---|---|---|---|
+| Azure SQL DB | Free offer (100k vCore-sec/mo free → AutoPause), **1 h** auto-pause, 0.5-vCore floor, 32 GB | no free-limit cap, **24 h** auto-pause, 1-vCore floor, 100 GB | **+$95–210** (serverless GP_S billed while active; ends the "database is not currently available" wake-up on the first query after an hour idle) |
+| AI Search | `free` (50 MB, shared, no SLA, no semantic ranker) | `basic`, 2 replicas (2 GB, **99.9 % SLA**) | **+$150** |
+| Container Registry | `Basic` | `Standard` (100 GB, higher throughput) | **+$15** |
+| Storage | `Standard_LRS` | `Standard_ZRS` (zone-redundant) | +~25 % on storage/txn — a few $ |
+| Web Container App | scale 0→2 (cold start after idle) | scale **1**→4 (a replica always warm) | **+$15–20** |
+| Log Analytics | 30-day retention | 90-day retention | a few $ (days 31–90 billed) |
+| Foundry / models / Functions | — | unchanged | $0 |
+
+**Rough total: +$300–450/month**, dominated by Search `basic` and SQL leaving the
+Free offer.
+
+`prod` does **not** touch: private networking or the all-Azure SQL firewall rule
+(that is E8.5), model TPM, the Function tier, or DR / multi-region.
+
+**Moving an existing `free` deployment to `prod`:** AI Search and the SQL
+free-limit are **not** in-place editable. A fresh `azd up --e prod-env` is clean;
+converting in place means the search service is replaced (re-run
+`scripts/setup_search.py`) and the DB needs `az sql db update ... --set-free-limit`
+removed or a recreate — **export the engagement(s) first**
+(`GET /api/engagements/<c>/<p>/export`).
+
+---
+
 ## Cost
 
 Idle: a few dollars a month (storage + Log Analytics). Per estimate run: a few tens of
 cents of `gpt-4o` tokens. AI Search Free, SQL Free offer, Container Apps and Functions
-free grants keep the rest at $0. Expect **$5–15/month** at 5–20 runs.
+free grants keep the rest at $0. Expect **$5–15/month** at 5–20 runs on the `free` tier;
+**~$350–450/month** on `prod` (see the table above).
 
 A clean-machine CI run provisions a full throwaway stack: budget ~**$1–3** of
 compute/model spend per run (mostly the GP_S SQL + a few model tokens), then
