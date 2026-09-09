@@ -156,6 +156,7 @@ def assemble_estimate(inputs: dict, cfg: dict | None = None) -> dict:
         spokes=spokes,
         regulated=bool(lz.get("regulated")),
         waves=len(wav.get("waves", []) or []),
+        schedule=wav.get("schedule"),
         cfg=cfg,
     )
 
@@ -248,6 +249,21 @@ def assemble_estimate(inputs: dict, cfg: dict | None = None) -> dict:
         figs.add("wave_count", "Migration waves", len(wav["waves"]), "count", "waves",
                  "plan_waves", {"move_groups": len(wav.get("move_groups", []))},
                  "risk-ordered packing of move-groups", "Medium")
+    sched = wav.get("schedule") or {}
+    if sched.get("total_weeks"):
+        figs.add("programme_weeks", "Migration programme duration", sched.get("total_weeks"),
+                 "weeks", "waves", "plan_waves",
+                 {"start": sched.get("start"), "end": sched.get("end"),
+                  "critical_path_waves": len(sched.get("critical_path", []))},
+                 "mobilisation + wave prep/execution/soak (servers ÷ throughput) + hypercare",
+                 "Low")
+    rl = effort.get("resource_loading") or {}
+    if rl.get("peak_fte"):
+        figs.add("peak_fte", "Peak team size (FTE)", rl.get("peak_fte"), "FTE",
+                 "migration_effort", "estimate_effort",
+                 {"peak_month": rl.get("peak_month"), "avg_fte": rl.get("avg_fte")},
+                 "max month of the resource-loading curve (workstream PD ÷ working days/month)",
+                 dq_conf)
 
     # --- top cost drivers (E2.5) ----------------------------------------
     drivers = _top_drivers(cc, sc, rt, dv.get("top_cost_drivers", 3))
@@ -420,14 +436,27 @@ def _body_disp(disp):
 def _body_waves(wav):
     if not wav:
         return {"note": "plan_waves not run"}
+    sched = wav.get("schedule") or {}
+    date_of = {w.get("wave"): w for w in sched.get("waves", [])}
     return {
         "graph": wav.get("graph"),
         "waves": [{"wave": w.get("wave"), "kind": w.get("kind"),
                    "app_count": w.get("app_count"), "server_count": w.get("server_count"),
                    "risk_score": w.get("risk_score"), "risk_band": w.get("risk_band"),
                    "risk_factors": w.get("risk_factors"),
+                   "exec_start": (date_of.get(w.get("wave")) or {}).get("exec_start"),
+                   "go_live": (date_of.get(w.get("wave")) or {}).get("go_live"),
+                   "duration_weeks": (date_of.get(w.get("wave")) or {}).get("duration_weeks"),
                    "blocking_dependencies": w.get("blocking_dependencies")}
                   for w in wav.get("waves", [])],
+        "schedule": ({"start": sched.get("start"), "end": sched.get("end"),
+                      "total_weeks": sched.get("total_weeks"),
+                      "wave_execution_start": sched.get("wave_execution_start"),
+                      "parallel_waves": sched.get("parallel_waves"),
+                      "critical_path": sched.get("critical_path"),
+                      "milestones": sched.get("milestones"),
+                      "assumptions": sched.get("assumptions")}
+                     if sched else None),
     }
 
 

@@ -801,17 +801,25 @@ def to_pptx(package: dict) -> bytes:
                       note="Dependency graph -> affinity move-groups -> risk-ordered "
                            "waves. Platform foundation first, a low-risk pilot next, "
                            "regulated workloads last. Risk colour = the tool's score band.")
+    _wsch = (secs.get("waves", {}) or {}).get("schedule") or {}
     wrows = [[f"Wave {w.get('wave')}", str(w.get('kind', '')).title(),
               str(w.get('app_count', '')), str(w.get('server_count', '')),
+              (w.get('go_live') or '—'),
               str(w.get('risk_band', ''))] for w in waves[:9]]
-    table(s, MX, 1.7, SW - 2 * MX, ["Wave", "Type", "Apps", "Servers", "Risk"],
-          wrows, [0.9, 1.4, 0.7, 0.9, 1.0], risk_col=4, row_h=0.36)
-    para(tbox(s, MX, 1.72 + 0.36 + 0.36 * len(wrows) + 0.2, SW - 2 * MX, 0.6),
+    table(s, MX, 1.7, SW - 2 * MX, ["Wave", "Type", "Apps", "Servers", "Go-live", "Risk"],
+          wrows, [0.8, 1.2, 0.6, 0.8, 1.2, 0.9], risk_col=5, row_h=0.36)
+    _sch_line = ""
+    if _wsch.get("start"):
+        _cp = " → ".join(f"W{c['wave']}" for c in _wsch.get("critical_path", []))
+        _sch_line = (f" Schedule {_wsch['start']} … {_wsch['end']} "
+                     f"({_wsch.get('total_weeks')} wk); critical path {_cp}.")
+    para(tbox(s, MX, 1.72 + 0.36 + 0.36 * len(wrows) + 0.2, SW - 2 * MX, 0.8),
          "Sequenced platform → pilot → standard → regulated. Regulated "
          "workloads (HIPAA, PCI-DSS) migrate last, after the controls are proven on "
-         "earlier waves.", size=10, color=_PP["slate"], first=True)
-    takeaway(s, f"{fv('wave_count', default=len(waves))} waves. "
-                f"({ref('wave_count')})  Cross-wave blocking dependencies are listed in "
+         "earlier waves." + _sch_line, size=10, color=_PP["slate"], first=True)
+    takeaway(s, f"{fv('wave_count', default=len(waves))} waves"
+                + (f" over {fv('programme_weeks')} weeks" if _wsch.get("total_weeks") else "")
+                + f". ({ref('wave_count')})  Cross-wave blocking dependencies are listed in "
                 "the workbook's wave sheet.")
 
     # ================= SLIDE 8 — run-rate cost =================
@@ -858,10 +866,13 @@ def to_pptx(package: dict) -> bytes:
     kpi(s, 7.9, 3.25, SW - MX - 7.9, 1.4, "Services cost (expected)",
         money((ef.get("services_cost") or {}).get("expected")),
         sub="at the blended day rate", tag=ref("services_cost"), accent=_PP["cyan"])
-    para(tbox(s, 7.9, 4.85, SW - MX - 7.9, 0.9),
+    _rl = ef.get("resource_loading") or {}
+    _rl_line = (f" Resource loading: peak {_rl['peak_fte']} FTE ({_rl.get('peak_month')}), "
+                f"avg {_rl.get('avg_fte')} FTE." if _rl.get("peak_fte") else "")
+    para(tbox(s, 7.9, 4.85, SW - MX - 7.9, 1.1),
          f"Contingency {pct(ef.get('contingency_pct'))} (data-quality "
          f"{cs.get('data_quality_confidence') or 'n/a'}) · PM + governance overlaid "
-         f"on delivery · point estimate ±15%.", size=9, color=_PP["slate"], first=True)
+         f"on delivery · point estimate ±15%." + _rl_line, size=9, color=_PP["slate"], first=True)
     takeaway(s, "Effort and services cost move with the data-quality confidence and the "
                 "open disposition decisions — both close in the next step.")
 
@@ -978,8 +989,19 @@ def _body_lines(section: dict) -> list[str]:
         return ["  ".join(f"{v} {k}" for k, v in bd.items()),
                 f"Needs a business decision: {', '.join(body.get('needs_human_decision') or []) or 'none'}"]
     if key == "waves":
-        return [f"Wave {w['wave']} [{w['kind']}] — {w['app_count']} apps / {w['server_count']} servers, "
-                f"risk {w['risk_score']} ({w['risk_band']})" for w in body.get("waves", [])]
+        out = [f"Wave {w['wave']} [{w['kind']}] — {w['app_count']} apps / {w['server_count']} servers, "
+               f"risk {w['risk_score']} ({w['risk_band']})"
+               + (f", {w['exec_start']}…{w['go_live']} ({w['duration_weeks']} wk)"
+                  if w.get("go_live") else "")
+               for w in body.get("waves", [])]
+        sch = body.get("schedule") or {}
+        if sch.get("start"):
+            out.append(f"Schedule: {sch['start']} … {sch['end']} ({sch.get('total_weeks')} weeks), "
+                       f"{sch.get('parallel_waves')} wave(s) in parallel")
+            cp = " → ".join(f"W{c['wave']}" for c in sch.get("critical_path", []))
+            if cp:
+                out.append(f"Critical path: {cp}")
+        return out
     if key == "run_rate_cost":
         out = [f"{_fmt(body.get('monthly'))} {body.get('currency')} / month "
                f"(~{_fmt(body.get('annual'))} / year), {body.get('reserved_term')} reserved, "
@@ -990,11 +1012,16 @@ def _body_lines(section: dict) -> list[str]:
             out.append(f"  {d['driver']} — {d['share_pct']}%")
         return out
     if key == "migration_effort":
-        return [f"{body.get('estimate_at_completion_pd')} person-days "
-                f"(range {body.get('range_pd', {}).get('low')}–{body.get('range_pd', {}).get('high')})",
-                f"Services cost ~{_fmt(body.get('services_cost', {}).get('expected'))} "
-                f"{body.get('services_cost', {}).get('currency')}",
-                body.get("basis", "")]
+        out = [f"{body.get('estimate_at_completion_pd')} person-days "
+               f"(range {body.get('range_pd', {}).get('low')}–{body.get('range_pd', {}).get('high')})",
+               f"Services cost ~{_fmt(body.get('services_cost', {}).get('expected'))} "
+               f"{body.get('services_cost', {}).get('currency')}",
+               body.get("basis", "")]
+        rl = body.get("resource_loading") or {}
+        if rl.get("peak_fte"):
+            out.append(f"Resource loading: peak {rl['peak_fte']} FTE ({rl.get('peak_month')}), "
+                       f"average {rl.get('avg_fte')} FTE over {rl.get('months')} months")
+        return out
     if key == "assumptions_register":
         out = [f"{len(body.get('assumptions', []))} assumptions, "
                f"{len(body.get('exclusions', []))} exclusions, "
