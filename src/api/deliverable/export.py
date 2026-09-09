@@ -67,6 +67,10 @@ def to_xlsx(package: dict) -> bytes:
 
     meta = package.get("meta", {})
     wb = Workbook()
+    # the Model sheet is a live calculation — tell every consumer (Excel, LibreOffice,
+    # the recalc CI gate) to recompute on open so cached values are never stale (E11.12)
+    wb.calculation.fullCalcOnLoad = True
+    wb.calculation.forceFullCalc = True
     head_fill = PatternFill("solid", fgColor=_ACCENT)
     head_font = Font(bold=True, color="FFFFFF")
     title_font = Font(bold=True, size=14, color=_ACCENT)
