@@ -8,12 +8,20 @@ Everything below runs against the deployment's **Application Insights** (name:
 - **`requests`** — Azure Functions emits one per tool invocation automatically:
   `operation_Name` (the tool), `success`, `duration`, `resultCode`. This gives
   volume, latency and error rate per tool with **no instrumentation**.
-- **`traces`** — `src/api/obs.py::event()` writes structured lines that land as
-  `traces` with a `customDimensions.event` tag:
-  - `query_inventory` — `status` (`ok` / `rejected` / `text_to_sql_error` /
-    `query_error`), `rows`, `shape`, `tables`, `ms`, hashed `engagement`
-  - `estimate_assembled` — `status`, `overall_confidence`, `figures`,
-    `low` / `medium` / `high` figure counts, hashed `engagement`
+- **`traces`** — structured lines that land as `traces` with a
+  `customDimensions.event` tag:
+  - `query_inventory` (`src/api/obs.py`) — `status` (`ok` / `rejected` /
+    `text_to_sql_error` / `query_error`), `rows`, `shape`, `tables`, `ms`,
+    hashed `engagement`
+  - `estimate_assembled` (`src/api/obs.py`) — `status`, `overall_confidence`,
+    `figures`, `low` / `medium` / `high` figure counts, hashed `engagement`
+  - `web_chat` (`src/web/telemetry.py`) — one per `/api/chat` turn: `status`
+    (`ok` / `error` / `unknown_engagement` / `empty_agent_response` /
+    `agent_unconfigured`), `ms` (wall time), `cited`, `tables`, `chars`,
+    `scoped`, hashed `engagement`. The web container also forwards its request
+    telemetry (`requests`: route, result code, duration) and `landfall.web`
+    logs via `azure-monitor-opentelemetry` — enabled whenever
+    `APPLICATIONINSIGHTS_CONNECTION_STRING` is set (always, on `ca-web`).
 
 `engagement` is a SHA-256 prefix, never the raw customer/project — an operator
 groups by it, but the client name is not in the logs.
@@ -49,6 +57,18 @@ traces | where timestamp > ago(7d)
 // everything at Error severity, newest first
 traces | where timestamp > ago(24h) | where severityLevel >= 3
 | project timestamp, tool=operation_Name, message | order by timestamp desc
+
+// chat turns that failed the user (web tier)
+traces | where timestamp > ago(24h)
+| where customDimensions.event == "web_chat" and customDimensions.status != "ok"
+| project timestamp, status=customDimensions.status, error=customDimensions.error,
+          ms=customDimensions.ms, engagement=customDimensions.engagement
+
+// chat latency, p50/p95 (web tier wall time, includes the agent + tool round trip)
+traces | where timestamp > ago(24h) | where customDimensions.event == "web_chat"
+| extend ms = toint(customDimensions.ms)
+| summarize turns=count(), p50=percentile(ms,50), p95=percentile(ms,95),
+            errors=countif(customDimensions.status != "ok")
 ```
 
 ## The alert
@@ -61,8 +81,8 @@ group.
 
 ## Not yet
 
-- The **web tier** (`src/web`, FastAPI) has the App Insights connection string as
-  an env var but does not forward its logs — the chat handler's telemetry would
-  need `azure-monitor-opentelemetry` + `configure_azure_monitor()`. Tool-level
-  telemetry covers answer quality because the chat path is agent → tools.
-- No latency SLO / burn-rate alerting; the one alert is a blunt failure-rate gate.
+- The `web_chat` events + web `requests` telemetry are not on the workbook yet —
+  add a "chat turns / errors / p95" row to `infra/workbook-answer-quality.json`.
+- No alert on the web tier (`web_chat` error rate, chat p95). The one alert is a
+  blunt Function failure-rate gate.
+- No latency SLO / burn-rate alerting.

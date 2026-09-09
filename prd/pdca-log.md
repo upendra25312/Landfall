@@ -5,6 +5,73 @@ Operating model: [`landfall-5x5-prd.md` §7](landfall-5x5-prd.md). Tracker:
 
 ---
 
+## Cycle 42 — web-tier log + request forwarding (E9.4)
+
+**Date:** 2026-09-09 · **Owner:** SRE ·
+**Tracker:** the E9.4 remaining gap. The API tier forwards structured telemetry
+(C39); the web tier had the App Insights connection string as an env var but
+forwarded nothing — a chat handler exception (`log.exception("chat failed")`, a
+500 to the user) never left the container. Operability's lowest-hanging item and
+the one part of "can an operator see a bad answer" still missing.
+
+### Plan
+
+- Wire `azure-monitor-opentelemetry` in the web container — auto-instrument
+  FastAPI (`requests` per route, matching the Functions tier) + forward logs.
+- Emit a structured `web_chat` event per `/api/chat` turn, mirroring
+  `query_inventory`: status, latency, citation/table counts, hashed engagement.
+- No-op without the connection string so local + tests are untouched; no infra
+  change (the env var is already on `ca-web`).
+
+### Do
+
+- **`src/web/telemetry.py`** (NEW) — `configure_telemetry()` calls
+  `configure_azure_monitor(logger_name="landfall")` only when
+  `APPLICATIONINSIGHTS_CONNECTION_STRING` is set, in a `try/except` (the SDK
+  isn't in `.venv2`, and a telemetry misconfig must not stop the app).
+  `event(name, **dims)` writes a flat `extra=` record (OTel maps it to
+  `customDimensions`; the Functions `custom_dimensions` nesting doesn't apply
+  here) with reserved-key guarding. `eng_hash()` as in `src/api/obs.py`.
+  Named `telemetry` not `obs` — `import obs` would collide with `src/api/obs.py`
+  in the test namespace (same class of bug as C40's `probe.py`).
+- **`src/web/app.py`** — `import telemetry as _obs`; `_obs.configure_telemetry()`
+  at import; all `logging.exception/​warning` → a `log = getLogger("landfall.web")`
+  module logger (so `logger_name="landfall"` captures them). `chat()` emits
+  `web_chat` on every exit: `agent_unconfigured` (503), `unknown_engagement`
+  (404), `empty_agent_response` (502), `error` (500), `ok` — each with `ms`.
+- **`src/web/requirements.txt`** — `azure-monitor-opentelemetry>=1.6,<2`.
+- **`tests/test_web_telemetry.py`** (7) — no-op without the string; never raises
+  when the SDK is absent; flat record + reserved-key guard; `eng_hash` stable +
+  not the raw id; `event` swallows bad input; `chat()` emits `web_chat` on the
+  unconfigured path; source has all five status strings.
+- **`evidence/chaos/probe.py`** — C6 check `logging.exception(` → `.exception(`
+  (the call moved to the module logger).
+- **`docs/observability.md`** — `web_chat` in the traces list, two KQL queries
+  (failed turns, chat p50/p95), the web-tier forwarding note; "Not yet" now =
+  workbook row + web alert.
+- **`evidence/scorecard.py`** — Operability **4.25 → 4.5**; basis + gap updated.
+
+### Check
+
+| gate | result |
+|---|---|
+| unit | **448 pytest**, 2 skipped (+7 `test_web_telemetry`, chaos C6 check fixed) |
+| local | `import app` OK with `telemetry` no-op; `web_chat` record is flat, `None` dropped, reserved keys not shadowed |
+| evals | 32/32 + 8/8 + 30/30; `evals/SCORECARD.md` no drift; `evidence/SCORECARD.md` regenerated — **OVERALL 4.00 → 4.03** |
+| live | `azd deploy web`; `scripts/smoke.py` + `sec_probe.py` re-run |
+| scope | **production web code** → `azd deploy web` (no infra — env var already present) |
+
+### Act
+
+- `c42-webobs` → merged `--no-ff` to `main`, pushed. **`azd deploy web`.**
+- E9.4 gap now just: the workbook row + a web-tier alert (both need `azd
+  provision`, which drops SQL — deferred with the C39 workbook/alert).
+- Next by leverage: E12.8 guided pipeline state (Usability, unblocked by C41),
+  or the human trials (need people), or fold the workbook/alert + `web_chat`
+  into one `azd provision`-gated cycle.
+
+---
+
 ## Cycle 41 — chat page → static shell + strict CSP (E12.7)
 
 **Date:** 2026-09-09 · **Owner:** FS ·

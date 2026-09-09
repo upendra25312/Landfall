@@ -101,7 +101,7 @@ def run() -> dict:
 
     # C6 — model error doesn't corrupt the transcript
     add("C6", "current_response_id" in app
-        and app.index('logging.exception("chat failed")') > app.index("_save_chat"),
+        and app.index('.exception("chat failed")') > app.index("_save_chat"),
         "the response-id pointer + transcript are only written after a successful response")
 
     return {"checks": checks,
