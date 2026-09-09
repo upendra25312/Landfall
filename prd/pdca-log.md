@@ -5,7 +5,51 @@ Operating model: [`landfall-5x5-prd.md` §7](landfall-5x5-prd.md). Tracker:
 
 ---
 
-## Cycle 44 — cost guardrail for a fixed budget (E13.4)
+## Cycle 45 — fix the red `evals` CI (Python 3.11 f-string) + a compat guard
+
+**Date:** 2026-09-10 · **Owner:** SRE ·
+**Tracker:** none — a CI break the user spotted. The `evals` workflow "Unit
+tests" step (`pytest tests -q`) had been **failing at collection since C38**
+(`33a5442`, 2026-09-09), which also skipped every eval gate after it (recalc,
+harness, backtest, broken-dumps, scorecard drift). Not caught locally because
+**`.venv2` is Python 3.13** and **CI + the Function App runtime are 3.11**.
+
+### Plan
+
+- Fix the syntax error; scan the whole tree for the same class; add a test that
+  fails on 3.12-only syntax regardless of the local interpreter; confirm the
+  now-unblocked eval gates are actually green.
+
+### Do
+
+- **`scripts/export_all.py:197`** — `f"…{f', {r['sql_rows']} sql rows' if … else ''}"`
+  is a **nested same-quote f-string with a `'`-subscript inside** → `SyntaxError:
+  f-string: unmatched '['` on Python < 3.12 (legal only under PEP 701). Lifted
+  the conditional to a `sql_note` local.
+- **`tests/test_py311_compat.py`** (NEW) — `ast.parse(src, feature_version=(3, 11))`
+  over every `.py` in `scripts/ src/ tests/ evals/ evidence/` (130 files). Fails
+  here, on any interpreter, if a file uses 3.12+ syntax.
+- Verified the eval gates that hadn't run in CI since C38: `backtest/RESULTS.md`,
+  `broken-dumps/`, `evidence/SCORECARD.md`, `evals/SCORECARD.md` — **all clean**
+  (the CI was skipping them, not that they'd drifted).
+- CI stays on **3.11** — that is correct: `infra/resources.bicep` sets the
+  Function App runtime to `python 3.11`, so CI matches production. The gap was
+  dev-side (`.venv2` = 3.13); the compat test bridges it.
+
+### Check
+
+| gate | result |
+|---|---|
+| unit | **464 pytest**, 2 skipped (+1 `test_py311_compat`) |
+| 3.11 syntax | `ast.parse(feature_version=(3,11))` clean across 130 files |
+| eval gates | backtest / broken-dumps / both SCORECARDs — no drift |
+| scope | one-line script fix + a test → **no deploy** |
+
+### Act
+
+- `c45-ci` → merged to `main`, pushed. Watch the `evals` run go green.
+- Recorded the **3.11 CI / 3.13 local** gap in memory so future cycles run the
+  compat test (it is in the default suite now).
 
 **Date:** 2026-09-09 · **Owner:** FinOps + SRE ·
 **Tracker:** E13.4, promoted to P1 by §7 decision 16 (sponsor: **$40–50/month,
