@@ -44,6 +44,35 @@ def _openai_client():
 
 app = FastAPI(title="Landfall")
 
+# E12.7 — response hardening. The chat page (`/`) and its assets are fully static
+# with no inline script/style, so they get a strict CSP; the dashboard and
+# questionnaire still carry inline `<style>`/handlers, so they get a CSP that
+# keeps `unsafe-inline` for now (tracked as an E12.7 follow-up). Every response
+# gets nosniff + frame + referrer regardless.
+_CSP_STRICT = (
+    "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; "
+    "connect-src 'self'; font-src 'self'; object-src 'none'; base-uri 'none'; "
+    "frame-ancestors 'none'; form-action 'self'"
+)
+_CSP_RELAXED = (
+    "default-src 'self'; script-src 'self' 'unsafe-inline'; "
+    "style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; "
+    "object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'"
+)
+_STRICT_CSP_PATHS = ("/", "/healthz")
+
+
+@app.middleware("http")
+async def _security_headers(request: Request, call_next):
+    resp = await call_next(request)
+    path = request.url.path
+    strict = path in _STRICT_CSP_PATHS or path.startswith("/static/")
+    resp.headers.setdefault("Content-Security-Policy", _CSP_STRICT if strict else _CSP_RELAXED)
+    resp.headers.setdefault("X-Content-Type-Options", "nosniff")
+    resp.headers.setdefault("X-Frame-Options", "DENY")
+    resp.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
+    return resp
+
 _HERE = pathlib.Path(__file__).parent
 _ESTIMATE = {"prefix": "estimate", "container": "answers"}
 _EXPORT_MIME = {
@@ -1034,423 +1063,26 @@ def landing_zone_diagram(request: Request, e: str | None = None,
 
 @app.get("/", response_class=HTMLResponse)
 def index():
-    return """<!doctype html><html><head><meta charset=utf-8>
-<title>Landfall</title><meta name=viewport content="width=device-width,initial-scale=1">
-<style>
- :root{--bg:#0b151d;--panel:#111f2a;--line:#25343f;--ink:#e6edf1;--muted:#94a5b0;--accent:#0e7c8b}
- *{box-sizing:border-box}
- body{font:15px/1.6 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;margin:0;background:var(--bg);color:var(--ink)}
- header{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;padding:12px 20px;border-bottom:1px solid var(--line);font-weight:600;position:sticky;top:0;background:var(--bg);z-index:5}
- header .sp{flex:1;min-width:0}
- header a,header button.link{color:#7fd3dd;font-size:13px;text-decoration:none;background:none;border:0;cursor:pointer;font-family:inherit;white-space:nowrap}
- header button.link:hover,header a:hover{text-decoration:underline}
- @media(max-width:680px){header .sp{display:none}header>span:first-child{width:100%}}
- #log{max-width:820px;margin:0 auto;padding:20px 20px 8px}
- .m{margin:12px 0;padding:12px 14px;border-radius:10px;white-space:pre-wrap;word-wrap:break-word}
- .u{background:#152430}
- .a{background:var(--panel);border:1px solid var(--line)}
- .c{font-size:12px;color:var(--muted);margin-top:6px}
- .empty{max-width:820px;margin:60px auto;text-align:center;color:var(--muted)}
- .working{display:flex;align-items:center;gap:10px;color:var(--muted)}
- .spin{width:15px;height:15px;border:2px solid var(--line);border-top-color:#7fd3dd;border-radius:50%;animation:sp .8s linear infinite;flex:none}
- @keyframes sp{to{transform:rotate(360deg)}}
- .dots::after{content:'';animation:dots 1.4s steps(4,end) infinite}
- @keyframes dots{0%{content:''}25%{content:'.'}50%{content:'..'}75%{content:'...'}}
- form{position:sticky;bottom:0;background:var(--bg);max-width:820px;margin:0 auto;display:flex;gap:8px;padding:14px 20px 18px;border-top:1px solid var(--line)}
- input{flex:1;padding:11px 12px;border-radius:8px;border:1px solid var(--line);background:var(--panel);color:var(--ink);font:inherit}
- input:disabled{opacity:.55}
- button.send{padding:11px 20px;border-radius:8px;border:0;background:var(--accent);color:#fff;font-weight:600;cursor:pointer}
- button.send:disabled{opacity:.5;cursor:default}
- button.send.secondary{background:transparent;border:1px solid var(--accent);color:#7fd3dd;font-weight:600}
- .intro{max-width:820px;margin:26px auto 6px;padding:0 20px}
- .intro h2{margin:0 0 8px;font-size:19px}
- .intro p{color:var(--muted);margin:0 0 14px}
- .intro p.sub{font-size:13px;margin:0 0 10px}
- .caps{list-style:none;margin:0 0 18px;padding:0;display:grid;gap:6px}
- .caps li{color:var(--ink);font-size:13.5px;padding-left:18px;position:relative}
- .caps li::before{content:'▹';position:absolute;left:0;color:#7fd3dd}
- .cardgrid{max-width:820px;margin:0 auto 4px;padding:0 20px;display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:8px}
- .pc{display:flex;align-items:center;gap:9px;padding:11px 12px;border:1px solid var(--line);border-radius:10px;background:var(--panel);color:var(--ink);font:inherit;font-size:13px;text-align:left;cursor:pointer}
- .pc:hover{border-color:#7fd3dd}
- .pc .ic{width:20px;height:20px;border-radius:6px;background:#152430;display:flex;align-items:center;justify-content:center;color:#7fd3dd;flex:none}
- .pc:disabled{opacity:.5;cursor:default}
- select,.mini input{background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:7px;padding:7px 8px;font:inherit;font-size:13px}
- #engsel{max-width:280px}
- .mini{max-width:820px;margin:14px auto 0;padding:0 20px}
- .mini form{position:static;border:0;padding:0;display:grid;grid-template-columns:1fr 1fr;gap:8px;background:none;max-width:none}
- .mini .full{grid-column:1/-1}
- .warn{color:#f0a35e;font-size:12px}
- #uploadpanel{max-width:820px;margin:14px auto 0;padding:0 20px}
- #uploadpanel>summary{cursor:pointer;font-size:13px;color:#7fd3dd;padding:6px 0;user-select:none}
- #uploadpanel>summary::marker{color:var(--muted)}
- #uploadpanel[open]>summary{margin-bottom:8px}
- #upcount{color:var(--muted);font-weight:400;margin-left:6px}
- .utabs{display:flex;align-items:center;gap:12px;margin:0 0 8px;font-size:12px;color:var(--muted)}
- .utabs label{cursor:pointer}
- .uz{display:flex;flex-direction:column;gap:5px;border:1.5px dashed var(--line);border-radius:12px;padding:18px 16px;text-align:center;background:var(--panel);cursor:pointer;color:var(--muted);line-height:1.5}
- .uz.drag{border-color:#7fd3dd;color:var(--ink);background:#152430}
- .uz .uzt{color:var(--ink);font-size:13.5px}
- .uz .uzh{font-size:11.5px}
- .uz b{color:#7fd3dd}
- #filerows{list-style:none;margin:8px 0 0;padding:0}
- .frow{display:flex;align-items:center;gap:10px;padding:8px 10px;border:1px solid var(--line);border-radius:8px;margin-top:8px;font-size:13px}
- .frow .nm{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
- .frow .st{color:var(--muted);font-size:12px;white-space:nowrap}
- .frow.ok{border-color:#1f6f43}.frow.ok .st{color:#6fce9a}
- .frow.err{border-color:#7a3b2e}.frow.err .st{color:#f0a35e}
- .frow .pbar{width:74px;height:6px;border-radius:3px;background:#152430;overflow:hidden;flex:none}
- .frow .pbar i{display:block;height:100%;background:#7fd3dd;width:0;transition:width .2s}
- .frow .x{color:var(--muted);cursor:pointer;background:none;border:0;font:inherit;flex:none}
- .frow .badge{font-size:11px;padding:2px 7px;border-radius:20px;white-space:nowrap;flex:none}
- .badge.ing{background:#12313f;color:#7fd3dd}.badge.rej{background:#3a2118;color:#f0a35e}.badge.wait{background:#1c2732;color:var(--muted)}
- #analysisbar{margin-top:12px;display:flex;align-items:center;gap:12px}
- #analysisbar .st{font-size:12px}
- #dqsummary{margin-top:12px;border:1px solid var(--line);border-radius:10px;background:var(--panel);padding:12px 14px;font-size:13px}
- #dqsummary h4{margin:0 0 6px;font-size:13px}
- #dqsummary .conf{font-weight:600}
- #dqsummary .conf.High{color:#6fce9a}#dqsummary .conf.Medium{color:#e8c37a}#dqsummary .conf.Low{color:#f0a35e}
- #dqsummary ul{margin:8px 0 0;padding-left:18px;color:var(--muted)}
- #dqsummary ul li{margin:3px 0}
- .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:84px;background:#152430;border:1px solid var(--line);border-radius:8px;padding:10px 16px;font-size:13px;z-index:20;opacity:0;pointer-events:none;transition:opacity .3s}
- .toast.show{opacity:1}
-</style></head><body>
-<header>
- <span>Landfall &mdash; Migration Estimator</span>
- <select id=engsel title="Active engagement — every question, upload and estimate is scoped to it"></select>
- <button class=link id=neweng title="Create a new customer / project engagement">+ New engagement</button>
- <button class=link id=expeng title="Download this engagement (files + estimates + chat) as a portable .zip" hidden>&darr; export</button>
- <button class=link id=impeng title="Restore an engagement from a .landfall.zip">&uarr; import</button>
- <input type=file id=impfile accept=".zip" hidden>
- <span class=sp></span>
- <button class=link id=newchat title="Archive this conversation and start a fresh one">+ New chat</button>
- <a href="/dashboard" id=dashlink>Assessment dashboard &rarr;</a>
-</header>
-<div class=mini id=engform hidden>
- <form id=ef>
-  <input name=customer placeholder="Customer name" required>
-  <input name=project placeholder="Project name" required>
-  <select name=target_region id=trsel title="Target Azure region for the landing zone"></select>
-  <select name=dr_region id=drsel title="DR region (optional)"><option value="">No DR region</option></select>
-  <select name=licensing_program><option value=MCA>Microsoft Customer Agreement (MCA)</option><option value=EA>Enterprise Agreement</option><option value=MOSP>Pay-as-you-go (MOSP)</option><option value=CSP>CSP</option></select>
-  <select name=currency><option>USD</option><option>EUR</option><option>GBP</option><option>AUD</option><option>INR</option><option>SEK</option></select>
-  <div class=full><button class=send type=submit>Create engagement</button>
-   <button class=link type=button id=engcancel style="margin-left:10px">cancel</button></div>
- </form>
-</div>
-<details id=uploadpanel hidden>
- <summary>Inventory &amp; documents<span id=upcount></span></summary>
- <div class=utabs>
-  <span style="color:var(--ink)">Files for <b id=upeng></b></span>
-  <span style="flex:1"></span>
-  <label><input type=radio name=ukind value=auto checked> auto</label>
-  <label><input type=radio name=ukind value=inventory> data</label>
-  <label><input type=radio name=ukind value=docs> docs</label>
- </div>
- <label class=uz id=uz>
-  <input type=file id=ufile multiple hidden>
-  <span class=uzt>Drop files here or <b>browse</b></span>
-  <span class=uzh>CSV · Excel · TSV · JSON &mdash; server / application inventory<br>PDF · Word · PNG &mdash; diagrams, DR, compliance</span>
-  <span class=uzh>up to 100&nbsp;MB each &mdash; lands in this engagement's private folder</span>
- </label>
- <ul id=filerows></ul>
- <div id=analysisbar hidden>
-  <button class="send secondary" id=startanalysis type=button>Start analysis</button>
-  <span class=st id=analysisnote></span>
- </div>
- <div id=dqsummary hidden></div>
-</details>
-<div id=toast class=toast></div>
-<div id=log><div id=welcome></div></div>
-<form id=f>
- <input id=q placeholder="Ask about the client inventory, sizing, waves, cost..." autocomplete=off>
- <button class=send id=send>Send</button>
-</form>
-<script>
-let busy=false,CARDS=[],ENG=localStorage.getItem('landfall.eng')||'';
-const log=document.getElementById('log'),q=document.getElementById('q'),send=document.getElementById('send');
-const engsel=document.getElementById('engsel'),engform=document.getElementById('engform');
+    """The chat UI. Static shell + `/static/chat.{css,js}` — no inline script or
+    style, so `/` can carry a strict `Content-Security-Policy` (E12.7). The
+    security headers (CSP, nosniff, frame options) are added by `_security_headers`."""
+    return (_HERE / "chat.html").read_text(encoding="utf-8")
 
-function add(t,cls,cites,extra){
- const d=document.createElement('div');d.className='m '+cls;d.textContent=t;
- if(cites&&cites.length){const c=document.createElement('div');c.className='c';c.textContent='Sources: '+cites.join(', ');d.appendChild(c);}
- if(cls==='a'&&t&&(extra&&(extra.tables&&extra.tables.length))){
-  const b=document.createElement('button');b.className='link';b.style.marginTop='6px';
-  b.textContent='⭳ Download as Excel';
-  b.onclick=()=>xlsxFromAnswer(extra.question||'',t,extra.tables||[],extra.sql||'');
-  d.appendChild(b);
- }
- log.appendChild(d);d.scrollIntoView({block:'end'});return d;
-}
-async function xlsxFromAnswer(question,answer,tables,sql){
- try{
-  const r=await fetch('/api/answer_to_xlsx',{method:'POST',headers:{'content-type':'application/json'},
-    body:JSON.stringify({engagement:ENG,question:question,answer:answer,tables:tables,sql:sql})});
-  if(!r.ok){toast('Excel export failed');return;}
-  const blob=await r.blob(),u=URL.createObjectURL(blob),a=document.createElement('a');
-  a.href=u;a.download=(ENG||'landfall').replace('/','-')+'-answer.xlsx';a.click();
-  setTimeout(()=>URL.revokeObjectURL(u),4000);
- }catch(e){toast('Excel export failed');}
-}
-function working(){
- const d=document.createElement('div');d.className='m a';
- d.innerHTML='<div class="working"><span class="spin"></span><span>The estimator is working<span class="dots"></span> <span class="el"></span></span></div>';
- log.appendChild(d);d.scrollIntoView({block:'end'});
- const t0=Date.now();const el=d.querySelector('.el');
- d._timer=setInterval(()=>{el.textContent='('+Math.round((Date.now()-t0)/1000)+'s)';},1000);
- return d;
-}
-function setBusy(b){busy=b;q.disabled=b;send.disabled=b;send.textContent=b?'Working…':'Send';
- document.querySelectorAll('.pc').forEach(x=>x.disabled=b);if(!b)q.focus();}
 
-function esc(s){const d=document.createElement('div');d.textContent=s;return d.innerHTML;}
+_STATIC = _HERE / "static"
+_STATIC_MIME = {".css": "text/css; charset=utf-8", ".js": "text/javascript; charset=utf-8"}
 
-function renderWelcome(){
- const w=document.getElementById('welcome');if(!w)return;
- const i=window._intro||{};
- const caps=(i.capabilities||[]).map(c=>'<li>'+esc(c)+'</li>').join('');
- const cards=CARDS.map((c,ix)=>'<button class=pc data-i="'+ix+'"><span class=ic>'+esc(c.icon||'▸')+'</span><span>'+esc(c.label)+'</span></button>').join('');
- const engnote = ENG
-  ? '<p class=sub style="color:#7fd3dd">Active engagement: <b>'+esc(engLabel(ENG))+'</b> — every answer, upload and estimate is scoped to it. Add the client inventory in the panel above, then ask for the estimate.</p>'
-  : '<p class="sub warn">No engagement selected. Pick one top-left, or click <b>+ New engagement</b> to start a customer / project — then upload their server &amp; application inventory.</p>';
- w.innerHTML='<div class=intro><h2>'+esc(i.title||'Landfall — Migration Estimator')+'</h2>'
-  +engnote
-  +'<p>'+esc(i.body||'').replace(/\\n/g,'<br>')+'</p>'
-  +(caps?'<ul class=caps>'+caps+'</ul>':'')+'</div>'
-  +(cards?'<div class=cardgrid>'+cards+'</div>':'');
- w.querySelectorAll('.pc').forEach(b=>b.onclick=()=>{if(busy)return;ask(CARDS[+b.dataset.i].prompt);});
-}
 
-async function loadCards(){
- try{const r=await fetch('/api/prompt_cards');const j=await r.json();
-  window._intro=j.intro||{};CARDS=j.cards||[];}
- catch(e){window._intro={};CARDS=[];}
- renderWelcome();
-}
-
-async function loadEngagements(){
- let list=[];
- try{const r=await fetch('/api/engagements');list=(await r.json()).engagements||[];}catch(e){}
- engsel.innerHTML='';
- if(!list.length){
-  const o=document.createElement('option');o.value='';o.textContent='— no engagements —';engsel.appendChild(o);
- }
- list.forEach(e=>{
-  const o=document.createElement('option');o.value=e.engagement;
-  o.textContent=(e.customer||e.engagement.split('/')[0])+' / '+(e.project||e.engagement.split('/')[1])
-   +'  ·  '+(e.target_region||'?');
-  engsel.appendChild(o);
- });
- if(ENG && list.some(e=>e.engagement===ENG)) engsel.value=ENG;
- else { ENG=engsel.value||''; localStorage.setItem('landfall.eng',ENG); }
- document.getElementById('expeng').hidden=!ENG;
- renderWelcome();showUpload();loadChat();syncDashLink();
-}
-function syncDashLink(){const a=document.getElementById('dashlink');
- if(a)a.href=ENG?('/dashboard?e='+encodeURIComponent(ENG)):'/dashboard';}
-engsel.onchange=()=>{ENG=engsel.value;localStorage.setItem('landfall.eng',ENG);
- document.getElementById('expeng').hidden=!ENG;renderWelcome();showUpload();loadChat();syncDashLink();};
-
-// --- per-engagement conversation (E11.26) ------------------------------
-async function loadChat(){
- if(!ENG){return;}
- let doc={turns:[]};
- const [c,p]=ENG.split('/');
- try{doc=await (await fetch('/api/engagements/'+enc(c)+'/'+enc(p)+'/chat')).json();}catch(e){}
- const turns=doc.turns||[];
- log.innerHTML='<div id=welcome></div>';
- if(!turns.length){renderWelcome();return;}
- document.getElementById('welcome').remove();
- turns.forEach((t,i)=>add(t.text,t.role==='user'?'u':'a',t.citations,
-   t.role==='assistant'?{tables:t.tables,sql:t.sql,question:(turns[i-1]||{}).text||''}:null));
-}
-document.getElementById('expeng').onclick=()=>{
- if(!ENG)return;const [c,p]=ENG.split('/');
- window.location='/api/engagements/'+enc(c)+'/'+enc(p)+'/export';
-};
-const impfile=document.getElementById('impfile');
-document.getElementById('impeng').onclick=()=>impfile.click();
-impfile.onchange=async()=>{
- const f=impfile.files[0];impfile.value='';if(!f)return;
- const fd=new FormData();fd.append('file',f);
- let r=await fetch('/api/engagements/import',{method:'POST',body:fd});
- let j=await r.json();
- if(r.status===409 && confirm(j.error+'\\n\\nReplace it?')){
-  fd.append('overwrite','true');
-  r=await fetch('/api/engagements/import',{method:'POST',body:fd});j=await r.json();
- }
- if(j.error){alert('Import failed: '+j.error);return;}
- toast('Imported '+j.engagement+' ('+j.imported+' files)');
- ENG=j.engagement;localStorage.setItem('landfall.eng',ENG);
- await loadEngagements();engsel.value=ENG;
-};
-
-// --- Upload panel (E11.6 / E11.24) ---------------------------------------
-const upanel=document.getElementById('uploadpanel'),uz=document.getElementById('uz'),
-      ufile=document.getElementById('ufile'),frows=document.getElementById('filerows'),
-      toastEl=document.getElementById('toast');
-const enc=encodeURIComponent;
-function toast(m){toastEl.textContent=m;toastEl.classList.add('show');setTimeout(()=>toastEl.classList.remove('show'),3200);}
-function ukind(){return (document.querySelector('input[name=ukind]:checked')||{}).value||'auto';}
-function fmtSize(n){return n>=1048576?(n/1048576).toFixed(1)+' MB':n>=1024?Math.round(n/1024)+' KB':n+' B';}
-function engLabel(eid){const o=[...engsel.options].find(o=>o.value===eid);return o?o.textContent.split('  ·  ')[0]:eid;}
-function showUpload(){
- if(!ENG){upanel.hidden=true;return;}
- upanel.hidden=false;document.getElementById('upeng').textContent=engLabel(ENG);loadFiles();
-}
-let ANALYSIS={};   // file name -> ingest report
-const abar=document.getElementById('analysisbar'),anote=document.getElementById('analysisnote'),
-      startBtn=document.getElementById('startanalysis'),dqEl=document.getElementById('dqsummary');
-async function loadFiles(){
- frows.innerHTML='';dqEl.hidden=true;abar.hidden=true;if(!ENG)return;
- const [c,p]=ENG.split('/');
- let hasInv=false;
- try{
-  const j=await (await fetch('/api/engagements/'+enc(c)+'/'+enc(p)+'/files')).json();
-  try{const a=await (await fetch('/api/engagements/'+enc(c)+'/'+enc(p)+'/analysis')).json();
-      ANALYSIS={};(a.reports||[]).forEach(r=>ANALYSIS[r.file]=r);
-      if((a.summary||{}).files_ingested)renderDQ(a.summary);}catch(e){}
-  const n=(j.files||[]).length;
-  (j.files||[]).forEach(f=>{if(f.kind==='inventory')hasInv=true;frows.appendChild(doneRow(f));});
-  document.getElementById('upcount').textContent=n?(' · '+n+(n===1?' file':' files')):'';
-  if(j.over_soft_cap)toast('This engagement is over the 2 GB soft cap.');
- }catch(e){}
- abar.hidden=!hasInv;
- if(!hasInv)upanel.open=true;        // fresh engagement — prompt the upload; returning users see it collapsed
-}
-function delFile(nm){
- return async()=>{if(!confirm('Remove '+nm+'?'))return;const [c,p]=ENG.split('/');
-  await fetch('/api/engagements/'+enc(c)+'/'+enc(p)+'/files/'+enc(nm),{method:'DELETE'});loadFiles();};
-}
-function ingestBadge(f){
- if(f.kind!=='inventory')return '';
- const r=ANALYSIS[f.name];
- if(!r)return '<span class="badge wait">not analysed</span>';
- if(r.status&&r.status!=='ok'&&r.status!=='rejected')return '<span class="badge rej">'+esc(r.status)+'</span>';
- let b='<span class="badge ing">✓ '+(r.rows_loaded||0)+' rows'+(r.table?(' → '+esc(r.table)):'')+'</span>';
- if(r.rows_rejected)b+=' <span class="badge rej">'+r.rows_rejected+' rejected</span>';
- return b;
-}
-function doneRow(f){
- const li=document.createElement('li');li.className='frow ok';
- const prof=f.profile?(' · '+esc(f.profile)):'',rows=f.rows?(' · '+f.rows+' rows'):'';
- li.innerHTML='<span class=nm>'+esc(f.name)+'</span>'+ingestBadge(f)+
-   '<span class=st>✓ '+esc(f.kind)+prof+rows+' · '+fmtSize(f.size)+'</span><button class=x title=Remove>✕</button>';
- li.querySelector('.x').onclick=delFile(f.name);return li;
-}
-function renderDQ(s){
- if(!s||!s.files_ingested){dqEl.hidden=true;return;}
- const tbl=Object.entries(s.tables||{}).map(([t,n])=>esc(t)+' ('+n+')').join(', ');
- let h='<h4>Data-quality summary</h4>';
- h+='<div>'+s.files_ingested+' file'+(s.files_ingested===1?'':'s')+' loaded · '+
-    s.rows_loaded+' rows'+(tbl?(' · '+tbl):'')+
-    (s.confidence?(' · confidence <span class="conf '+esc(s.confidence)+'">'+esc(s.confidence)+'</span>'):'')+'</div>';
- if((s.pending||[]).length)h+='<div class=warn>still ingesting: '+s.pending.map(esc).join(', ')+'</div>';
- if((s.findings||[]).length)h+='<ul>'+s.findings.map(f=>'<li>'+esc(f)+'</li>').join('')+'</ul>';
- dqEl.innerHTML=h;dqEl.hidden=false;
-}
-async function startAnalysis(){
- if(!ENG)return;const [c,p]=ENG.split('/');
- startBtn.disabled=true;anote.textContent='ingesting the uploaded files…';
- try{
-  const j=await (await fetch('/api/engagements/'+enc(c)+'/'+enc(p)+'/analyze',{method:'POST'})).json();
-  if(j.error){anote.textContent='✗ '+j.error;startBtn.disabled=false;return;}
-  ANALYSIS={};(j.reports||[]).forEach(r=>ANALYSIS[r.file]=r);
-  renderDQ(j.summary);await loadFiles();
-  let tries=(j.summary&&j.summary.pending||[]).length?8:0;
-  while(tries-- > 0){
-   await new Promise(r=>setTimeout(r,2500));
-   const a=await (await fetch('/api/engagements/'+enc(c)+'/'+enc(p)+'/analysis')).json();
-   ANALYSIS={};(a.reports||[]).forEach(r=>ANALYSIS[r.file]=r);
-   renderDQ(a.summary);await refreshRows();
-   if(!((a.summary||{}).pending||[]).length)break;
-  }
-  anote.textContent='';
- }catch(e){anote.textContent='✗ '+e;}
- startBtn.disabled=false;
-}
-async function refreshRows(){
- if(!ENG)return;const [c,p]=ENG.split('/');
- try{const j=await (await fetch('/api/engagements/'+enc(c)+'/'+enc(p)+'/files')).json();
-  frows.innerHTML='';(j.files||[]).forEach(f=>frows.appendChild(doneRow(f)));}catch(e){}
-}
-startBtn.onclick=startAnalysis;
-function uploadOne(file){
- const li=document.createElement('li');li.className='frow';
- li.innerHTML='<span class=nm>'+esc(file.name)+'</span><span class=pbar><i></i></span><span class=st>uploading…</span>';
- frows.prepend(li);
- const bar=li.querySelector('.pbar i'),st=li.querySelector('.st'),[c,p]=ENG.split('/');
- const fd=new FormData();fd.append('kind',ukind());fd.append('file',file);
- const xhr=new XMLHttpRequest();
- xhr.open('POST','/api/engagements/'+enc(c)+'/'+enc(p)+'/upload');
- xhr.upload.onprogress=e=>{if(e.lengthComputable){const pct=Math.round(e.loaded/e.total*100);bar.style.width=pct+'%';st.textContent=pct<100?('uploading '+pct+'%'):'checking…';}};
- xhr.onload=()=>{let j={};try{j=JSON.parse(xhr.responseText);}catch(e){}
-  if(xhr.status===201){li.replaceWith(doneRow(j));toast(j.name+' added to '+engLabel(ENG));}
-  else{li.className='frow err';
-   li.innerHTML='<span class=nm>'+esc(file.name)+'</span><span class=st>✗ '+esc(j.error||('error '+xhr.status))+'</span><button class=x>✕</button>';
-   li.querySelector('.x').onclick=()=>li.remove();}};
- xhr.onerror=()=>{li.className='frow err';st.textContent='✗ network error';};
- xhr.send(fd);
-}
-uz.onclick=()=>ufile.click();
-ufile.onchange=()=>{[...ufile.files].forEach(uploadOne);ufile.value='';};
-uz.ondragover=e=>{e.preventDefault();uz.classList.add('drag');};
-uz.ondragleave=()=>uz.classList.remove('drag');
-uz.ondrop=e=>{e.preventDefault();uz.classList.remove('drag');[...e.dataTransfer.files].forEach(uploadOne);};
-
-async function loadRegions(){
- try{const r=await fetch('/api/calc_regions');const regs=(await r.json()).regions||[];
-  const tr=document.getElementById('trsel'),dr=document.getElementById('drsel');
-  regs.forEach(x=>{tr.appendChild(new Option(x,x));dr.appendChild(new Option(x,x));});
-  tr.value='swedencentral';
- }catch(e){}
-}
-
-document.getElementById('neweng').onclick=()=>{engform.hidden=!engform.hidden;};
-document.getElementById('engcancel').onclick=()=>{engform.hidden=true;};
-document.getElementById('ef').onsubmit=async ev=>{
- ev.preventDefault();
- const fd=Object.fromEntries(new FormData(ev.target).entries());
- const btn=ev.target.querySelector('button[type=submit]');btn.disabled=true;btn.textContent='Creating…';
- try{
-  const r=await fetch('/api/engagements',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(fd)});
-  const j=await r.json();
-  if(j.error){alert('Could not create: '+j.error);}
-  else{ENG=j.engagement;localStorage.setItem('landfall.eng',ENG);engform.hidden=true;ev.target.reset();
-       await loadEngagements();engsel.value=ENG;showUpload();newChat();
-       toast('Engagement created — now upload the client inventory below.');}
- }catch(e){alert('Error: '+e);}
- btn.disabled=false;btn.textContent='Create engagement';
-};
-
-async function newChat(){
- if(busy)return;
- if(ENG){const [c,p]=ENG.split('/');
-  try{await fetch('/api/engagements/'+enc(c)+'/'+enc(p)+'/chat/new',{method:'POST'});}catch(e){}}
- log.innerHTML='<div id=welcome></div>';renderWelcome();q.value='';q.focus();
-}
-document.getElementById('newchat').onclick=newChat;
-
-async function ask(v){
- v=(v||'').trim();if(!v||busy)return;
- if(!ENG){
-  add('Pick an engagement first (top-left) — or click "+ New engagement" to create one. '
-     +'Every question is scoped to a customer / project so the estimate stays that client\\'s.','a');
-  engform.hidden=false;return;
- }
- const w=document.getElementById('welcome');if(w)w.remove();
- q.value='';add(v,'u');
- setBusy(true);
- const ph=working();
- try{
-  const r=await fetch('/api/chat',{method:'POST',headers:{'content-type':'application/json'},
-    body:JSON.stringify({message:v,engagement:ENG})});
-  const j=await r.json();
-  clearInterval(ph._timer);ph.remove();
-  if(j.error){add('Error: '+j.error,'a');}
-  else{add(j.answer,'a',j.citations,{tables:j.tables,sql:j.sql,question:v});}
- }catch(err){clearInterval(ph._timer);ph.remove();add('Error: '+err,'a');}
- setBusy(false);
-}
-document.getElementById('f').onsubmit=e=>{e.preventDefault();ask(q.value);};
-loadCards();loadEngagements();loadRegions();q.focus();
-</script></body></html>"""
+@app.get("/static/{name}")
+def static_file(name: str):
+    """Serve the chat page's stylesheet + script. Whitelisted extensions, no
+    path traversal — `name` is a single path segment and must resolve to a file
+    directly inside `src/web/static/`."""
+    ext = os.path.splitext(name)[1]
+    if ext not in _STATIC_MIME:
+        return Response(status_code=404)
+    p = (_STATIC / name).resolve()
+    if p.parent != _STATIC.resolve() or not p.is_file():
+        return Response(status_code=404)
+    return Response(p.read_text(encoding="utf-8"), media_type=_STATIC_MIME[ext],
+                    headers={"Cache-Control": "public, max-age=300"})

@@ -1,0 +1,57 @@
+<!doctype html><html><head><meta charset=utf-8>
+<title>Landfall</title><meta name=viewport content="width=device-width,initial-scale=1">
+<link rel=stylesheet href="/static/chat.css">
+</head><body>
+<header>
+ <span>Landfall &mdash; Migration Estimator</span>
+ <select id=engsel title="Active engagement — every question, upload and estimate is scoped to it"></select>
+ <button class=link id=neweng title="Create a new customer / project engagement">+ New engagement</button>
+ <button class=link id=expeng title="Download this engagement (files + estimates + chat) as a portable .zip" hidden>&darr; export</button>
+ <button class=link id=impeng title="Restore an engagement from a .landfall.zip">&uarr; import</button>
+ <input type=file id=impfile accept=".zip" hidden>
+ <span class=sp></span>
+ <button class=link id=newchat title="Archive this conversation and start a fresh one">+ New chat</button>
+ <a href="/dashboard" id=dashlink>Assessment dashboard &rarr;</a>
+</header>
+<div class=mini id=engform hidden>
+ <form id=ef>
+  <input name=customer placeholder="Customer name" required>
+  <input name=project placeholder="Project name" required>
+  <select name=target_region id=trsel title="Target Azure region for the landing zone"></select>
+  <select name=dr_region id=drsel title="DR region (optional)"><option value="">No DR region</option></select>
+  <select name=licensing_program><option value=MCA>Microsoft Customer Agreement (MCA)</option><option value=EA>Enterprise Agreement</option><option value=MOSP>Pay-as-you-go (MOSP)</option><option value=CSP>CSP</option></select>
+  <select name=currency><option>USD</option><option>EUR</option><option>GBP</option><option>AUD</option><option>INR</option><option>SEK</option></select>
+  <div class=full><button class=send type=submit>Create engagement</button>
+   <button class=link type=button id=engcancel>cancel</button></div>
+ </form>
+</div>
+<details id=uploadpanel hidden>
+ <summary>Inventory &amp; documents<span id=upcount></span></summary>
+ <div class=utabs>
+  <span class=lbl>Files for <b id=upeng></b></span>
+  <span class=grow></span>
+  <label><input type=radio name=ukind value=auto checked> auto</label>
+  <label><input type=radio name=ukind value=inventory> data</label>
+  <label><input type=radio name=ukind value=docs> docs</label>
+ </div>
+ <label class=uz id=uz>
+  <input type=file id=ufile multiple hidden>
+  <span class=uzt>Drop files here or <b>browse</b></span>
+  <span class=uzh>CSV · Excel · TSV · JSON &mdash; server / application inventory<br>PDF · Word · PNG &mdash; diagrams, DR, compliance</span>
+  <span class=uzh>up to 100&nbsp;MB each &mdash; lands in this engagement's private folder</span>
+ </label>
+ <ul id=filerows></ul>
+ <div id=analysisbar hidden>
+  <button class="send secondary" id=startanalysis type=button>Start analysis</button>
+  <span class=st id=analysisnote></span>
+ </div>
+ <div id=dqsummary hidden></div>
+</details>
+<div id=toast class=toast></div>
+<div id=log><div id=welcome></div></div>
+<form id=f>
+ <input id=q placeholder="Ask about the client inventory, sizing, waves, cost..." autocomplete=off>
+ <button class=send id=send>Send</button>
+</form>
+<script src="/static/chat.js"></script>
+</body></html>

@@ -197,9 +197,11 @@ def test_chat_page_has_new_chat_working_indicator_and_cards(client):
     _webapp, c = client
     r = c.get("/")
     assert r.status_code == 200
-    assert "New chat" in r.text                       # clear / new session
-    assert "The estimator is working" in r.text       # progress indicator
-    assert "/api/prompt_cards" in r.text and "cardgrid" in r.text
+    assert "New chat" in r.text                       # clear / new session (markup)
+    js = c.get("/static/chat.js").text                # behaviour lives in the served asset (E12.7)
+    assert "The estimator is working" in js           # progress indicator
+    assert "/api/prompt_cards" in js
+    assert "cardgrid" in c.get("/static/chat.css").text
 
 
 def test_prompt_cards_endpoint_returns_intro_and_cards(client):
@@ -216,9 +218,10 @@ def test_chat_page_has_engagement_picker(client):
     _webapp, c = client
     r = c.get("/")
     assert "engsel" in r.text and "New engagement" in r.text
-    assert "loadEngagements" in r.text and "/api/engagements" in r.text
+    js = c.get("/static/chat.js").text
+    assert "loadEngagements" in js and "/api/engagements" in js
     # every question rides with the engagement id — the user never types it
-    assert "engagement:ENG" in r.text
+    assert "engagement:ENG" in js
 
 
 def test_calc_regions_endpoint(client):

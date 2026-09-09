@@ -110,8 +110,12 @@ agreed geography.
 
 ## 7. Known limitations (as of this draft)
 
-- The Azure SQL firewall currently allows connections from Azure services; the
-  private-endpoint-only parameter set (E8.5) is not yet the default.
+- The Azure SQL server keeps `publicNetworkAccess: Enabled` with an "allow all
+  Azure services" firewall rule. Private endpoints are **not planned** (sponsor
+  decision, 2026-09-09 — recurring cost). Row-Level Security (`SESSION_CONTEXT`,
+  fail-closed), the `sqlguard` allow-list, and Entra-only authentication (no SQL
+  logins) are the data-plane controls. A backlog item narrows the firewall to the
+  service's own compute IPs.
 - An external penetration test has not yet been run (E10.4 / evidence pack).
 - This statement has not yet been reviewed or signed.
 

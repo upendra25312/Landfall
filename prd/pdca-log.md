@@ -5,6 +5,71 @@ Operating model: [`landfall-5x5-prd.md` §7](landfall-5x5-prd.md). Tracker:
 
 ---
 
+## Cycle 41 — chat page → static shell + strict CSP (E12.7)
+
+**Date:** 2026-09-09 · **Owner:** FS ·
+**Tracker:** E12.7. The `index()` route returned a ~420-line triple-quoted HTML
+string with an inline `<style>` and `<script>` — so `/` could carry no CSP, and
+it blocks E12.8/E12.9 (guided pipeline / progress) which need real DOM code.
+Also the one open self-assessment finding (T9 — no CSP / `nosniff`).
+
+### Plan
+
+- Externalise the chat page: `chat.html` shell + `/static/chat.{css,js}`, no
+  inline script or style, so `/` can run `script-src 'self'; style-src 'self'`.
+- Add a security-headers middleware (nosniff / frame / referrer on everything;
+  strict CSP on the static surface, relaxed CSP where inline still exists).
+- Keep behaviour byte-identical — pure extract + 4 `style=` attrs → classes.
+
+### Do
+
+- **`src/web/chat.html`** — the shell (`<link rel=stylesheet href=/static/chat.css>`
+  + `<script src=/static/chat.js>`), 3 inline `style=` attrs → `.mini .full .link`,
+  `.utabs .lbl`, `.utabs .grow`.
+- **`src/web/static/chat.css`** — the `<style>` block verbatim + the 4 new rules
+  (incl. `.intro p.sub.eng` replacing a JS-built `style="color:#7fd3dd"`).
+- **`src/web/static/chat.js`** — the `<script>` verbatim, that one `style=` in a
+  built `innerHTML` string → `class="sub eng"`. Every `el.onclick=` /
+  `el.style.x=` is a DOM property, fine under CSP.
+- **`src/web/app.py`** — `index()` now `read_text("chat.html")`; a whitelisted
+  `GET /static/{name}` route (`.css`/`.js` only, single segment, must resolve
+  inside `static/`, `max-age=300`); `_security_headers` HTTP middleware:
+  `_CSP_STRICT` (no `unsafe-inline`) on `/` + `/healthz` + `/static/*`,
+  `_CSP_RELAXED` (keeps `unsafe-inline`; still `frame-ancestors`/`base-uri`/
+  `object-src 'none'`) elsewhere, plus `X-Content-Type-Options: nosniff` +
+  `X-Frame-Options: DENY` + `Referrer-Policy`. `app.py` −357 lines.
+- **`tests/test_web_csp.py`** (6) — `/` is the file on disk, no `<style>`/inline
+  `<script>`/`style=` in the body; strict CSP on `/` + assets; headers on every
+  response; the relaxed CSP still locks framing; the static route rejects `.py`
+  + real-but-wrong-ext + traversal. `tests/test_dashboard.py` (2) +
+  `tests/test_upload.py` (5) — assertions on the page's JS/CSS repointed to
+  `/static/chat.{js,css}`.
+- **`evidence/pentest/sec_probe.py`** — `_headers_hygiene` now also checks
+  `X-Frame-Options` + a `unsafe-inline`-free CSP on `/`.
+- Docs: `threat-model.md` T9, `RESULTS.md` T9, `scorecard.py` Security basis.
+
+### Check
+
+| gate | result |
+|---|---|
+| unit | **pytest** (+6 new, 7 repointed) — see run |
+| local | `TestClient`: `/` serves the file, strict CSP + nosniff + DENY; `/static/chat.css|js` 200 with the right MIME + strict CSP; `/static/x.py` + `/static/prompt_cards.json` + traversal → 404; `/dashboard` keeps the relaxed CSP |
+| evals | 32/32 + 8/8 + 30/30; `evals/SCORECARD.md` no drift; `evidence/SCORECARD.md` regenerated (scores unchanged — Security stays 3.75, needs external validation) |
+| scope | **production web code** → `azd deploy web` |
+
+### Act
+
+- One commit on `c41-csp`, merged `--no-ff` to `main`, pushed. **`azd deploy web`.**
+- Post-deploy: `scripts/smoke.py` + `evidence/pentest/sec_probe.py` re-run against live.
+- E12.7 done; Epic E12 now 6/12. The T9 self-assessment finding is closed for
+  the chat surface. Follow-up (logged on the E12.7 row): give `/dashboard` +
+  `/questionnaire` the same treatment so they earn the strict CSP too.
+- Next by leverage: the human trials (Usability 2.0 / Understandability 3.0,
+  need participants), or E12.8 guided pipeline state (now unblocked), or
+  web-tier log forwarding (Operability 4.25).
+
+---
+
 ## Cycle 40 — security self-assessment + `ca-web` auth into Bicep (E8 / E10.4 pentest)
 
 **Date:** 2026-09-09 · **Owner:** Security ·
