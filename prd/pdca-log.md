@@ -52,15 +52,17 @@ Also the one open self-assessment finding (T9 — no CSP / `nosniff`).
 
 | gate | result |
 |---|---|
-| unit | **pytest** (+6 new, 7 repointed) — see run |
-| local | `TestClient`: `/` serves the file, strict CSP + nosniff + DENY; `/static/chat.css|js` 200 with the right MIME + strict CSP; `/static/x.py` + `/static/prompt_cards.json` + traversal → 404; `/dashboard` keeps the relaxed CSP |
+| unit | **441 pytest**, 2 skipped (+6 new in `test_web_csp.py`, 7 repointed in `test_dashboard`/`test_upload`) |
+| local | `TestClient`: `/` serves the file, strict CSP + nosniff + DENY; `/static/chat.css\|js` 200 with the right MIME + strict CSP; `/static/x.py` + `/static/prompt_cards.json` + traversal → 404; `/dashboard` keeps the relaxed CSP |
 | evals | 32/32 + 8/8 + 30/30; `evals/SCORECARD.md` no drift; `evidence/SCORECARD.md` regenerated (scores unchanged — Security stays 3.75, needs external validation) |
-| scope | **production web code** → `azd deploy web` |
+| live | `azd deploy web` → SUCCESS (1m37s). `scripts/smoke.py` **8/8** against `rg-landfall`. `sec_probe.py` **16/16** — the CSP/nosniff checks degrade to an info note (Easy Auth answers `401` before the app, so app headers aren't black-box visible; `test_web_csp.py` covers them). |
+| scope | **production web code** → `azd deploy web` (no infra) |
 
 ### Act
 
-- One commit on `c41-csp`, merged `--no-ff` to `main`, pushed. **`azd deploy web`.**
-- Post-deploy: `scripts/smoke.py` + `evidence/pentest/sec_probe.py` re-run against live.
+- `c41-csp` → merged `--no-ff` to `main` (`c612e40`), pushed. **`azd deploy web`.**
+  Follow-up evidence commit `aaaee9f` (live probe re-run + `_headers_hygiene`
+  degradation note).
 - E12.7 done; Epic E12 now 6/12. The T9 self-assessment finding is closed for
   the chat surface. Follow-up (logged on the E12.7 row): give `/dashboard` +
   `/questionnaire` the same treatment so they earn the strict CSP too.
