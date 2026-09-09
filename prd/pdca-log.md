@@ -5,6 +5,79 @@ Operating model: [`landfall-5x5-prd.md` §7](landfall-5x5-prd.md). Tracker:
 
 ---
 
+## Cycle 40 — security self-assessment + `ca-web` auth into Bicep (E8 / E10.4 pentest)
+
+**Date:** 2026-09-09 · **Owner:** Security ·
+**Tracker:** the `pentest/` third of E10.4 + the T5 gap it surfaces. Security is
+the lowest "built" dimension (3.5); the trials and the external pen test need
+people, but the threat model + a self-assessment baseline don't.
+
+### Plan
+
+- Write the threat model an external tester needs to scope fast.
+- Run an automated non-destructive baseline against the live deployment.
+- Fix what the baseline surfaces that I can — the imperative `ca-web` auth.
+
+### Do
+
+- **`evidence/pentest/threat-model.md`** — 5 assets, 6 trust boundaries
+  (browser→web, web→agent, agent→Function, Function→SQL, Function→ADLS, the two
+  side-car containers), 9 STRIDE-ish threats (T1 cross-engagement read … T9
+  response hardening) each with the control + residual, and "start here"
+  pointers (RLS bypass, prompt-injection→tool abuse, the web-auth gap).
+- **`evidence/pentest/sec_probe.py`** — 16 non-destructive checks: unauth HTTP
+  on `ca-web` `/`,`/dashboard`,`/api/*`,`/healthz`,`/questionnaire` + `func-*`
+  three routes (**all 401 live**); HSTS / no version banner / nosniff; the SQL
+  guard against 11 injection/write/DDL/stacked/`OPENROWSET`/`sys.` payloads
+  (11/11 rejected) + comment-trick neutralisation (2/2) + a legit query still
+  allowed; `normalize_engagement` against 8 traversal slugs (0 escaped);
+  `git grep` for committed secrets (clean). **15/16 pass** — the one finding is
+  no CSP / `X-Content-Type-Options` on app responses, which folds into E12.7.
+  (Renamed from `probe.py` → `sec_probe.py` to not collide with
+  `evidence/chaos/probe.py` in the test import namespace.)
+- **`evidence/pentest/RESULTS.md`** + `README.md` — the run + the known open
+  items table (T5 web-auth, T6 unpinned func audience, T8 SQL public network, T1
+  group-claims untested).
+- **infra — T5 fix.** `ca-web` EasyAuth was configured with `az containerapp
+  auth` only, not in Bicep, so a fresh `azd up` brought the web app up with **no
+  auth**. Added `webAuthClientId` + `webAuthClientSecret` (`@secure`) params →
+  a `Microsoft.App/containerApps/authConfigs` resource (`RedirectToLoginPage`,
+  tenant-restricted audience) + an app secret, all gated on
+  `var hasWebAuth = !empty(webAuthClientId)`. Empty (default) = **no change** to
+  today's deploy. `main.parameters.json` wires `${WEB_AUTH_CLIENT_ID=}` /
+  `${WEB_AUTH_CLIENT_SECRET=}`. `DEPLOY.md` follow-up 1 rewritten with the IaC
+  path (set the two env vars → `azd provision`) alongside the imperative one.
+- **`tests/test_pentest.py`** (6) — the guard rejects every `_INJECTION`,
+  slug + secret checks pass, `R.to_dict().ok` is severity-gated, the threat
+  model covers the boundaries, the `authConfigs` is param-gated with the empty
+  default unchanged.
+- **`evidence/scorecard.py`** — Security 3.5 → **3.75**. **Overall 3.97 →
+  4.00.** `.gitattributes` pins `evidence/pentest/*.json`.
+
+### Check
+
+| gate | result |
+|---|---|
+| unit | **435 pytest** (+6), 2 skipped |
+| live probe | 16 checks, 15 pass; the 1 finding is a known E12.7 item; `probe-result.json` |
+| bicep | `az bicep build infra/main.bicep` rc 0; `authConfigs` gated on `hasWebAuth`, empty default = no resource |
+| evals | 32/32 + 8/8 + 30/30; `evals/SCORECARD.md` no drift; `evidence/SCORECARD.md` regenerated |
+| scope | evidence + docs + param-gated Bicep → **no deploy** (the web-auth Bicep needs `azd provision` + `WEB_AUTH_CLIENT_ID`, not run) |
+
+### Act
+
+- One commit on `c40-pentest`, merged `--no-ff` to `main` (`dee5ddb`), pushed.
+  No `azd` anything.
+- **Overall is 4.00/5.** The remaining ~1.0 is: Usability 2.0 + Understandability
+  3.0 (need trial participants), Defensibility + Completeness 4.0 (architect
+  review board), Operability 4.25 (E9.2 CI secrets + web-log forwarding + chaos
+  induce), Security 3.75 (external pen test + CISO signature + E8.5).
+- Next: **E8.5** private endpoints (the last thing I can build toward Security —
+  large param-gated Bicep, no deploy), or the web-tier log forwarding
+  (Operability), or hand back to the user that the rest is gated on people.
+
+---
+
 ## Cycle 39 — answer-quality observability (E9.4)
 
 **Date:** 2026-09-09 · **Owner:** SRE ·
