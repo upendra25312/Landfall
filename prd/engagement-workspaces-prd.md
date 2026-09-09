@@ -506,6 +506,12 @@ cold-starting + driving). So E11.16 is **fire-and-forget + poll**:
   adds every adapter's product to a real estimate and applies its fields; a broken
   *verified* adapter fails the job with the control named, and at run time drops its line
   item into `skipped[]` / `fields_not_set[]` rather than mispricing it.
+- Adapter controls that **rename per tier / OS** are the recurring drift: Linux VM modules
+  take a *distro* `type` (not `os-only`) and render no Azure-Hybrid-Benefit radio; Azure
+  NetApp Files and premium (SSD) Azure Files prefix their capacity controls with the tier
+  (`premiumUnits`, `ssdProvisionedV2StorageUnits`). `tests/test_calc_adapters.py` locks these
+  offline; the live smoke re-checks. `azure-bastion` / `azure-monitor` / `load-balancer` /
+  `application-gateway` stay `verified: False` and degrade to calculator defaults.
 - **`ca-calc` runs one always-on replica** (`minReplicas 1`, `worker.py consume_forever()`
   draining `calc-jobs`) at **2 vCPU / 4 GiB** — Chromium's renderer OOM-crashed rendering a
   full-page screenshot of a 50+ module estimate at 2 GiB. `driver.build_estimate` now exports
