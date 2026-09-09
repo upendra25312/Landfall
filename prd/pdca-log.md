@@ -5,6 +5,79 @@ Operating model: [`landfall-5x5-prd.md` §7](landfall-5x5-prd.md). Tracker:
 
 ---
 
+## Cycle 35 — E9.2 clean-machine smoke test + dormant `azd up→down` CI
+
+**Date:** 2026-09-09 · **Owner:** SRE ·
+**Tracker:** E9.2 — the next scorecard lift on Operability (3.0, the lowest
+"done"-ish dimension after Usability/Understandability which need human trials).
+
+### Plan
+
+- E9.2 wants `azd up → smoke → azd down` green on every PR, both OSes. The
+  service-principal secrets to run `azd` in GitHub Actions can't be set from
+  here, so the deliverable is: a real smoke script that runs **now** against the
+  live deployment, + the CI workflow **written and dormant** until the secrets
+  are added (one-time, documented).
+- Mid-cycle the user reviewed the Epic E12 backlog: **no Front Door, no WAF, no
+  IP allow-list, no paid domain**. E12.11 reframed to a $0 "nicer hostname"
+  recipe (rename the app + a free DuckDNS subdomain + the free ACA managed cert).
+
+### Do
+
+- **`scripts/smoke.py`** (stdlib only — runs before any pip install). 8 checks:
+  config completeness, every expected resource type in the RG, Function
+  registered + host answers (401 = Easy Auth up, not 5xx), web revision
+  Healthy/Provisioned/Running, web host answers, SQL Online/Paused/AutoClosed,
+  `raw`+`answers` blob containers, and (`--deep`) the Foundry agent name
+  resolves + (`SMOKE_API_TOKEN`) a live `query_inventory`. Non-zero exit on the
+  first hard failure; `--json` writes the structured result; `--from-env` skips
+  `azd`. **Ran green against `rg-landfall`: 8/8 (+ agent on `--deep`)** →
+  `evidence/ops/smoke-live.json` (+ `evidence/ops/README.md`).
+- **`.github/workflows/clean-machine.yml`** — matrix `[ubuntu-latest,
+  windows-latest]` (the hooks are per-OS), OIDC `azure/login`, unique throwaway
+  env per run, `azd up` → `python scripts/smoke.py --json` → **`azd down
+  --force --purge` in `if: always()`**. `if: vars.CLEAN_MACHINE_CI == 'true'` so
+  it's skipped until armed. `workflow_dispatch` + weekly `schedule` (a full
+  up/down is ~20 min/OS + real spend — not per-PR yet). `MODEL_CAPACITY=10`.
+- **`DEPLOY.md`** — "Post-deploy smoke test (E9.2)" section: run recipe, the CI
+  arming steps (app registration → Contributor + RBAC Admin → federated
+  credential → 4 secrets + `CLEAN_MACHINE_CI` variable), per-run cost (~$1–3),
+  and the **known drift** the CI would surface — the live `web` Container App has
+  Easy Auth enabled *imperatively*, not in `infra/resources.bicep`, so a fresh
+  `azd up` brings the web app up with no auth (an E8.2 follow-up).
+- **`tests/test_smoke.py`** (17) — host-up status classification, `Result`
+  counts + exit code, `load_config` env parsing, `run_checks` green + degraded
+  (missing resource type, dead host, empty config), `main --json`.
+- **`evidence/scorecard.py`** — Operability 3.0 → **3.5** (smoke written +
+  green-live + unit-tested; CI matrix written but not proven green in CI). Basis
+  + 5 evidence links + gap rewritten. **Overall 3.72 → 3.78.**
+- **`prd/engagement-workspaces-prd.md`** — §4.13 finding 11 + §5a E12.11 +
+  the how-to block: no Front Door/WAF/IP-list/paid-domain; `landfall-web` rename
+  + DuckDNS + free managed cert as the $0 path. `.gitattributes` pins
+  `evidence/ops/*.json` LF.
+
+### Check
+
+| gate | result |
+|---|---|
+| unit | **403 pytest** (+17), 2 skipped |
+| smoke (live) | 8/8 green against `rg-landfall`; `--deep` 9/9 (agent resolves) |
+| workflow | `clean-machine.yml` parses; `azd down` is `if: always()`; job gated on `CLEAN_MACHINE_CI` |
+| evals | 32/32 + 8/8 + 30/30; `evals/SCORECARD.md` no drift; `evidence/SCORECARD.md` regenerated (Operability + overall) |
+| scope | no production code touched → **no deploy** (script + CI + docs + evidence + scorecard only) |
+
+### Act
+
+- One commit on `c35-clean-machine-ci`, merged `--no-ff` to `main` (`43b24fd`),
+  pushed. No `azd deploy` — nothing in the deploy path changed.
+- E9.2 is `in-review`, not `done`: closing it needs the OIDC secrets added + the
+  CI proven green on both OSes (not doable from here). Next by scorecard
+  leverage: the human trials (**E10.4** usability + comprehension, lifts two
+  dimensions off 2.0) or **E9.3** `--tier prod`. Also worth folding the web
+  Container App Easy Auth into Bicep (the drift the new CI would catch).
+
+---
+
 ## Cycle 34 — front-end quick-wins on the chat page (Epic E12: E12.1–E12.4, E12.6)
 
 **Date:** 2026-09-09 · **Owner:** UX + Full-stack ·
