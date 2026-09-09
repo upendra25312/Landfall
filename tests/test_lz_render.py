@@ -69,12 +69,16 @@ def test_rasterize_posts_and_returns_png(monkeypatch):
 
 def test_rasterize_swallows_errors(monkeypatch):
     monkeypatch.setenv("DRAWIO_RENDER_URL", "https://ca-drawio.example")
+    monkeypatch.setattr("lz.render.time.sleep", lambda *_: None)
+    calls = []
 
     def _boom(req, timeout=None):
+        calls.append(1)
         raise OSError("connection refused")
 
     monkeypatch.setattr("lz.render.urllib.request.urlopen", _boom)
     assert rasterize("<svg/>") is None
+    assert len(calls) == 2   # one retry to absorb a ca-drawio cold start
 
 
 def test_rasterize_rejects_a_non_png_body(monkeypatch):
@@ -90,6 +94,7 @@ def test_rasterize_rejects_a_non_png_body(monkeypatch):
         def __exit__(self, *a):
             return False
 
+    monkeypatch.setattr("lz.render.time.sleep", lambda *_: None)
     monkeypatch.setattr("lz.render.urllib.request.urlopen", lambda *a, **k: _Resp())
     assert rasterize("<svg/>") is None
 
