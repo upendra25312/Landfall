@@ -16,6 +16,8 @@
     "enableFunctionAuth": { "value": "${ENABLE_FUNCTION_AUTH=false}" },
     "functionAuthClientId": { "value": "${FUNCTION_AUTH_CLIENT_ID=}" },
     "alertEmail": { "value": "${ALERT_EMAIL=}" },
+    "webAuthClientId": { "value": "${WEB_AUTH_CLIENT_ID=}" },
+    "webAuthClientSecret": { "value": "${WEB_AUTH_CLIENT_SECRET=}" },
     "deploymentTier": { "value": "${DEPLOYMENT_TIER=free}" }
   }
 }
