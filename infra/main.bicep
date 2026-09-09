@@ -40,6 +40,10 @@ param functionAuthClientId string = ''
 @description('Optional: restrict Function App EasyAuth to these caller client ids, e.g. the Foundry MSI (azd env set FUNCTION_AUTH_ALLOWED_CLIENT_IDS ...)')
 param functionAuthAllowedClientIds array = []
 
+@description('Deployment tier. free = Free-tier / Free-offer SKUs (default, ~$5-15/mo, auto-pause, no SLA). prod = paid SKUs with SLAs, no free-limit cap, no cold start on the web app (~$350-450/mo). One switch; see DEPLOY.md section "Deployment tiers" for the per-resource cost delta. azd env set DEPLOYMENT_TIER prod')
+@allowed(['free', 'prod'])
+param deploymentTier string = 'free'
+
 var abbrs = loadJsonContent('./abbreviations.json')
 var resourceToken = toLower(uniqueString(subscription().id, environmentName, location))
 var tags = { 'azd-env-name': environmentName }
@@ -70,6 +74,7 @@ module resources './resources.bicep' = {
     enableFunctionAuth: enableFunctionAuth
     functionAuthClientId: functionAuthClientId
     functionAuthAllowedClientIds: functionAuthAllowedClientIds
+    deploymentTier: deploymentTier
   }
 }
 

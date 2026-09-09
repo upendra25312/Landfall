@@ -152,26 +152,28 @@ def rubric(live: dict) -> list[dict]:
          "gap": "run the 60-minute comprehension test with 3 consultants new to Landfall "
                 "(protocol.md Trial A); record in evidence/trials/."},
 
-        {"dim": "Operability", "score": 3.5,
+        {"dim": "Operability", "score": 3.75,
          "bar": "CI `azd up → smoke → azd down` on Linux + Windows every PR; chaos drill "
                 "degrades cleanly.",
          "basis": "Deploy hooks are self-contained (no azd-on-PATH, SQL grant via Python — "
                   "E9.1); every PDCA cycle deploys api/web to the live rg-landfall and "
-                  "verifies. E9.2: `scripts/smoke.py` (8 checks — resources, Function host, "
-                  "web revision, SQL, blob containers, agent) passes green against the live "
-                  "deployment (evidence/ops/smoke-live.json), unit-tested; the "
+                  "verifies. E9.2: `scripts/smoke.py` (8 checks) passes green against the "
+                  "live deployment (evidence/ops/smoke-live.json), unit-tested; the "
                   "`.github/workflows/clean-machine.yml` matrix (`azd up→smoke→down` on "
                   "Linux + Windows) is written but DORMANT until the OIDC secrets are added "
-                  "— not yet proven green in CI. No `--tier prod` switch, no observability "
-                  "dashboard, no logged chaos drill.",
+                  "— not yet proven green in CI. E9.3: `DEPLOYMENT_TIER=prod` — one Bicep "
+                  "switch moves off every Free tier (Search basic + SLA, SQL without the "
+                  "free-limit cap, ZRS storage, warm web app, 90-day retention), cost delta "
+                  "documented in DEPLOY.md; `az bicep build` compiles both branches. No "
+                  "observability dashboard, no logged chaos drill.",
          "evidence": [("smoke test", "../scripts/smoke.py"),
                       ("smoke run (live)", "ops/smoke-live.json"),
                       ("clean-machine CI", "../.github/workflows/clean-machine.yml"),
-                      ("deploy hooks", "../scripts/"),
-                      ("DEPLOY.md", "../DEPLOY.md")],
-         "gap": "arm + green the clean-machine CI on both OSes (one-time secret add); E9.3 "
-                "`--tier prod`; E9.4 answer-quality observability; E9.5 export-before-"
-                "teardown; a chaos drill logged to evidence/chaos/."},
+                      ("tier switch + cost delta", "../DEPLOY.md"),
+                      ("tier tests", "../tests/test_infra_tier.py")],
+         "gap": "arm + green the clean-machine CI on both OSes (one-time secret add); E9.4 "
+                "answer-quality observability; E9.5 export-before-teardown; a chaos drill "
+                "logged to evidence/chaos/."},
 
         {"dim": "Security", "score": 3.5,
          "bar": "External pen test passes; isolation test passes; data-handling statement "
