@@ -5,6 +5,76 @@ Operating model: [`landfall-5x5-prd.md` §7](landfall-5x5-prd.md). Tracker:
 
 ---
 
+## Cycle 39 — answer-quality observability (E9.4)
+
+**Date:** 2026-09-09 · **Owner:** SRE ·
+**Tracker:** E9.4 — the last Phase-1 Engine backlog item. "An operator can see a
+bad answer; tool error rate alerts."
+
+### Plan
+
+- Emit just enough structured telemetry that an operator can slice answer
+  quality — without a new SDK or a risky rewrite. Lean on what Azure Functions
+  already emits (`requests` per invocation) and add a thin structured-event layer
+  for the two things `requests` can't show: `query_inventory` outcome detail and
+  the confidence mix of published estimates.
+- Ship the dashboard as an App Insights workbook + a KQL runbook + a
+  param-gated failure-rate alert, all in Bicep.
+
+### Do
+
+- **`src/api/obs.py`** — `event(name, **dims)` → `logging` with
+  `extra={"custom_dimensions": ...}` (the Functions App-Insights handler maps it
+  to `customDimensions`; no dependency). `eng_hash()` = SHA-256 prefix so the raw
+  customer/project never reaches telemetry. Every call best-effort.
+- **`src/api/tools.py::query_inventory`** — times the call; emits a
+  `query_inventory` event on each exit path (`ok` with rows/shape/tables,
+  `rejected` with the reason, `text_to_sql_error`, `query_error`).
+- **`src/api/deliverable/functions.py`** — `_obs_estimate()` on assemble +
+  publish: `estimate_assembled` with `overall_confidence` and the
+  `low`/`medium`/`high` figure counts, so Low-confidence deliverables are
+  visible in aggregate.
+- **`infra/workbook-answer-quality.json`** + `resources.bicep` — a
+  `Microsoft.Insights/workbooks` (tool volume / failures / p95 from `requests`,
+  `query_inventory` outcomes, the 7-day confidence-mix table, recent errors,
+  failures by tool + code). ASCII-only (a `⚠` crashed `az bicep` on Windows
+  cp1252). A param-gated (`alertEmail` / `ALERT_EMAIL`)
+  `scheduledQueryRules` alert — Function failure rate > 5% over 15 min — + its
+  action group; workbook always deploys, alert only when the email is set.
+- **`docs/observability.md`** — the two signals, the workbook, a copy-paste KQL
+  runbook for "is an answer bad?", the arming step, and the known gap (web-tier
+  logs are not forwarded — needs `azure-monitor-opentelemetry`).
+- **`tests/test_obs.py`** (7) — hash stable/opaque/case-folded, event shape +
+  None-drop + stringify, never raises, the `query_inventory` wiring fires on a
+  rejected query, the workbook JSON is valid + ASCII + queries the right tables,
+  the observability Bicep is wired through main → module → params.
+- **`evidence/scorecard.py`** — Operability 4.0 → **4.25**. **Overall 3.94 →
+  3.97.** `.gitignore` gets `!infra/workbook-answer-quality.json` (the blanket
+  `infra/*.json` ignore for the compiled output was hiding it).
+
+### Check
+
+| gate | result |
+|---|---|
+| unit | **429 pytest** (+7), 2 skipped |
+| obs wiring | `query_inventory` emits without breaking the tool (400 still returned); event carries a hashed engagement, not the raw id |
+| bicep | `az bicep build infra/main.bicep` rc 0; workbook always, alert + action group gated on `hasAlert` |
+| evals | 32/32 + 8/8 + 30/30; `evals/SCORECARD.md` no drift; `evidence/SCORECARD.md` regenerated |
+| scope | `src/api` changed → `azd deploy api`; workbook/alert are Bicep-only (need `azd provision`, not run) |
+
+### Act
+
+- One commit on `c39-observability`, merged `--no-ff` to `main` (`8fe6e84`),
+  pushed. `azd deploy api` (obs wiring — 3 additive best-effort call sites).
+- **Phase 1 Engine backlog is now 0.** Operability is 4.25 → 5.0 needs: the
+  E9.2 CI armed + green on both OSes (OIDC secrets, not doable here), the
+  web-tier log forwarding, and C2–C6 induced end-to-end.
+- Next by scorecard leverage: **E8.5** private endpoints (Security 3.5 — the
+  lowest remaining "built" dimension), or the E10.4 human trials
+  (Usability 2.0 / Understandability 3.0).
+
+---
+
 ## Cycle 38 — close-out export + chaos drill (E9.5 + evidence/chaos/)
 
 **Date:** 2026-09-09 · **Owner:** SRE ·
