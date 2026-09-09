@@ -2,10 +2,11 @@
 Landfall chat UI - a thin FastAPI front end over the Foundry Migration Estimator agent.
 
 One page, one endpoint. The agent is a Microsoft Foundry prompt agent addressed by
-name and driven through the Responses API; each browser tab carries the last
-response id so the conversation keeps its memory. Authentication in front of this
-app is handled by the Container App's built-in Entra ID (Easy Auth) - configure it
-after first deploy.
+name and driven through the Responses API. A conversation is only ever resumed
+through an engagement's server-side response-id pointer, and only after the
+caller's `visibility` on that engagement has been checked (E8.6 / E11.10); an
+unscoped chat is stateless. Authentication in front of this app is handled by the
+Container App's built-in Entra ID (Easy Auth) - configure it after first deploy.
 """
 import base64
 import datetime as _dt
@@ -149,10 +150,20 @@ async def chat(req: Request):
     if not AGENT_NAME:
         return JSONResponse({"error": "AGENT_ID not set - run the postprovision hook"}, status_code=503)
 
-    # The conversation pointer comes from the engagement's stored chat, not the
-    # browser (E11.26). Falls back to a body thread_id only when unscoped.
+    actor = _principal(req)[0] or "anonymous"
+
+    # E8.6 — a conversation can only be resumed through the engagement's server-side
+    # pointer, and only after the caller's visibility has been checked. The engagement
+    # id in the body is access-controlled here (404 if the caller can't see it); a
+    # client-supplied thread_id is never honoured, so a leaked response id is inert.
+    if engagement:
+        _parts = engagement.split("/")
+        _eng = _engagement(_parts[0], _parts[-1], req) if len(_parts) == 2 else None
+        if not _eng:
+            return JSONResponse({"error": "unknown engagement"}, status_code=404)
+        engagement = _eng[0]
     chat_doc = _load_chat(engagement) if engagement else {}
-    prev_id = chat_doc.get("current_response_id") or (body.get("thread_id") if not engagement else None)
+    prev_id = chat_doc.get("current_response_id") if engagement else None
 
     scoped = question
     if engagement:
@@ -186,7 +197,9 @@ async def chat(req: Request):
             tables, last_sql = [], None
         if engagement:
             ts = _now()
-            chat_doc.setdefault("turns", []).append({"role": "user", "text": question, "ts": ts})
+            chat_doc.setdefault("turns", []).append(
+                {"role": "user", "text": question, "ts": ts, "actor": actor})
+            chat_doc["last_actor"] = actor
             a_turn = {"role": "assistant", "text": text, "ts": ts, "citations": cites}
             if tables:
                 a_turn["tables"] = tables
@@ -678,7 +691,8 @@ def engagement_chat_new(customer: str, project: str, request: Request):
         c.setdefault("archived", []).append({
             "started_at": c.get("started_at"), "ended_at": _now(),
             "last_response_id": c.get("current_response_id"), "turns": len(c["turns"])})
-    c.update({"turns": [], "current_response_id": None, "started_at": _now(), "engagement": eid})
+    c.update({"turns": [], "current_response_id": None, "started_at": _now(),
+              "engagement": eid, "last_actor": _principal(request)[0] or "anonymous"})
     try:
         _save_chat(eid, c)
     except Exception as exc:  # noqa: BLE001

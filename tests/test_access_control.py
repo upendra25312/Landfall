@@ -183,6 +183,9 @@ class _WContainer:
             raise KeyError(key)
         return _WDown(self.store[key])
 
+    def upload_blob(self, key, data, overwrite=False):
+        self.store[key] = data if isinstance(data, (bytes, bytearray)) else str(data).encode()
+
     def list_blobs(self, name_starts_with="", include=None):
         for k in list(self.store):
             if k.startswith(name_starts_with):
@@ -232,8 +235,55 @@ def test_web_dashboard_data_403_when_not_visible(webapp):
     store["engagements/alice/a/estimate/latest.json"] = b'{"ok": 1}'
     r = c.get("/dashboard/data?e=alice/a", headers={"x-ms-client-principal": _easyauth("bob")})
     assert r.status_code == 403
-    r2 = c.get("/dashboard/data?e=alice/a", headers={"x-ms-client-principal": _easyauth("alice")})
-    assert r2.status_code == 200
+    ra = c.get("/dashboard/data?e=alice/a", headers={"x-ms-client-principal": _easyauth("alice")})
+    assert ra.status_code == 200
+
+
+# --- E8.6 — chat is bound to the caller's access on the engagement ----------
+
+def _stub_agent(wa, monkeypatch):
+    class _Resp:
+        id = "resp_leaked_from_alice"
+        status = "completed"
+        output_text = "ok"
+        output = []
+    monkeypatch.setattr(wa, "AGENT_NAME", "agent")
+    monkeypatch.setattr(wa, "_openai_client",
+                        lambda: type("O", (), {"responses": type("R", (), {
+                            "create": staticmethod(lambda **kw: (_SEEN.update(kw) or _Resp()))})()})())
+
+
+_SEEN: dict = {}
+
+
+def test_chat_404_for_an_engagement_the_caller_cannot_see(webapp, monkeypatch):
+    wa, c, _ = webapp
+    _stub_agent(wa, monkeypatch)
+    r = c.post("/api/chat", json={"message": "hi", "engagement": "alice/a"},
+               headers={"x-ms-client-principal": _easyauth("bob")})
+    assert r.status_code == 404
+
+
+def test_chat_ignores_a_client_supplied_thread_id(webapp, monkeypatch):
+    wa, c, _ = webapp
+    _SEEN.clear()
+    _stub_agent(wa, monkeypatch)
+    # unscoped chat, caller tries to resume someone else's response id
+    r = c.post("/api/chat", json={"message": "continue", "thread_id": "resp_alice_private"},
+               headers={"x-ms-client-principal": _easyauth("bob")})
+    assert r.status_code == 200
+    assert "previous_response_id" not in _SEEN         # the leaked id was not honoured
+
+
+def test_chat_scoped_to_a_visible_engagement_records_the_actor(webapp, monkeypatch):
+    wa, c, store = webapp
+    _stub_agent(wa, monkeypatch)
+    r = c.post("/api/chat", json={"message": "hi", "engagement": "dave/pub"},
+               headers={"x-ms-client-principal": _easyauth("bob")})
+    assert r.status_code == 200
+    saved = json.loads(store["engagements/dave/pub/_chat.json"])
+    assert saved["last_actor"] == "bob"
+    assert saved["turns"][0]["actor"] == "bob"
 
 
 def test_web_audit_route_reads_jsonl(webapp):

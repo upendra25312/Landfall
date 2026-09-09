@@ -5,6 +5,62 @@ Operating model: [`landfall-5x5-prd.md` §7](landfall-5x5-prd.md). Tracker:
 
 ---
 
+## Cycle 33 — security tail: thread-principal binding + data-handling statement (E8.6 / E8.7)
+
+**Date:** 2026-09-09 · **Owner:** SWE + Security ·
+**Tracker:** E8.6, E8.7 — the two items the scorecard flagged as the fastest lift
+on the Security dimension.
+
+### Plan
+
+- **E8.6** — `POST /api/chat` takes `engagement` from the request body and never
+  access-checks it, and honours a client-supplied `thread_id`. Close both: route
+  the engagement through the visibility guard; make unscoped chat stateless.
+- **E8.7** — write the data-handling statement a client CISO signs before an upload.
+
+Deferred: the CISO signature itself; E8.5 private endpoints; the external pen test.
+
+### Do
+
+- **`src/web/app.py`** — `chat()` splits the body `engagement` and calls
+  `_engagement(customer, project, req)` (the E11.10 `visibility` guard) → `404`
+  if the caller can't see it; `prev_id` comes only from the engagement's stored
+  `current_response_id` (never `body["thread_id"]`), so a leaked response id is
+  inert and an unscoped chat is single-turn. Each saved turn + the chat doc record
+  the `actor` (Easy Auth principal). `engagement_chat_new` stamps `last_actor`.
+  Module docstring + comments updated.
+- **`evidence/data-handling-statement.md`** — what Landfall ingests (and refuses);
+  one deployment per engagement, single region, encryption; access model (Easy
+  Auth, fail-closed RLS, `visibility`, audit trail, chat binding, SQL guard);
+  sub-processors (all first-party Microsoft, same tenant + region; Azure OpenAI
+  no-training); retention + `azd down` deletion; residency; known limitations; a
+  sign-off block. Linked from the scorecard.
+- **`evidence/scorecard.py`** — Security 3.0 → **3.5** (E8.6 closed + statement
+  drafted); basis + evidence link + gap updated; index row for the statement →
+  🟡 drafted. Overall **3.72 / 5**.
+- **`tests/test_access_control.py`** — `_WContainer` gains `upload_blob`; +3:
+  chat `404` for an engagement the caller can't see, a client `thread_id` is not
+  passed to the model, a scoped turn records the actor.
+- `operating-sop.html` v1.4 — access section + Phase 2 intro.
+
+### Check
+
+| gate | result |
+|---|---|
+| unit | **384 pytest** (+3), 2 skipped |
+| chat binding | 404 for a non-visible engagement; `previous_response_id` never set from a client `thread_id`; `actor` on every saved turn |
+| evals | 32/32 + 8/8 + 30/30, `evals/SCORECARD.md` + `evidence/SCORECARD.md` no drift |
+
+### Act
+
+- One commit on `c33-thread-binding`, merged to `main`, pushed. `azd deploy web`
+  (`app.py` changed); no api/agent change.
+- Security is now 3.5 — closing it needs the pen test (E10.4) + the signature +
+  E8.5. Next by scorecard leverage: **E9.2 clean-machine CI** (Operability 3→4),
+  then the usability + comprehension trials (E10.4).
+
+---
+
 ## Cycle 32 — the 5/5 scorecard (E10.3 + E10.6, Phase 2 evidence)
 
 **Date:** 2026-09-09 · **Owner:** PM ·
