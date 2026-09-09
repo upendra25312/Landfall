@@ -2,7 +2,8 @@
 
 **Status:** IN PROGRESS (C18/C24/C25/C25b/C26 done & live — POE pipeline, upload panel,
 per-engagement conversation memory + export/import deployed; **C25b** rebuilt the
-calculator adapters from the live DOM + weekly smoke; C19–C23 + C27–C28 planned) ·
+calculator adapters from the live DOM + weekly smoke — full 55-line POE run verified live,
+reconciliation −73% → +19.9%; C19–C23 + C27–C28 planned) ·
 **Raised:** 2026-09-08 · **Last updated:** 2026-09-09 · **Owner panel:** see below · **Method:** PDCA
 **Rolls into:** the "Landfall to 5/5" PRD as **Epic E11**. Supersedes the
 "one `azd` deployment per engagement" assumption in
@@ -506,12 +507,15 @@ cold-starting + driving). So E11.16 is **fire-and-forget + poll**:
   *verified* adapter fails the job with the control named, and at run time drops its line
   item into `skipped[]` / `fields_not_set[]` rather than mispricing it.
 - **`ca-calc` runs one always-on replica** (`minReplicas 1`, `worker.py consume_forever()`
-  draining `calc-jobs`). True scale-to-zero was tried in C25b — a KEDA `azure-queue` rule
-  with workload-identity auth (`identity: uami.id`, no account key) — but KEDA never scaled
-  the replica up on a queued job (the scaler's MI-auth path isn't wired through in this
-  Container Apps / KEDA version), so it was reverted; the queue rule stays only to burst to
-  2 under load. Real scale-to-zero needs the worker to hold the queue metric > 0 while it
-  drives the calculator, or a different trigger.
+  draining `calc-jobs`) at **2 vCPU / 4 GiB** — Chromium's renderer OOM-crashed rendering a
+  full-page screenshot of a 50+ module estimate at 2 GiB. `driver.build_estimate` now exports
+  the xlsx (the POE) **before** the screenshot and the screenshot is viewport-only + best-effort,
+  so a renderer crash can never fail a completed run. True scale-to-zero was tried in C25b — a
+  KEDA `azure-queue` rule with workload-identity auth (`identity: uami.id`, no account key) —
+  but KEDA never scaled the replica up on a queued job (the scaler's MI-auth path isn't wired
+  through in this Container Apps / KEDA version), so it was reverted; the queue rule stays only
+  to burst to 2 under load. Real scale-to-zero needs the worker to hold the queue metric > 0
+  while it drives the calculator, or a different trigger.
 - `landing_zone.json` records the full spec, the parsed export, `calculator_url` and
   `created_at` — the POE figure is traceable end to end.
 - Landfall never invents a price, never edits the calculator's Excel, and never claims a
