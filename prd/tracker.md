@@ -12,7 +12,7 @@ Companion to [`prd/landfall-5x5-prd.md`](landfall-5x5-prd.md). Delivery log:
 | Phase | Items | Done | In review | In progress | Backlog |
 |---|---|---|---|---|---|
 | 1 — Engine | 37 | 8 | 28 | 1 | 0 |
-| 2 — Evidence | 12 | 0 | 2 | 0 | 10 |
+| 2 — Evidence | 12 | 0 | 4 | 0 | 8 |
 | 3 — Sustain | 3 | 0 | 0 | 0 | 3 |
 | E11 — Engagement Workspaces | 26 | 25 | 0 | 0 | 1 (C26b, sponsor-gated) |
 
@@ -118,9 +118,9 @@ _Last updated: 2026-09-09 (PDCA cycles 1–29). Cycles 19–28 delivered Epic E1
 | E9.5 | Export-before-teardown step | P2 | backlog | SRE | — | Close-out dumps tables + docs to a retained location first. |
 | E10.1 | `evidence/backtest/` — 3 estates × 3 methods + variance analysis | P0 | in-review | FinOps + Architect | 30 | Portfolio totals within ±15% across methods; variances explained. _Done — `evidence/backtest/` (`estate_gen.py` small/midmarket/enterprise, `methods.py` engine/blended/bands over the shared right-sized footprint, `pricebook.py` non-linear synthetic book, `backtest.py` → `RESULTS.md`). **3/3 estates converge at 5.2–5.7% spread**; variance analysis per estate. `tests/test_backtest.py` (7) + `evals.yml` drift gate._ |
 | E10.2 | `evidence/broken-dumps/` corpus + expected DQ reports | P0 | in-review | SWE | 31 | 6+ damaged inputs; each handled per E1.4. _Done — `evidence/broken-dumps/` (`gen_dumps.py` → 9 damaged files, `EXPECTED.json` contract, `check.py` → `RESULTS.md`). **9/9 handled per E1.4** (unrecognised / rejected / degraded-but-named). `dq.py` gained 3 findings (zero-rows, duplicate-keys, unparseable vCPU/RAM) + a Low-confidence rule. `tests/test_broken_dumps.py` (12) + `evals.yml` drift gate. SOP v1.3._ |
-| E10.3 | `evidence/evals/` scorecard + history | P0 | backlog | Applied Sci | — | Latest scorecard published; history retained. |
+| E10.3 | `evidence/evals/` scorecard + history | P0 | in-review | Applied Sci | 32 | Latest scorecard published; history retained. _Done — `evidence/evals/README.md` → the live `evals/SCORECARD.md`; `evidence/scorecard.py` snapshots it to `evidence/evals/history/<date>.md`; git log of `evals/SCORECARD.md` is the full timeline._ |
 | E10.4 | `evidence/{pentest,trials,chaos}/` reports | P0/P1 | backlog | Security + SRE + Writer | — | Pen test passes; usability + comprehension trials meet bars; chaos drill logged. |
-| E10.6 | `evidence/SCORECARD.md` | P0 | backlog | PM | — | Rubric + current score + link to every artifact. |
+| E10.6 | `evidence/SCORECARD.md` | P0 | in-review | PM | 32 | Rubric + current score + link to every artifact. _Done — `evidence/scorecard.py` → `evidence/SCORECARD.md`: 9 dimensions (Correctness/Robustness/Reliability at 5, rest 2–4), **overall 3.67/5**, live-pulled numbers from the back-test + broken-dumps + eval scorecard, per-dimension "to reach 5/5", evidence-pack index, residual risk. `tests/test_scorecard.py` (6, incl. link-resolution + drift gate) + `evals.yml` step._ |
 
 ## Epic E11 — Engagement Workspaces (multi-client, dashboard-driven)
 
@@ -188,3 +188,4 @@ many engagements, isolated by an `<customer>/<project>` key. The Foundry agent o
 | 29 | **Phase 1 tail** — E4.3 wave duration model (`schedule.py` → dated waves + critical path), E6.2-full resource loading (month-by-month FTE curve + peak FTE), E1.7 per-engagement `_mapping.json` column override. 356 pytest, evals green. | [pdca-log.md](pdca-log.md) · **done** |
 | 30 | **E10.1 cost-method back-test** — `evidence/backtest/`: 3 synthetic estates (small/midmarket/enterprise) × 3 pricing methods (catalogue SKU / blended $/vCPU / T-shirt bands) over a non-linear synthetic price book → all converge at 5.2–5.7% spread (±15% bar). `RESULTS.md` + variance analysis + CI drift gate. 363 pytest. | [pdca-log.md](pdca-log.md) · **done** |
 | 31 | **E10.2 broken-dump corpus** — `evidence/broken-dumps/`: 9 damaged inventory files (unrecognised format, empty, header-only, missing-required-column, ragged rows, garbage numerics, duplicate keys, UTF-16, orphan endpoints), each proven handled per E1.4. `dq.py` +3 findings + a Low-confidence rule. `RESULTS.md` + CI drift gate; SOP v1.3. 375 pytest. | [pdca-log.md](pdca-log.md) · **done** |
+| 32 | **E10.3 + E10.6 — 5/5 scorecard** — `evidence/scorecard.py` → `evidence/SCORECARD.md`: 9-dimension rubric, live-pulled scores (**overall 3.67/5**), per-dimension "to reach 5/5", evidence index, residual risk. `evidence/evals/` history snapshots. `tests/test_scorecard.py` (6) + CI drift gate. 381 pytest. Code-only. | [pdca-log.md](pdca-log.md) · **done** |

@@ -1,7 +1,9 @@
 # Generated evidence + eval artefacts are regenerated and byte-compared in CI —
 # pin them to LF so a CRLF checkout on Windows never trips the drift gates.
 evals/SCORECARD.md            text eol=lf
+evidence/SCORECARD.md         text eol=lf
 evidence/**/RESULTS.md        text eol=lf
+evidence/evals/history/**     text eol=lf
 evidence/broken-dumps/dumps/** text eol=lf
 evidence/broken-dumps/EXPECTED.json text eol=lf
 src/web/questionnaire.html    text eol=lf

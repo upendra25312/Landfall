@@ -5,6 +5,65 @@ Operating model: [`landfall-5x5-prd.md` §7](landfall-5x5-prd.md). Tracker:
 
 ---
 
+## Cycle 32 — the 5/5 scorecard (E10.3 + E10.6, Phase 2 evidence)
+
+**Date:** 2026-09-09 · **Owner:** PM ·
+**Tracker:** E10.6 (`evidence/SCORECARD.md`) + E10.3 (`evidence/evals/` history).
+
+### Plan
+
+Build the file you hand someone who asks "is it production-ready?" — the nine
+rubric dimensions from `audits/path-to-5x5.md` §3, the current honest score per
+dimension, what's missing to reach 5/5, and a link to every evidence artefact.
+The numbers behind the *done* dimensions come live from the other artefacts so a
+regression there shows up here. Deferred: the trials / pentest / chaos artefacts
+themselves (E10.4) — the scorecard lists them as ⬜ not started.
+
+### Do
+
+- **`evidence/scorecard.py`** — `rubric(live)` holds the 9 dimensions (5/5 bar,
+  score, basis, evidence links, gap); `_live()` imports `backtest.run` +
+  `broken-dumps/check.run` and parses `evals/SCORECARD.md` for the current numbers;
+  Correctness / Robustness / Reliability score 5 **only while** their artefact
+  passes. `_md()` renders the summary table (with score bars), per-dimension
+  detail, the evidence-pack index, and residual risk. `main()` also snapshots
+  `evals/SCORECARD.md` → `evidence/evals/history/<date>.md`.
+- **`evidence/evals/README.md`** — points at the live scorecard + the history dir;
+  notes that the git log of `evals/SCORECARD.md` is the full timeline.
+- **`tests/test_scorecard.py`** (6) — all 9 dimensions present; overall = mean;
+  every < 5 dimension names a gap and cites evidence; **every evidence link
+  resolves on disk**; live pulls reflect the passing artefacts; `SCORECARD.md`
+  drift gate. `evals.yml` regenerates + diffs `evidence/SCORECARD.md`.
+- `evidence/README.md` now opens with "Start here: SCORECARD.md".
+
+### Check
+
+| Dimension | Score | Backed by |
+|---|--:|---|
+| Correctness | 5.0 | back-test 3×3 @ ≤5.7% (E10.1) |
+| Defensibility | 4.0 | F* ids + calc appendix + register (E5.2/5.3) — board sign-off pending |
+| Completeness | 4.0 | 8 data-driven sections — board "edit not author" pending |
+| Robustness | 5.0 | 9-file broken-dump corpus, all per E1.4 (E10.2) |
+| Usability | 2.0 | no-code path built, timed trial not run |
+| Understandability | 2.0 | SOP v1.3 + docs, comprehension trial not run |
+| Operability | 3.0 | deploys work + self-contained hooks; no clean-machine CI / chaos drill |
+| Security | 3.0 | EasyAuth + RLS + SQL guard + access control + isolation tests; no pen test / signed statement |
+| Reliability | 5.0 | eval CI gate — SQL 32/32, scenarios 8/8, faults 30/30, deterministic |
+| **Overall** | **3.67 / 5** | |
+
+- **381 pytest** (+6), evals green, `evidence/SCORECARD.md` + `evals/SCORECARD.md`
+  no drift, all 27 evidence links resolve.
+
+### Act
+
+- One commit on `c32-scorecard`, merged to `main`, pushed. **Code-only — no deploy.**
+- The scorecard now drives the remaining Phase 2 backlog: Usability + Understandability
+  (trials, E10.4), Operability (E9.2–9.5), Security (E8.5–8.7 + pentest). Highest
+  score leverage: E9.2 clean-machine CI (Operability 3→4) and the data-handling
+  statement (Security 3→4, unblocks the CISO sign-off).
+
+---
+
 ## Cycle 31 — broken-dump corpus (E10.2, Phase 2 evidence)
 
 **Date:** 2026-09-09 · **Owner:** SWE ·
