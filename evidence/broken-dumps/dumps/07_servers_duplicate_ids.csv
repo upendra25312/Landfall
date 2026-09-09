@@ -1,0 +1,10 @@
+server_id,hostname,env,os_name,os_version,os_eol_date,vcpu,ram_gb,provisioned_disk_gb,used_disk_gb,cpu_avg_pct,cpu_peak_pct,cpu_p95_pct,ram_avg_pct,ram_p95_pct,cluster,datacenter,powerstate,app_id,notes
+srv-0001,host0001,prod,Windows Server,2019,2029-01-09,4,16,200,90,12.0,34.0,20.0,55.0,60.0,CL1,DC-1,poweredOn,app-01,
+srv-0001,host0001b,prod,Windows Server,2016,2027-01-12,8,32,400,200,,,,,,CL2,DC-1,poweredOn,app-02,second copy
+srv-0001,host0001c,dr,Windows Server,2016,2027-01-12,2,8,100,40,,,,,,CL3,DC-2,poweredOff,app-02,third copy
+srv-0002,host0002,prod,Windows Server,2019,2029-01-09,4,16,200,90,12.0,34.0,20.0,55.0,60.0,CL1,DC-1,poweredOn,app-01,
+srv-0003,host0003,prod,Windows Server,2019,2029-01-09,4,16,200,90,12.0,34.0,20.0,55.0,60.0,CL1,DC-1,poweredOn,app-01,
+srv-0004,host0004,prod,Windows Server,2019,2029-01-09,4,16,200,90,12.0,34.0,20.0,55.0,60.0,CL1,DC-1,poweredOn,app-01,
+srv-0005,host0005,prod,Windows Server,2019,2029-01-09,4,16,200,90,12.0,34.0,20.0,55.0,60.0,CL1,DC-1,poweredOn,app-01,
+srv-0006,host0006,prod,Windows Server,2019,2029-01-09,4,16,200,90,12.0,34.0,20.0,55.0,60.0,CL1,DC-1,poweredOn,app-01,
+srv-0007,host0007,prod,Windows Server,2019,2029-01-09,4,16,200,90,12.0,34.0,20.0,55.0,60.0,CL1,DC-1,poweredOn,app-01,

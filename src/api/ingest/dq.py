@@ -114,9 +114,31 @@ def build_report(results: list[NormResult], existing_keys: dict | None = None) -
 
 def _findings(tables: dict) -> list[str]:
     out = []
+
+    # a recognised file that carried no data rows — loaded nothing, say so loudly
+    for name, t in tables.items():
+        if name != "_unrecognised" and not t.get("rows_normalised"):
+            out.append(f"The {name} file was recognised but contained no data rows — "
+                       f"nothing was loaded for {name}. Re-export and re-upload.")
+
+    # duplicate primary keys — the loader upserts, so silent last-write-wins
+    for name, t in tables.items():
+        if name != "_unrecognised" and t.get("duplicate_keys"):
+            d = t["duplicate_keys"]
+            out.append(f"{len(d)} duplicate key(s) in {name} "
+                       f"({', '.join(str(x) for x in d[:5])}"
+                       + (" …" if len(d) > 5 else "") + ") — the loader keeps the last row "
+                       "for each; de-duplicate the source so the count is trustworthy.")
+
     s = tables.get("servers")
     if s:
         n = s["rows_normalised"] or 1
+        for col, label in (("vcpu", "vCPU"), ("ram_gb", "RAM")):
+            if s["null_rate"].get(col, 0) > 0.3:
+                pct = round(100 * s["null_rate"][col])
+                out.append(f"{label} is missing or unparseable on {pct}% of servers — "
+                           f"compute sizing cannot run for those rows. Check the source "
+                           f"column and its units (a plain number, no 'GB'/'N/A').")
         if s.get("no_perf_data"):
             pct = round(100 * s["no_perf_data"] / n)
             out.append(
@@ -170,6 +192,8 @@ def _confidence(tables: dict) -> str:
     os_gap = s["null_rate"].get("os_name", 1.0)
     if "_unrecognised" in tables or s["errors"]:
         return "Low"
+    if s["null_rate"].get("vcpu", 0) > 0.5 or s["null_rate"].get("ram_gb", 0) > 0.5:
+        return "Low"                       # can't size the fleet without vCPU/RAM
     if perf_gap > 0.5 or app_gap > 0.4 or os_gap > 0.2 or "dependencies" not in tables:
         return "Medium"
     if perf_gap > 0.2 or app_gap > 0.15:

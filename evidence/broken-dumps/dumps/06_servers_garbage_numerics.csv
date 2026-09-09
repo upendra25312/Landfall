@@ -1,0 +1,13 @@
+server_id,hostname,env,os_name,os_version,os_eol_date,vcpu,ram_gb,provisioned_disk_gb,used_disk_gb,cpu_avg_pct,cpu_peak_pct,cpu_p95_pct,ram_avg_pct,ram_p95_pct,cluster,datacenter,powerstate,app_id,notes
+srv-0001,host0001,prod,Ubuntu,22.04 LTS,2027-04-30,eight,unknown,200,90,,,,,,CL1,DC-1,poweredOn,app-01,
+srv-0002,host0002,prod,Ubuntu,22.04 LTS,2027-04-30,-,32GB,200,90,,,,,,CL1,DC-1,poweredOn,app-01,
+srv-0003,host0003,prod,Ubuntu,22.04 LTS,2027-04-30,TBD,n/a,200,90,,,,,,CL1,DC-1,poweredOn,app-01,
+srv-0004,host0004,prod,Ubuntu,22.04 LTS,2027-04-30,?,sixteen,200,90,,,,,,CL1,DC-1,poweredOn,app-01,
+srv-0005,host0005,prod,Ubuntu,22.04 LTS,2027-04-30,four,—,200,90,,,,,,CL1,DC-1,poweredOn,app-01,
+srv-0006,host0006,prod,Ubuntu,22.04 LTS,2027-04-30,N/A,16 GB,200,90,,,,,,CL1,DC-1,poweredOn,app-01,
+srv-0007,host0007,prod,Ubuntu,22.04 LTS,2027-04-30,eight,unknown,200,90,,,,,,CL1,DC-1,poweredOn,app-01,
+srv-0008,host0008,prod,Ubuntu,22.04 LTS,2027-04-30,-,32GB,200,90,,,,,,CL1,DC-1,poweredOn,app-01,
+srv-0009,host0009,prod,Ubuntu,22.04 LTS,2027-04-30,TBD,n/a,200,90,,,,,,CL1,DC-1,poweredOn,app-01,
+srv-0010,host0010,prod,Ubuntu,22.04 LTS,2027-04-30,?,sixteen,200,90,,,,,,CL1,DC-1,poweredOn,app-01,
+srv-0011,host0011,prod,Ubuntu,22.04 LTS,2027-04-30,four,—,200,90,,,,,,CL1,DC-1,poweredOn,app-01,
+srv-0012,host0012,prod,Ubuntu,22.04 LTS,2027-04-30,N/A,16 GB,200,90,,,,,,CL1,DC-1,poweredOn,app-01,
