@@ -116,6 +116,25 @@ def assemble_estimate(inputs: dict, cfg: dict | None = None) -> dict:
     for text in wav.get("assumptions", []) or []:
         reg.add(text, "assumption", "waves")
 
+    # --- discovery questionnaire answers (E11.25) ------------------------
+    # Each answered question becomes a cited assumption; the unanswered MUST/SHOULD
+    # questions become "ask the client" data gaps.
+    discovery = _ok(inputs.get("discovery"))
+    disc_answers = discovery.get("answers") or {}
+    for qid, a in disc_answers.items():
+        ans = (a.get("answer") if isinstance(a, dict) else a) or ""
+        q = a.get("question") if isinstance(a, dict) else None
+        if str(ans).strip():
+            reg.add(f"{q or qid}: {str(ans).strip()}", "assumption", f"discovery:{qid}")
+    disc_gaps = discovery.get("gaps") or {}
+    _must_open = [q for grp in (disc_gaps.get("missing") or [])
+                 for q in grp.get("questions", []) if q.get("priority") == "MUST"]
+    for q in _must_open[:12]:
+        reg.add(f"Ask the client: {q.get('question')}", "data_gap", f"discovery:{q.get('id')}")
+    if len(_must_open) > 12:
+        reg.add(f"Ask the client: {len(_must_open) - 12} further required discovery "
+                f"questions are unanswered — see /questionnaire", "data_gap", "discovery:more")
+
     # standing exclusions (always true for a Landfall estimate)
     for x in ["ExpressRoute / VPN circuit charges and any carrier fees",
               "Landing-zone fixed platform services beyond the build effort",
@@ -254,6 +273,10 @@ def assemble_estimate(inputs: dict, cfg: dict | None = None) -> dict:
             "assumptions": reg.by_category("assumption"),
             "exclusions": reg.by_category("exclusion"),
             "data_gaps": reg.by_category("data_gap"),
+            "discovery": ({"headline": disc_gaps.get("headline"),
+                           "answered": disc_gaps.get("answered"),
+                           "must_open": (disc_gaps.get("must_total") or 0) - (disc_gaps.get("must_answered") or 0)}
+                          if discovery else None),
         },
         "next_steps": {"actions": _next_steps(reg, disp, dq_conf)},
     }
@@ -294,6 +317,7 @@ def assemble_estimate(inputs: dict, cfg: dict | None = None) -> dict:
             "assumptions": reg.by_category("assumption"),
             "exclusions": reg.by_category("exclusion"),
             "data_gaps": reg.by_category("data_gap"),
+            "discovery": bodies["assumptions_register"].get("discovery"),
         },
     }
     package["summary_markdown"] = render_markdown(package)

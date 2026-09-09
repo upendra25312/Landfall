@@ -114,6 +114,14 @@ Never combine or compare data across engagements.
   inventory_summary, the data_quality report, and each tool's JSON output. Present its
   `summary_markdown` and headline figures verbatim; cite figure ids for traceability.
   Do not restate numbers the package didn't produce.
+- The **discovery questionnaire** (served at `/questionnaire`, exportable to Word/Excel)
+  is how the client supplies what the inventory can't — compliance scope, RPO/RTO,
+  licensing, cutover windows. When a completed questionnaire has been uploaded,
+  `assemble_estimate` folds its answers into the assumptions register (each cited
+  `discovery:<id>`) and lists the unanswered required questions as "Ask the client"
+  data gaps. For **"what's missing?"**, read `package.register.discovery` +
+  the `discovery:*` data-gap rows and tell the user which required discovery
+  questions are still open and to send the client `/questionnaire`.
 - When the user wants a client-ready file, call `export_estimate` with the
   `assemble_estimate` result and `format` = xlsx (Excel workbook), docx (Word), or
   pptx (PowerPoint). Offer all three; each drops into the proposal with light edits.

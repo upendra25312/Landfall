@@ -53,6 +53,19 @@ def _container_client():
     return _blob_state["cc"]
 
 
+def _discovery_for(engagement: str) -> dict | None:
+    """The engagement's uploaded discovery-questionnaire answers (E11.25), if any —
+    read from raw/engagements/<c>/<p>/_discovery.json. Best-effort."""
+    try:
+        from azure.identity import DefaultAzureCredential
+        from azure.storage.blob import BlobServiceClient
+        svc = BlobServiceClient(os.environ["STORAGE_URL"], credential=DefaultAzureCredential())
+        raw = svc.get_container_client(eng.RAW_CONTAINER)
+        return json.loads(raw.download_blob(f"{eng.raw_prefix(engagement)}/_discovery.json").readall())
+    except Exception:                              # noqa: BLE001
+        return None
+
+
 @deliverable_bp.route(route="assemble_estimate", methods=["POST"], auth_level=func.AuthLevel.ANONYMOUS)
 def assemble_estimate_route(req: func.HttpRequest) -> func.HttpResponse:
     try:
@@ -68,6 +81,8 @@ def assemble_estimate_route(req: func.HttpRequest) -> func.HttpResponse:
         return _json({"error": str(exc)}, 400)
     try:
         cfg = load_config(overrides=body.get("config"))
+        if "discovery" not in body:
+            body["discovery"] = _discovery_for(engagement)
         package = assemble_estimate(body, cfg)
         package.setdefault("meta", {})["engagement"] = engagement
     except Exception as exc:                       # noqa: BLE001
@@ -117,6 +132,8 @@ def publish_estimate_route(req: func.HttpRequest) -> func.HttpResponse:
 
     try:
         cfg = load_config(overrides=body.get("config"))
+        if "discovery" not in body:
+            body["discovery"] = _discovery_for(engagement)
         package = body.get("package") or assemble_estimate(body, cfg)
         package.setdefault("meta", {})["engagement"] = engagement
         cc = _container_client()
