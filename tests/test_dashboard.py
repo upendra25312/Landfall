@@ -36,7 +36,7 @@ def test_publish_estimate_writes_package_and_three_exports(monkeypatch):
     monkeypatch.setattr(dfn, "_container_client", lambda: fake)
 
     pkg = P.run()
-    resp = dfn.publish_estimate_route(_req({"package": pkg}))
+    resp = dfn.publish_estimate_route(_req({"package": pkg, "engagement": "_default_/_default_"}))
     assert resp.status_code == 200
     out = json.loads(resp.get_body())
     assert set(out["published"]) == {"latest.json", "latest.xlsx", "latest.docx", "latest.pptx"}
@@ -108,7 +108,8 @@ def test_publish_estimate_build_poe_failure_does_not_fail_publish(monkeypatch):
 
     monkeypatch.setattr(lzf, "stage_calc_run", _boom)
     resp = dfn.publish_estimate_route(
-        _req({"package": P.run(), "build_poe": True, "storage_cost": {"line_items": []}}))
+        _req({"package": P.run(), "engagement": "_default_/_default_",
+              "build_poe": True, "storage_cost": {"line_items": []}}))
     assert resp.status_code == 200
     out = json.loads(resp.get_body())
     assert out["poe"]["status"] == "skipped" and "no queue wired" in out["poe"]["reason"]
@@ -122,7 +123,8 @@ def test_publish_estimate_no_build_poe_flag_skips_the_run(monkeypatch):
     monkeypatch.setattr(dfn, "_container_client", lambda: _FakeContainer())
     monkeypatch.setattr(lzf, "stage_calc_run",
                         lambda *a, **k: (_ for _ in ()).throw(AssertionError("should not be called")))
-    resp = dfn.publish_estimate_route(_req({"package": P.run(), "compute_cost": {"x": 1}}))
+    resp = dfn.publish_estimate_route(_req({"package": P.run(), "engagement": "_default_/_default_",
+                                            "compute_cost": {"x": 1}}))
     assert resp.status_code == 200
     assert json.loads(resp.get_body())["poe"] is None
 
