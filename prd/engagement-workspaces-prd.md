@@ -3,8 +3,8 @@
 **Status:** IN PROGRESS (C18/C24/C25/C25b/C26 done & live — POE pipeline, upload panel,
 per-engagement conversation memory + export/import deployed; **C25b** rebuilt the
 calculator adapters from the live DOM + weekly smoke — full 55-line POE run verified live,
-reconciliation −73% → +27.9% (calc list vs internal RI/AHB); **C19** done in code
-(`run_engagement` bulk-ingest + hard engagement scoping), not yet deployed; C20–C23 + C27–C28 planned) ·
+reconciliation −73% → +27.9% (calc list vs internal RI/AHB); **C19** done & live
+(`run_engagement` bulk-ingest + hard engagement scoping); C20–C23 + C27–C28 planned) ·
 **Raised:** 2026-09-08 · **Last updated:** 2026-09-09 · **Owner panel:** see below · **Method:** PDCA
 **Rolls into:** the "Landfall to 5/5" PRD as **Epic E11**. Supersedes the
 "one `azd` deployment per engagement" assumption in
@@ -811,7 +811,7 @@ sizing or prices.
 | Cycle | Scope | Exit |
 |---|---|---|
 | **C18** | E11.1 + E11.2 + E11.3 (engagement model, ADLS layout, SQL `engagement_id` + migration) | `create_engagement` works; two engagements' data is isolated in SQL and blob; tests |
-| **C19** | E11.4 + E11.5 + E11.13 (ingestion + every tool scoped; isolation evals) | **Done (2026-09-09):** `POST /api/run_engagement` bulk-ingests one folder (+ `_runs.jsonl` audit, OpenAPI tool, agent prompt line); `query_inventory` / `assemble_estimate` / `publish_estimate` 400 without `engagement` (no `_default_` fallback); `tests/test_run_engagement.py` (6) + `tests/test_engagement_required.py` (6) green, full suite 230 pass, SCORECARD unchanged. **Not yet deployed** — breaking API change (removes the `_default_` fallback), holding for go-ahead |
+| **C19** | E11.4 + E11.5 + E11.13 (ingestion + every tool scoped; isolation evals) | **Done (2026-09-09):** `POST /api/run_engagement` bulk-ingests one folder (+ `_runs.jsonl` audit, OpenAPI tool, agent prompt line); `query_inventory` / `assemble_estimate` / `publish_estimate` 400 without `engagement` (no `_default_` fallback); `tests/test_run_engagement.py` (6) + `tests/test_engagement_required.py` (6) green, full suite 230 pass, SCORECARD unchanged. **Deployed + verified live 2026-09-09** (`azd deploy api` + `create_agent.py`): agent-driven end-to-end (upload servers.csv → run_engagement ingests → query_inventory RLS-scoped returns exactly those rows; `_default_` still 250) |
 | **C20** | E11.6 + E11.24 + E11.25 (dashboard: home, new-engagement, **upload panel + visual upload confirmation**, start analysis; discovery questionnaire served + round-trippable) | A no-CLI user creates an engagement, drags in `RVTools.xlsx` + a CMDB `.csv`, sees each go uploading → ✓ uploaded with its detected profile + row count, and runs analysis — all from the browser; the files are only under that engagement's `raw/…` prefix |
 | **C21** | E11.7 + E11.8 + E11.14 (engagement-scoped chat + prompt cards + "ask & export to Excel"; versioned publish) | Prompt cards drive per-engagement outcomes; an architect downloads any chat answer as a workbook; dashboard shows the right engagement's estimate |
 | **C22** | E11.9 + E11.12 (studio-deck container; xlsx/docx polish + CI recalc gate) | "Studio deck" card produces a `qa_gate`-passing deck; recalc gate live |
