@@ -22,6 +22,7 @@ import azure.functions as func
 from azure.identity import DefaultAzureCredential
 from azure.storage.blob import BlobServiceClient
 
+import audit
 import engagement as eng
 
 engagements_bp = func.Blueprint()
@@ -39,6 +40,10 @@ def _svc() -> BlobServiceClient:
 
 def _raw():
     return _svc().get_container_client(eng.RAW_CONTAINER)
+
+
+def _answers():
+    return _svc().get_container_client(eng.ANSWERS_CONTAINER)
 
 
 def _exists(engagement_id: str) -> bool:
@@ -63,11 +68,21 @@ def _unique_id(customer: str, project: str) -> str:
 
 def _principal(req: func.HttpRequest) -> str:
     """The Entra user behind EasyAuth, if present."""
-    for h in ("x-ms-client-principal-name", "x-ms-client-principal-id"):
-        v = req.headers.get(h)
-        if v:
-            return v
-    return "unknown"
+    return _principal_full(req)[0]
+
+
+def _principal_full(req: func.HttpRequest) -> tuple[str, list[str]]:
+    """(name, group_ids) for the Easy Auth caller. Prefers the decoded
+    `x-ms-client-principal` header (carries group claims); falls back to the plain
+    name/id headers Easy Auth also injects."""
+    name, groups = eng.principal_from_easyauth(req.headers.get("x-ms-client-principal"))
+    if not name:
+        for h in ("x-ms-client-principal-name", "x-ms-client-principal-id"):
+            v = req.headers.get(h)
+            if v:
+                name = v
+                break
+    return (name or "unknown"), groups
 
 
 @engagements_bp.route(route="engagements", methods=["POST", "GET"],
@@ -106,14 +121,11 @@ def engagements_route(req: func.HttpRequest) -> func.HttpResponse:
         "currency": (body.get("currency") or "USD").upper(),
         "licensing_program": (body.get("licensing_program") or "MCA").upper(),
         "notes": body.get("notes") or "",
-        "visibility": body.get("visibility") if body.get("visibility") in
-        (None, "owner", "all") or str(body.get("visibility", "")).startswith("group:")
-        else "owner",
+        "visibility": eng.normalize_visibility(body.get("visibility")),
         "status": "new",
         "created_by": _principal(req),
         "created_at": _dt.datetime.now(_dt.timezone.utc).isoformat(timespec="seconds"),
     }
-    manifest["visibility"] = manifest["visibility"] or "owner"
     try:
         from lz.calculator_spec import region_is_supported
         manifest["target_region_calculator_supported"] = region_is_supported(manifest["target_region"])
@@ -132,6 +144,9 @@ def engagements_route(req: func.HttpRequest) -> func.HttpResponse:
         return _json({"error": f"provisioning failed: {exc}"}, 500)
 
     logging.info("engagement created: %s by %s", engagement_id, manifest["created_by"])
+    audit.record(_answers(), engagement_id, "engagement_created",
+                 actor=manifest["created_by"], visibility=manifest["visibility"],
+                 target_region=manifest.get("target_region"))
     return _json(manifest, 201)
 
 
@@ -254,14 +269,45 @@ def engagement_one(req: func.HttpRequest) -> func.HttpResponse:
         return _json({"error": str(exc)}, 400)
     try:
         blob = _raw().get_blob_client(eng.engagement_file(engagement_id)).download_blob().readall()
-        return _json(json.loads(blob))
+        manifest = json.loads(blob)
     except Exception:                       # noqa: BLE001
         return _json({"error": f"no engagement {engagement_id}"}, 404)
+    name, groups = _principal_full(req)
+    if not eng.can_view(manifest, name, groups):
+        return _json({"error": "not visible to you"}, 403)
+    return _json(manifest)
+
+
+@engagements_bp.route(route="engagements/{customer}/{project}/audit", methods=["GET"],
+                      auth_level=func.AuthLevel.ANONYMOUS)
+def engagement_audit(req: func.HttpRequest) -> func.HttpResponse:
+    """The engagement's audit trail (E11.10): who created it, and every
+    run_engagement / publish_estimate / calc run, newest first."""
+    engagement_id = f"{req.route_params.get('customer')}/{req.route_params.get('project')}"
+    try:
+        engagement_id = eng.normalize_engagement(engagement_id)
+    except ValueError as exc:
+        return _json({"error": str(exc)}, 400)
+    try:
+        manifest = json.loads(
+            _raw().get_blob_client(eng.engagement_file(engagement_id)).download_blob().readall())
+    except Exception:                      # noqa: BLE001
+        return _json({"error": f"no engagement {engagement_id}"}, 404)
+    name, groups = _principal_full(req)
+    if not eng.can_view(manifest, name, groups):
+        return _json({"error": "not visible to you"}, 403)
+    try:
+        limit = int(req.params.get("limit") or 200)
+    except ValueError:
+        limit = 200
+    entries = audit.read(_answers(), engagement_id, limit=limit)
+    return _json({"engagement": engagement_id, "entries": entries, "count": len(entries)})
 
 
 def _list(req: func.HttpRequest) -> func.HttpResponse:
     created_by = req.params.get("created_by")
-    viewer = req.params.get("visible_to") or _principal(req)
+    name, groups = _principal_full(req)
+    viewer = req.params.get("visible_to") or name
     out = []
     try:
         raw = _raw()
@@ -275,8 +321,7 @@ def _list(req: func.HttpRequest) -> func.HttpResponse:
                 continue
             if created_by and m.get("created_by") != created_by:
                 continue
-            vis = m.get("visibility", "owner")
-            if vis == "all" or m.get("created_by") == viewer or viewer == "unknown":
+            if eng.can_view(m, viewer, groups):
                 out.append({k: m.get(k) for k in
                             ("engagement", "customer", "project", "region", "status",
                              "created_by", "created_at", "visibility")})

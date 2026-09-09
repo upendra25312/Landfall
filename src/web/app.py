@@ -19,6 +19,7 @@ from fastapi.responses import HTMLResponse, JSONResponse, Response
 from azure.identity import DefaultAzureCredential
 from azure.ai.projects import AIProjectClient
 
+import access as _acl
 import uploads as _up
 
 logging.basicConfig(level=logging.INFO)
@@ -77,9 +78,13 @@ def _estimate_prefixes(engagement: str | None) -> list[str]:
 def _read_estimate_blob(name: str, engagement: str | None = None) -> bytes | None:
     for prefix in _estimate_prefixes(engagement):
         try:
-            return _estimate_container().download_blob(f"{prefix}/{name}").readall()
+            data = _estimate_container().download_blob(f"{prefix}/{name}").readall()
         except Exception:  # noqa: BLE001 - missing blob -> try the next location
             continue
+        if prefix == "estimate":  # pre-E11 flat path — one-release back-compat shim
+            logging.warning("serving %s from the legacy flat estimate/ path — run "
+                            "scripts/migrate_to_default_engagement.py --apply", name)
+        return data
     return None
 
 
@@ -239,8 +244,11 @@ def _slug(v: str) -> str:
 
 
 def _principal_name(request: Request) -> str:
-    return (request.headers.get("x-ms-client-principal-name")
-            or request.headers.get("x-ms-client-principal-id") or "anonymous")
+    return _acl.principal(request.headers)[0] or "anonymous"
+
+
+def _principal(request: Request) -> tuple[str | None, list[str]]:
+    return _acl.principal(request.headers)
 
 
 @app.get("/api/engagements")
@@ -248,7 +256,8 @@ def engagements_list(request: Request):
     """List engagements from blob (`raw/engagements/<c>/<p>/_engagement.json`), filtered
     by the caller's visibility (E11.6). The chat page uses this for its engagement picker
     so the user never types the `<customer>/<project>` id."""
-    me = _principal_name(request)
+    me, groups = _principal(request)
+    me = me or "anonymous"
     out = []
     try:
         cc = _raw_container()
@@ -259,8 +268,7 @@ def engagements_list(request: Request):
                 m = json.loads(cc.download_blob(b.name).readall())
             except Exception:  # noqa: BLE001
                 continue
-            vis = m.get("visibility", "owner")
-            if vis == "owner" and m.get("created_by") not in (me, "anonymous"):
+            if not _acl.can_view(m, None if me == "anonymous" else me, groups):
                 continue
             out.append({k: m.get(k) for k in
                         ("engagement", "customer", "project", "target_region", "dr_region",
@@ -303,7 +311,8 @@ async def engagements_create(request: Request):
         "currency": (body.get("currency") or "USD").upper(),
         "licensing_program": (body.get("licensing_program") or "MCA").upper(),
         "target_region_calculator_supported": supported,
-        "notes": body.get("notes") or "", "visibility": "owner", "status": "new",
+        "notes": body.get("notes") or "",
+        "visibility": _acl.normalize_visibility(body.get("visibility")), "status": "new",
         "created_by": _principal_name(request),
         "created_at": _dt.datetime.now(_dt.timezone.utc).isoformat(timespec="seconds"),
     }
@@ -323,17 +332,29 @@ def _seg(v: str) -> str | None:
     return v if _SEG_RE.match(v) else None
 
 
-def _engagement(customer: str, project: str) -> tuple[str, str] | None:
-    """Validate the path pair -> ('<c>/<p>', 'engagements/<c>/<p>'). None if malformed
-    or the engagement doesn't exist (no `_engagement.json`)."""
+def _engagement(customer: str, project: str,
+                request: Request | None = None) -> tuple[str, str] | None:
+    """Validate the path pair -> ('<c>/<p>', 'engagements/<c>/<p>'). None if malformed,
+    if the engagement doesn't exist (no `_engagement.json`), or — when `request` is
+    given — if its `visibility` doesn't admit the caller (E11.10; a 404, not a 403,
+    so an engagement the caller can't see is indistinguishable from one that isn't
+    there)."""
     c, p = _seg(customer), _seg(project)
     if not c or not p:
         return None
     eid = f"{c}/{p}"
     try:
-        _raw_container().download_blob(f"engagements/{eid}/_engagement.json").readall()
+        raw = _raw_container().download_blob(f"engagements/{eid}/_engagement.json").readall()
     except Exception:  # noqa: BLE001
         return None
+    if request is not None:
+        try:
+            manifest = json.loads(raw)
+        except Exception:  # noqa: BLE001
+            manifest = {}
+        name, groups = _principal(request)
+        if not _acl.can_view(manifest, name, groups):
+            return None
     return eid, f"engagements/{eid}"
 
 
@@ -358,9 +379,9 @@ def _list_files(base: str) -> list[dict]:
 
 
 @app.get("/api/engagements/{customer}/{project}/files")
-def engagement_files(customer: str, project: str):
+def engagement_files(customer: str, project: str, request: Request):
     """Manifest of what's been uploaded for this engagement (E11.24)."""
-    eng = _engagement(customer, project)
+    eng = _engagement(customer, project, request)
     if not eng:
         return JSONResponse({"error": "unknown or malformed engagement"}, status_code=404)
     eid, base = eng
@@ -376,7 +397,7 @@ async def engagement_upload(customer: str, project: str, request: Request,
     """Stream one file into `raw/engagements/<c>/<p>/inventory|docs/` (E11.6/E11.24).
     Server-side only — no SAS to the browser. Slug-validated: a file cannot be
     written outside its engagement's prefix."""
-    eng = _engagement(customer, project)
+    eng = _engagement(customer, project, request)
     if not eng:
         return JSONResponse({"error": "unknown or malformed engagement — create it first"},
                             status_code=404)
@@ -448,8 +469,8 @@ async def engagement_upload(customer: str, project: str, request: Request,
 
 
 @app.delete("/api/engagements/{customer}/{project}/files/{name}")
-def engagement_file_delete(customer: str, project: str, name: str):
-    eng = _engagement(customer, project)
+def engagement_file_delete(customer: str, project: str, name: str, request: Request):
+    eng = _engagement(customer, project, request)
     if not eng:
         return JSONResponse({"error": "unknown engagement"}, status_code=404)
     _eid, base = eng
@@ -531,10 +552,10 @@ def _analysis_summary(eid: str, base: str) -> dict:
 
 
 @app.get("/api/engagements/{customer}/{project}/analysis")
-def engagement_analysis(customer: str, project: str):
+def engagement_analysis(customer: str, project: str, request: Request):
     """Current data-quality picture for the engagement — what ingestion has loaded so
     far and what it flagged. The page polls this after 'Start analysis'."""
-    eng = _engagement(customer, project)
+    eng = _engagement(customer, project, request)
     if not eng:
         return JSONResponse({"error": "unknown engagement"}, status_code=404)
     eid, base = eng
@@ -542,13 +563,13 @@ def engagement_analysis(customer: str, project: str):
 
 
 @app.post("/api/engagements/{customer}/{project}/analyze")
-async def engagement_analyze(customer: str, project: str):
+async def engagement_analyze(customer: str, project: str, request: Request):
     """'Start analysis' — force a catch-up ingest of everything in the engagement's
     inventory/ folder (the per-file Event Grid trigger normally does this on upload;
     this covers a dropped event or a file added before the subscription existed), then
     return the data-quality summary. The ingest itself runs through the agent's
     `run_engagement` tool so the web tier needs no Function credentials."""
-    eng = _engagement(customer, project)
+    eng = _engagement(customer, project, request)
     if not eng:
         return JSONResponse({"error": "unknown engagement"}, status_code=404)
     eid, base = eng
@@ -576,10 +597,10 @@ async def engagement_analyze(customer: str, project: str):
 
 
 @app.get("/api/engagements/{customer}/{project}/history")
-def engagement_history(customer: str, project: str):
+def engagement_history(customer: str, project: str, request: Request):
     """Published-estimate version history (E11.8). Each re-publish snapshots the
     version it replaces into answers/engagements/<eid>/history/<ts>/."""
-    eng = _engagement(customer, project)
+    eng = _engagement(customer, project, request)
     if not eng:
         return JSONResponse({"error": "unknown engagement"}, status_code=404)
     eid, _ = eng
@@ -608,10 +629,10 @@ def engagement_history(customer: str, project: str):
 
 
 @app.get("/api/engagements/{customer}/{project}/chat")
-def engagement_chat_get(customer: str, project: str):
+def engagement_chat_get(customer: str, project: str, request: Request):
     """The saved conversation for this engagement (E11.26) — the page renders it on
     load / engagement switch so nothing is lost on a browser close."""
-    eng = _engagement(customer, project)
+    eng = _engagement(customer, project, request)
     if not eng:
         return JSONResponse({"error": "unknown engagement"}, status_code=404)
     eid, _ = eng
@@ -622,10 +643,10 @@ def engagement_chat_get(customer: str, project: str):
 
 
 @app.post("/api/engagements/{customer}/{project}/chat/new")
-def engagement_chat_new(customer: str, project: str):
+def engagement_chat_new(customer: str, project: str, request: Request):
     """Start a fresh thread for this engagement — the previous one is archived, not
     destroyed (its Foundry response chain stays retrievable)."""
-    eng = _engagement(customer, project)
+    eng = _engagement(customer, project, request)
     if not eng:
         return JSONResponse({"error": "unknown engagement"}, status_code=404)
     eid, _ = eng
@@ -646,11 +667,11 @@ _EXPORT_MAX = 250 * 1024 * 1024
 
 
 @app.get("/api/engagements/{customer}/{project}/export")
-def engagement_export(customer: str, project: str):
+def engagement_export(customer: str, project: str, request: Request):
     """One .zip with the engagement manifest + every uploaded file + every produced
     artifact + the conversation — so an engagement is portable across `azd down` /
     `azd up` or between deployments (E11.26)."""
-    eng = _engagement(customer, project)
+    eng = _engagement(customer, project, request)
     if not eng:
         return JSONResponse({"error": "unknown engagement"}, status_code=404)
     eid, rawbase = eng
@@ -800,8 +821,52 @@ def _snapshot_blob(name: str, engagement: str | None, snapshot: str | None) -> b
         return None
 
 
+def _guard_eid(request: Request, e: str | None):
+    """403 (as JSONResponse) if the caller can't see engagement `e`; None if OK or
+    `e` is unset/default. For the dashboard routes, which key off `?e=` not a path."""
+    eid = (e or "").strip().strip("/")
+    if not eid or eid == "_default_/_default_":
+        return None
+    try:
+        m = json.loads(_raw_container().download_blob(
+            f"engagements/{eid}/_engagement.json").readall())
+    except Exception:  # noqa: BLE001
+        return None  # unknown engagement -> let the downstream 404 handle it
+    name, groups = _principal(request)
+    if _acl.can_view(m, name, groups):
+        return None
+    return JSONResponse({"error": "not visible to you"}, status_code=403)
+
+
+@app.get("/api/engagements/{customer}/{project}/audit")
+def engagement_audit(customer: str, project: str, request: Request):
+    """The engagement's audit trail (E11.10): creation + every run_engagement /
+    publish_estimate / calc run, newest first."""
+    eng = _engagement(customer, project, request)
+    if not eng:
+        return JSONResponse({"error": "unknown engagement"}, status_code=404)
+    eid, _ = eng
+    key = f"engagements/{eid}/_audit.jsonl"
+    entries: list[dict] = []
+    try:
+        raw = _estimate_container().download_blob(key).readall()
+        for line in raw.splitlines():
+            line = line.strip()
+            if line:
+                try:
+                    entries.append(json.loads(line))
+                except Exception:  # noqa: BLE001
+                    pass
+    except Exception:  # noqa: BLE001
+        pass
+    entries.reverse()
+    return JSONResponse({"engagement": eid, "entries": entries[:200], "count": len(entries)})
+
+
 @app.get("/dashboard/data")
-def dashboard_data(e: str | None = None, snapshot: str | None = None):
+def dashboard_data(request: Request, e: str | None = None, snapshot: str | None = None):
+    if (g := _guard_eid(request, e)):
+        return g
     blob = _snapshot_blob("latest.json", e, snapshot)
     if blob is None:
         return JSONResponse({"error": "no estimate published"}, status_code=404)
@@ -809,7 +874,10 @@ def dashboard_data(e: str | None = None, snapshot: str | None = None):
 
 
 @app.get("/dashboard/download/{fmt}")
-def dashboard_download(fmt: str, e: str | None = None, snapshot: str | None = None):
+def dashboard_download(fmt: str, request: Request, e: str | None = None,
+                       snapshot: str | None = None):
+    if (g := _guard_eid(request, e)):
+        return g
     fmt = fmt.lower().lstrip(".")
     if fmt not in _EXPORT_MIME:
         return JSONResponse({"error": "format must be xlsx | docx | pptx"}, status_code=400)
@@ -822,8 +890,10 @@ def dashboard_download(fmt: str, e: str | None = None, snapshot: str | None = No
 
 
 @app.get("/dashboard/landing-zone")
-def landing_zone_data(e: str | None = None):
+def landing_zone_data(request: Request, e: str | None = None):
     """The Azure Pricing Calculator POE summary (landing_zone.json) for an engagement."""
+    if (g := _guard_eid(request, e)):
+        return g
     blob = _read_estimate_blob("landing_zone.json", e)
     if blob is None:
         return JSONResponse({"error": "no Pricing Calculator estimate built yet"}, status_code=404)
@@ -831,8 +901,10 @@ def landing_zone_data(e: str | None = None):
 
 
 @app.get("/dashboard/download/landing-zone-xlsx")
-def landing_zone_xlsx(e: str | None = None):
+def landing_zone_xlsx(request: Request, e: str | None = None):
     """Stream the Azure Pricing Calculator's own Excel export — the POE artifact."""
+    if (g := _guard_eid(request, e)):
+        return g
     blob = _read_estimate_blob("landing_zone.xlsx", e)
     if blob is None:
         return JSONResponse({"error": "no Pricing Calculator estimate built yet"}, status_code=404)

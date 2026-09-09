@@ -76,6 +76,93 @@ def make_engagement_id(customer: str, project: str) -> str:
     return f"{slug(customer)}/{slug(project)}"
 
 
+# --------------------------------------------------------------- access control
+# PRD E11.10 — `_engagement.json` records `created_by` (the Entra user) and
+# `visibility`: one of `owner` (only the creator), `all` (anyone who can sign in),
+# or `group:<id>` (the creator + members of that Entra group). The engagements
+# list — and every engagement-scoped read — filters by this. Fail-closed: an
+# unrecognised value is treated as `owner`.
+
+VISIBILITY_OWNER = "owner"
+VISIBILITY_ALL = "all"
+_GROUP_PREFIX = "group:"
+
+
+def normalize_visibility(value) -> str:
+    """A client-supplied visibility -> a canonical one. `owner` for anything odd."""
+    v = str(value or "").strip().lower()
+    if v == VISIBILITY_ALL:
+        return VISIBILITY_ALL
+    if v.startswith(_GROUP_PREFIX):
+        gid = v[len(_GROUP_PREFIX):].strip()
+        if gid:
+            return f"{_GROUP_PREFIX}{gid}"
+    return VISIBILITY_OWNER
+
+
+def can_view(manifest: dict, viewer: str | None, groups=()) -> bool:
+    """Is `viewer` (an Entra user id/name, plus their group ids) allowed to see the
+    engagement described by `manifest`?
+
+    - `all`                -> yes for any signed-in caller
+    - `owner`              -> only `created_by`
+    - `group:<id>`         -> `created_by`, or `<id>` in `groups`
+    - unknown viewer ("unknown"/"anonymous"/"" — no Easy Auth header) -> yes, so a
+      local / unauthenticated deployment is not locked out of its own data.
+    """
+    if not isinstance(manifest, dict):
+        return False
+    if viewer in (None, "", "unknown", "anonymous"):
+        return True
+    vis = normalize_visibility(manifest.get("visibility"))
+    if vis == VISIBILITY_ALL:
+        return True
+    owner = manifest.get("created_by")
+    if owner and viewer and owner == viewer:
+        return True
+    if vis.startswith(_GROUP_PREFIX):
+        return vis[len(_GROUP_PREFIX):] in set(groups or ())
+    return False
+
+
+def principal_from_easyauth(header_b64: str | None) -> tuple[str | None, list[str]]:
+    """Decode an Azure Easy Auth `x-ms-client-principal` header (base64 JSON) into
+    ``(name, group_ids)``. Returns ``(None, [])`` if absent or unparseable.
+
+    The header carries a `claims` list of `{typ, val}`; the name is the UPN /
+    preferred_username / name / oid claim, groups are every `groups` claim value
+    (Entra emits one claim per group when the token is configured for it)."""
+    import base64
+    import json as _json
+
+    if not header_b64:
+        return None, []
+    try:
+        raw = base64.b64decode(header_b64).decode("utf-8")
+        doc = _json.loads(raw)
+    except Exception:                              # noqa: BLE001
+        return None, []
+    claims = {}
+    groups: list[str] = []
+    for c in doc.get("claims") or []:
+        typ, val = c.get("typ"), c.get("val")
+        if not typ or val is None:
+            continue
+        if typ in ("groups", "http://schemas.microsoft.com/ws/2008/06/identity/claims/groups"):
+            groups.append(val)
+        else:
+            claims.setdefault(typ, val)
+    name = (doc.get("userDetails")
+            or claims.get("preferred_username")
+            or claims.get("upn")
+            or claims.get("http://schemas.xmlsoap.org/ws/2005/05/identity/claims/upn")
+            or claims.get("name")
+            or claims.get("http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name")
+            or claims.get("oid")
+            or claims.get("http://schemas.microsoft.com/identity/claims/objectidentifier"))
+    return (name or None), groups
+
+
 def split(engagement_id: str) -> tuple[str, str]:
     eid = normalize_engagement(engagement_id)
     customer, project = eid.split("/", 1)
