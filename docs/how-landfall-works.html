@@ -1,0 +1,364 @@
+<title>How Landfall Works</title>
+<meta name="description" content="How Landfall works end-to-end: the pipeline, the twelve tools, the answer contract, the confidence model, the DRAFT boundary, and a worked example over the sample estate.">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Spectral:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  /* ---- palette: nautical chart — sounding-line teal on cool paper ---- */
+  :root{
+    --paper:#EDF1F2; --surface:#FFFFFF; --surface-2:#F5F8F8;
+    --ink:#14262F; --muted:#566A70; --line:#CFDBDE;
+    --accent:#0F6E7A; --accent-deep:#0A4A54;
+    --good:#2E7D5B; --warn:#8A5E14; --crit:#B23B3B;
+    --hi:#FBF3E4; --hi-line:#E4C98C;
+    --code-bg:#0C1B21; --code-ink:#D6E4E6; --code-dim:#7C949A; --code-accent:#57C3CF;
+  }
+  @media (prefers-color-scheme:dark){
+    :root:not([data-theme="light"]){
+      --paper:#0B1519; --surface:#10222A; --surface-2:#152A32;
+      --ink:#E4EDEF; --muted:#93A7AD; --line:#243A41;
+      --accent:#3FA9B4; --accent-deep:#7FD6DE;
+      --good:#5FB98C; --warn:#D0A44E; --crit:#E07A7A;
+      --hi:#2A2213; --hi-line:#6B5626;
+      --code-bg:#081216; --code-ink:#D6E4E6; --code-dim:#7C949A; --code-accent:#57C3CF;
+    }
+  }
+  :root[data-theme="dark"]{
+    --paper:#0B1519; --surface:#10222A; --surface-2:#152A32;
+    --ink:#E4EDEF; --muted:#93A7AD; --line:#243A41;
+    --accent:#3FA9B4; --accent-deep:#7FD6DE;
+    --good:#5FB98C; --warn:#D0A44E; --crit:#E07A7A;
+    --hi:#2A2213; --hi-line:#6B5626;
+    --code-bg:#081216; --code-ink:#D6E4E6; --code-dim:#7C949A; --code-accent:#57C3CF;
+  }
+
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  @media (prefers-reduced-motion:reduce){html{scroll-behavior:auto} *{animation:none!important;transition:none!important}}
+  body{
+    margin:0; background:var(--paper); color:var(--ink);
+    font-family:"IBM Plex Sans",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+    line-height:1.62; -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:920px;margin:0 auto;padding:56px 26px 120px}
+
+  .eyebrow{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:.7rem;letter-spacing:.2em;text-transform:uppercase;color:var(--accent-deep);margin:0 0 14px}
+  h1{font-family:"Spectral",Georgia,serif;font-weight:600;font-size:clamp(2rem,5vw,2.9rem);line-height:1.05;letter-spacing:-.01em;margin:0 0 12px;text-wrap:balance}
+  .lede{font-family:"Spectral",Georgia,serif;font-size:1.14rem;color:var(--muted);max-width:64ch;margin:0 0 26px}
+  .meta{display:flex;flex-wrap:wrap;gap:8px 22px;font-family:"IBM Plex Mono",monospace;font-size:.72rem;border-top:1px solid var(--line);border-bottom:1px solid var(--line);padding:15px 0;margin-bottom:14px}
+  .meta span{color:var(--muted)} .meta b{color:var(--ink);font-weight:500}
+  .disclaimer{font-size:.84rem;color:var(--muted);border-left:3px solid var(--hi-line);background:var(--hi);padding:11px 14px;border-radius:0 6px 6px 0;margin:0 0 44px}
+  .disclaimer b{color:var(--ink)}
+
+  nav.toc{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:16px 20px;margin-bottom:48px}
+  nav.toc h2{font-family:"IBM Plex Mono",monospace;font-size:.68rem;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin:0 0 10px;font-weight:500}
+  nav.toc ol{margin:0;padding-left:0;list-style:none;columns:2;column-gap:32px;font-size:.9rem}
+  nav.toc li{padding:3px 0;break-inside:avoid}
+  nav.toc a{color:var(--accent-deep);text-decoration:none}
+  nav.toc a:hover{text-decoration:underline}
+  nav.toc .step{font-family:"IBM Plex Mono",monospace;color:var(--muted);margin-right:8px}
+  @media(max-width:560px){nav.toc ol{columns:1}}
+
+  section{margin:0 0 52px;scroll-margin-top:18px}
+  h2.sec{font-family:"Spectral",Georgia,serif;font-weight:600;font-size:1.44rem;margin:0 0 3px;letter-spacing:-.005em;display:flex;align-items:baseline;gap:12px}
+  h2.sec .n{font-family:"IBM Plex Mono",monospace;font-size:.82rem;font-weight:500;color:var(--accent);flex:none}
+  .sub{color:var(--muted);font-size:.92rem;margin:0 0 20px;max-width:66ch}
+  h3{font-family:"IBM Plex Sans",sans-serif;font-weight:600;font-size:1rem;margin:26px 0 8px}
+  p{margin:0 0 12px;max-width:68ch}
+  ul,ol.plain{margin:0 0 12px;padding-left:20px;max-width:68ch}
+  li{margin:0 0 6px}
+  a{color:var(--accent-deep);text-underline-offset:2px}
+  strong{font-weight:600}
+  code{font-family:"IBM Plex Mono",monospace;font-size:.86em;background:var(--surface-2);border:1px solid var(--line);border-radius:4px;padding:.05em .35em}
+  .rule{height:1px;background:var(--line);border:0;margin:52px 0}
+
+  ol.steps{list-style:none;margin:14px 0 4px;padding:0;counter-reset:step}
+  ol.steps > li{
+    counter-increment:step;
+    display:grid;grid-template-columns:2.4rem 1fr;gap:0 16px;
+    padding:14px 0;border-top:1px solid var(--line);
+  }
+  ol.steps > li::before{
+    content:counter(step);
+    font-family:"IBM Plex Mono",monospace;font-size:.82rem;font-weight:500;
+    color:var(--accent);padding-top:2px;
+  }
+  ol.steps .do{font-weight:600;margin:0 0 4px}
+  ol.steps .detail{color:var(--muted);font-size:.9rem;margin:0}
+  ol.steps .expect{font-size:.84rem;font-family:"IBM Plex Mono",monospace;color:var(--good);margin:6px 0 0}
+  ol.steps .expect::before{content:"→ ";color:var(--muted)}
+
+  pre{background:var(--code-bg);color:var(--code-ink);border-radius:8px;padding:15px 16px;overflow-x:auto;font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:.8rem;line-height:1.55;margin:12px 0}
+  pre code{background:none;border:0;padding:0;font-size:inherit;color:inherit}
+  pre .c{color:var(--code-dim)} pre .s{color:var(--code-accent)}
+
+  .callout{background:var(--surface);border:1px solid var(--line);border-left:3px solid var(--accent);border-radius:0 6px 6px 0;padding:12px 15px;font-size:.88rem;margin:14px 0}
+  .callout b{color:var(--accent-deep)}
+  .callout.tip{border-left-color:var(--good)} .callout.tip b{color:var(--good)}
+  .callout.warn{border-left-color:var(--warn)} .callout.warn b{color:var(--warn)}
+
+  .scroll{overflow-x:auto;border:1px solid var(--line);border-radius:8px;margin:14px 0}
+  table{border-collapse:collapse;width:100%;font-size:.86rem;min-width:560px}
+  th,td{text-align:left;padding:10px 14px;border-bottom:1px solid var(--line);vertical-align:top}
+  th{font-family:"IBM Plex Mono",monospace;font-size:.64rem;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);background:var(--surface-2);font-weight:500}
+  tr:last-child td{border-bottom:0}
+  td code{white-space:nowrap}
+
+  .pipeline{display:grid;gap:10px;margin:18px 0}
+  @media(min-width:720px){.pipeline{grid-template-columns:repeat(5,1fr);gap:8px}}
+  .pipeline .stage{background:var(--surface);border:1px solid var(--line);border-top:3px solid var(--accent);border-radius:7px;padding:12px 13px}
+  .pipeline .stage b{display:block;font-size:.82rem;margin-bottom:4px}
+  .pipeline .stage span{font-size:.78rem;color:var(--muted);line-height:1.45}
+
+  .conf{font-family:"IBM Plex Mono",monospace;font-size:.7rem;font-weight:500;padding:.1em .5em;border-radius:4px;border:1px solid}
+  .conf.h{color:var(--good);border-color:var(--good)}
+  .conf.m{color:var(--warn);border-color:var(--warn)}
+  .conf.l{color:var(--crit);border-color:var(--crit)}
+
+  footer{margin-top:72px;padding-top:18px;border-top:1px solid var(--line);font-family:"IBM Plex Mono",monospace;font-size:.7rem;color:var(--muted)}
+  footer a{color:var(--accent-deep)}
+  :focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:2px}
+</style>
+
+<div class="wrap">
+
+  <p class="eyebrow">Landfall · Orientation</p>
+  <h1>How Landfall works</h1>
+  <p class="lede">The one page a consultant new to Landfall reads first: the pipeline, the tools, how to read an answer, what "confidence" means, where the draft stops and your judgement starts — then the same run end&#8209;to&#8209;end over the sample estate.</p>
+  <div class="meta">
+    <span>Version <b>1.0</b></span>
+    <span>Updated <b>2026-09-09</b></span>
+    <span>Audience <b>Consultants &amp; pre-sales, new to Landfall</b></span>
+    <span>Read time <b>~25 min</b></span>
+    <span>Next <b><a href="operating-sop.html">Operating Guide</a></b></span>
+  </div>
+  <p class="disclaimer"><b>Everything Landfall produces is a DRAFT for a human architect to review and own.</b> Client inventory is usually incomplete and rarely carries performance data. Every number is deterministic and traceable, but it is a fast first pass built on stated assumptions — never a bid.</p>
+
+  <nav class="toc">
+    <h2>On this page</h2>
+    <ol>
+      <li><span class="step">1</span><a href="#what">What Landfall is — and is not</a></li>
+      <li><span class="step">2</span><a href="#pipeline">The pipeline: five stages</a></li>
+      <li><span class="step">3</span><a href="#tools">The twelve tools</a></li>
+      <li><span class="step">4</span><a href="#contract">The answer contract</a></li>
+      <li><span class="step">5</span><a href="#confidence">The confidence model</a></li>
+      <li><span class="step">6</span><a href="#draft">The DRAFT boundary</a></li>
+      <li><span class="step">7</span><a href="#worked">Worked example: the sample estate</a></li>
+    </ol>
+  </nav>
+
+  <section id="what">
+    <h2 class="sec"><span class="n">1</span> What Landfall is — and is not</h2>
+    <p class="sub">A low-code Azure agent that turns a client's paper inventory into a defensible draft landing-zone and migration estimate, with no discovery tooling on the client estate.</p>
+
+    <p><strong>Landfall is</strong> a Microsoft Foundry <em>prompt agent</em> that orchestrates a set of
+    deterministic Python tools. You give it a client's server and application inventory
+    (CSV / Excel / RVTools / a CMDB export); it right-sizes each server to an Azure VM,
+    prices the estate at live retail rates, designs a Cloud Adoption Framework landing
+    zone, scores each application against the 6&nbsp;Rs, orders the migration into waves,
+    and assembles the whole thing into an Excel / Word / PowerPoint package plus a
+    Pricing-Calculator proof of estimate.</p>
+
+    <p><strong>Landfall is not</strong> a discovery product (it never touches the client
+    network), not an authoritative quote (it is explicitly a DRAFT), and not an
+    LLM doing arithmetic — <em>every number is computed by a tool</em>, and an output
+    guard fails the run if an un-sourced figure ever reaches the deliverable. The agent
+    decides <em>which</em> tool to call and <em>how</em> to narrate the result; it does
+    not invent the result.</p>
+
+    <div class="callout"><b>The one-sentence model.</b> The agent orchestrates; the Python tools compute; <code>export.py</code> authors the documents. If you remember only that, the rest of this page follows.</div>
+  </section>
+
+  <section id="pipeline">
+    <h2 class="sec"><span class="n">2</span> The pipeline: five stages</h2>
+    <p class="sub">Every engagement moves left to right. Each stage writes into the engagement's private folder so the next stage — and any later question — reads the same ground truth.</p>
+
+    <div class="pipeline">
+      <div class="stage"><b>1 · Load</b><span>Upload the raw inventory to the engagement. Files land in <code>raw/engagements/&lt;customer&gt;/&lt;project&gt;/</code> and nowhere else.</span></div>
+      <div class="stage"><b>2 · Ingest &amp; DQ</b><span>Each file is detected, column-mapped, normalised and loaded into SQL. A data-quality report names every gap, dupe and orphan and sets a confidence hint.</span></div>
+      <div class="stage"><b>3 · Model</b><span>Right-size &rarr; price compute, storage, run-rate extras &rarr; design the landing zone &rarr; score dispositions &rarr; plan waves &rarr; size effort.</span></div>
+      <div class="stage"><b>4 · Assemble</b><span>All tool output is folded into one structured package: eight proposal sections, every figure carrying an <code>F&#8209;id</code>, a calculation appendix, an assumptions register.</span></div>
+      <div class="stage"><b>5 · Publish</b><span>The package is rendered to <code>.xlsx</code> / <code>.docx</code> / <code>.pptx</code> and the dashboard; the real Azure Pricing Calculator is driven for the POE. Prior versions are snapshotted.</span></div>
+    </div>
+
+    <p>Stages 1&ndash;2 are the <strong>ingestion pipeline</strong> (event-driven: dropping a
+    file triggers it). Stages 3&ndash;5 are the <strong>estimate</strong>, driven by the
+    agent when you ask for it or click a prompt card. You can re-run stages 3&ndash;5 as
+    often as you like — the inventory in SQL is the fixed input, so a re-run with the same
+    data produces byte-identical figures.</p>
+
+    <h3>Tenancy — why the folder path matters</h3>
+    <p>One Landfall deployment serves many engagements. Isolation is the
+    <code>&lt;customer&gt;/&lt;project&gt;</code> key: it scopes the blob folders, and SQL
+    Row-Level Security keys every one of the six inventory tables on
+    <code>engagement_id</code> and <em>fails closed</em> — a query with no engagement
+    context returns zero rows. A tool call without an engagement is a <code>400</code>.
+    You never type the key; you pick or create the engagement and it rides with every
+    request.</p>
+  </section>
+
+  <section id="tools">
+    <h2 class="sec"><span class="n">3</span> The twelve tools</h2>
+    <p class="sub">The agent's whole toolbox. Each is a deterministic HTTP function over the deployed API — same input, same output, no model in the maths.</p>
+
+    <div class="scroll">
+    <table>
+      <thead><tr><th>Tool</th><th>Stage</th><th>What it returns</th></tr></thead>
+      <tbody>
+        <tr><td><code>query_inventory</code></td><td>any</td><td>Answers a natural-language question about the estate as SQL over the six tables (200-row cap, single <code>SELECT</code>, 20&nbsp;s timeout). This is the "how many prod Windows servers?" path.</td></tr>
+        <tr><td><code>vm_rightsize</code></td><td>Model</td><td>Per server: the Azure VM SKU that covers both its vCPU and its RAM at p95 utilisation, with a low / expected / high band and the binding dimension named.</td></tr>
+        <tr><td><code>estimate_compute_cost</code></td><td>Model</td><td>The compute bill of materials — PAYG vs 1-yr / 3-yr reserved, Azure Hybrid Benefit on or off, per environment, at a stated region + price date.</td></tr>
+        <tr><td><code>estimate_storage_cost</code></td><td>Model</td><td>File, database and object storage priced from the <code>storage</code> table to the right Azure service (per-VM disk stays in the compute BoM).</td></tr>
+        <tr><td><code>estimate_run_rate_extras</code></td><td>Model</td><td>Backup, monitoring, egress, support — plus one-time migration cost (tooling, dual-run, replication egress).</td></tr>
+        <tr><td><code>design_landing_zone</code></td><td>Model</td><td>A CAF landing zone from the portfolio + compliance scope: management groups, subscriptions, hub-spoke networking, an IP plan, a policy overlay, DR pairing, and a conformance score against the Azure ALZ / AI-LZ checklists.</td></tr>
+        <tr><td><code>score_dispositions</code></td><td>Model</td><td>A 6&nbsp;R disposition (rehost / replatform / refactor / …) per application, with the rationale.</td></tr>
+        <tr><td><code>plan_waves</code></td><td>Model</td><td>The dependency graph &rarr; move groups &rarr; risk-ordered waves, plus a dated schedule and the critical path.</td></tr>
+        <tr><td><code>assemble_estimate</code></td><td>Assemble</td><td>Folds every tool result into one package — the eight sections, the figure list, the calculation appendix, the assumptions / exclusions / data-gaps register.</td></tr>
+        <tr><td><code>export_estimate</code></td><td>Publish</td><td>Renders a package to <code>.xlsx</code> / <code>.docx</code> / <code>.pptx</code> (deterministic Python in <code>export.py</code>).</td></tr>
+        <tr><td><code>publish_estimate</code></td><td>Publish</td><td>Writes the package + the three exports to the engagement's <code>estimate/</code> folder, snapshots the previous version, and can kick the Pricing-Calculator POE.</td></tr>
+        <tr><td><code>azure_retail_prices</code></td><td>Model</td><td>The live Azure Retail Prices API — the only external call Landfall makes, and it is anonymous and read-only.</td></tr>
+      </tbody>
+    </table>
+    </div>
+    <p>Two more tools support the workflow rather than the maths:
+    <code>run_engagement</code> (bulk-ingest a whole folder) and
+    <code>build_landing_zone_diagram</code> (emit the target diagram as
+    <code>.drawio</code> / <code>.svg</code> / <code>.png</code>).</p>
+  </section>
+
+  <section id="contract">
+    <h2 class="sec"><span class="n">4</span> The answer contract</h2>
+    <p class="sub">Whatever Landfall tells you — in chat, in the deck, in the workbook — comes with the same three things attached. Learn to look for them.</p>
+
+    <ol class="plain">
+      <li><strong>An <code>F&#8209;id</code>.</strong> Every headline number in the deliverable has a figure id (<code>F12</code>, <code>F27</code>&hellip;). The calculation appendix has one row per <code>F&#8209;id</code>: the formula, the input values, the assumptions applied, the confidence. You can trace any number to its arithmetic without leaving the document.</li>
+      <li><strong>A basis.</strong> A one-line statement of where the number came from — "<em>250 servers &times; p95 vCPU, bound on RAM for 38 of them; Standard_D-series; sweden central retail, 2026-09-08</em>". If a figure has no basis, the output guard fails the build; it never ships.</li>
+      <li><strong>A confidence level</strong> — <span class="conf h">High</span> <span class="conf m">Medium</span> <span class="conf l">Low</span> — set by the data-quality report, not guessed. See the next section for exactly what drives it.</li>
+    </ol>
+
+    <p>A cost answer additionally carries a <strong>low / expected / high band</strong> and
+    its <strong>top three drivers</strong> (the inputs the total is most sensitive to). A
+    range that looks wide is telling you the truth about the input data — narrow it by
+    filling the data gap the register names, not by asking Landfall to be more precise.</p>
+
+    <div class="callout tip"><b>Reading a number, in practice.</b> Get the total from the dashboard or the chat &rarr; find its <code>F&#8209;id</code> &rarr; open the calculation appendix (a sheet in the workbook) &rarr; read the formula + inputs + assumptions &rarr; check the confidence and the band. If any step doesn't resolve, that is a bug — report it.</div>
+  </section>
+
+  <section id="confidence">
+    <h2 class="sec"><span class="n">5</span> The confidence model</h2>
+    <p class="sub">Confidence is a property of the <em>input data</em>, assigned by the data-quality report at ingest and carried through every downstream figure. It is deterministic — the same dump always gets the same rating.</p>
+
+    <div class="scroll">
+    <table>
+      <thead><tr><th>Level</th><th>What it means</th><th>Typical triggers</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><span class="conf h">High</span></td>
+          <td>The estate is well described and carries real utilisation history. Right-sizing is bound on measured p95, not on provisioned specs.</td>
+          <td>&ge;&nbsp;80&nbsp;% of servers have &ge;&nbsp;14 days of CPU + memory samples; vCPU / RAM present on nearly every row; few orphan dependencies.</td>
+        </tr>
+        <tr>
+          <td><span class="conf m">Medium</span></td>
+          <td>The inventory is complete enough to size on, but performance data is thin, so right-sizing leans on provisioned specs and a safety margin.</td>
+          <td>Some performance coverage but below the High bar; a minority of rows missing a non-critical field; a mapping override was applied.</td>
+        </tr>
+        <tr>
+          <td><span class="conf l">Low</span></td>
+          <td>A structural gap makes the number a rough order of magnitude. Say so explicitly to the client.</td>
+          <td>&gt;&nbsp;50&nbsp;% of servers have <em>no</em> utilisation history; vCPU or RAM missing / unparseable on &gt;&nbsp;30&nbsp;% of rows; a required file was rejected and the estate is loaded with a named gap.</td>
+        </tr>
+      </tbody>
+    </table>
+    </div>
+
+    <p>The report also lists <strong>data gaps</strong> — the specific missing inputs that
+    would raise confidence if supplied. Those flow into the assumptions register as
+    "client-ask" items and into the agent's "what's missing?" answer. A Low-confidence
+    line is not a failure of Landfall; it is Landfall refusing to imply precision the data
+    can't support.</p>
+
+    <div class="callout"><b>Cost figures are capped at Low by design.</b> Any pre-discovery run-rate or one-time <em>cost</em> number is reported at most <span class="conf l">Low</span> even when the inventory itself is well described — without measured utilisation and confirmed commercial terms it is a planning range, not a quote. Inventory <em>facts</em> (counts, vCPU totals, EOS servers) still carry their data-driven rating. So a package's overall confidence is usually Low; that is the honest default, not a red flag.</div>
+
+    <div class="callout warn"><b>Never a silent partial load.</b> If a file is unrecognised it is <em>rejected</em> with a reason; if it is damaged it is either rejected or loaded with the gap named in the report. Landfall never quietly drops half a file and prices the rest as if it were whole.</div>
+  </section>
+
+  <section id="draft">
+    <h2 class="sec"><span class="n">6</span> The DRAFT boundary</h2>
+    <p class="sub">Landfall gets you to a reviewable first pass fast. These decisions stay with the architect — the tool marks them, it does not make them.</p>
+
+    <div class="cols">
+      <div>
+        <h3>Landfall decides (deterministically)</h3>
+        <ul class="do3">
+          <li>The VM SKU that covers each server's p95 vCPU and RAM</li>
+          <li>Retail / reserved / hybrid pricing arithmetic at a stated date</li>
+          <li>The CAF landing-zone topology implied by the portfolio + compliance scope</li>
+          <li>A first-cut 6&nbsp;R disposition and a risk-ordered wave plan</li>
+          <li>Which data gaps exist and how they cap confidence</li>
+        </ul>
+      </div>
+      <div>
+        <h3>The architect owns</h3>
+        <ul class="dont">
+          <li>Whether each disposition is right for <em>this</em> client's strategy</li>
+          <li>Commercial terms — actual discounts, EA / MCA specifics, the margin</li>
+          <li>Any figure marked <span class="conf l">Low</span> before it goes to the client</li>
+          <li>Application-level refactor / retire calls that need business context</li>
+          <li>Signing off the package as fit to send</li>
+        </ul>
+      </div>
+    </div>
+
+    <p>Practically: the Word document opens ready for tracked changes, every figure resolves
+    to an <code>F&#8209;id</code>, and the assumptions register is the list of things you
+    should confirm or correct with the client. Editing the package is the expected
+    workflow — authoring it from scratch is not.</p>
+  </section>
+
+  <section id="worked">
+    <h2 class="sec"><span class="n">7</span> Worked example: the sample estate</h2>
+    <p class="sub">The repository ships a synthetic estate under <code>sample-estate/</code> — deterministic, seeded, and the basis for every eval. Here is the whole pipeline over it. Your numbers will match to the dollar if you run it yourself.</p>
+
+    <ol class="steps">
+      <li>
+        <p class="do">Load the inventory</p>
+        <p class="detail">Five files: <code>servers.csv</code>, <code>applications.csv</code>, <code>dependencies.csv</code>, <code>storage.csv</code>, <code>performance.csv</code>. In a real engagement you drag them onto the engagement's upload panel; for the sample they load via <code>sample-estate/load_estate.py</code>.</p>
+        <p class="expect">250 servers, 31 applications, 484 dependency rows, 566 storage volumes, 5,190 performance samples in SQL</p>
+      </li>
+      <li>
+        <p class="do">Read the data-quality report</p>
+        <p class="detail">The sample estate is well described — every server row carries p95 CPU and RAM, plus a 5,190-row performance time series. Inventory facts rate <span class="conf m">Medium</span>. The <em>overall</em> package confidence is still <span class="conf l">Low</span>, because cost figures are capped at Low pre-discovery (previous section) and the register flags six applications whose disposition needs a business decision.</p>
+        <p class="expect">inventory facts Medium · run-rate cost Low · overall Low · 6 open disposition decisions in the register</p>
+      </li>
+      <li>
+        <p class="do">Right-size and price</p>
+        <p class="detail"><code>vm_rightsize</code> maps 250 servers (1,940 current vCPU) to Azure SKUs bound on p95 vCPU and RAM. <code>estimate_compute_cost</code>, <code>estimate_storage_cost</code> and <code>estimate_run_rate_extras</code> price the result at swedencentral retail on the config's price date (the eval config assumes 80&nbsp;% 1-yr reserved and Azure Hybrid Benefit on Windows — every such choice is a numbered row in the assumptions register).</p>
+        <p class="expect">compute + disk $81,439/mo · storage $16,184/mo · extras $16,287/mo</p>
+      </li>
+      <li>
+        <p class="do">Design the landing zone, score dispositions, plan waves</p>
+        <p class="detail"><code>design_landing_zone</code> derives the hub-spoke topology, a regulated spoke for the PCI-scoped apps, and DR pairing. <code>score_dispositions</code> gives each of the 31 apps a 6&nbsp;R call; <code>plan_waves</code> orders them into risk-first waves with a dated schedule.</p>
+        <p class="expect">a CAF topology, 31 dispositions, a multi-wave plan with a critical path</p>
+      </li>
+      <li>
+        <p class="do">Assemble and publish</p>
+        <p class="detail"><code>assemble_estimate</code> folds it all into one package — eight sections, every figure an <code>F&#8209;id</code>, the calculation appendix, the assumptions register. <code>publish_estimate</code> renders the workbook, document and deck and populates the dashboard.</p>
+        <p class="expect">total Azure run-rate <strong>$113,911/mo</strong> ($1,366,927/yr) · one-time migration $73,218 · effort 834 person-days · services $650,286</p>
+      </li>
+      <li>
+        <p class="do">Trace a number</p>
+        <p class="detail">Take the $113,911/mo total. It is <code>compute_monthly</code> + <code>storage_monthly</code> + <code>extras_monthly</code>. Each of those has its own <code>F&#8209;id</code> and appendix row — <code>compute_monthly</code> resolves to the per-server SKU list &times; hours &times; the swedencentral retail rate on the stated date. No step is opaque.</p>
+        <p class="expect">every headline figure resolves to tool-computed arithmetic in the calculation appendix</p>
+      </li>
+    </ol>
+
+    <div class="callout tip"><b>Run it yourself.</b> <code>python evals/runner.py</code> executes this exact chain (with deterministic synthetic price books) as scenario <code>SC1</code> and asserts the headline figures land in band. Scenarios <code>SC2</code>&ndash;<code>SC8</code> vary the levers — production-only, 3-year reserved, dev/test pricing, no AHB, Low confidence, a 10-server slice.</p>
+  </section>
+
+  <hr class="rule">
+
+  <p>Next: the <a href="operating-sop.html">Operating Guide</a> is the click-by-click procedure for running this against a real client. The <a href="build-spec.html">Build Specification</a> is the full solution design. The production-readiness claim, with a link to every piece of evidence, is <code>evidence/SCORECARD.md</code> in the repository.</p>
+
+  <footer>
+    Landfall · <a href="index.html">documentation index</a> · Source: <a href="https://github.com/upendra25312/Landfall">github.com/upendra25312/Landfall</a> · All estimates are DRAFT and require architect review.
+  </footer>
+
+</div>
