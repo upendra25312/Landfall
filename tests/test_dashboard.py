@@ -66,6 +66,48 @@ def test_publish_estimate_scopes_by_engagement(monkeypatch):
     assert json.loads(fake.blobs["engagements/contoso-ltd/dc-exit/estimate/latest.json"])["meta"]["engagement"] == "contoso-ltd/dc-exit"
 
 
+class _HistContainer(_FakeContainer):
+    """_FakeContainer + read/list so publish_estimate can snapshot the prior version."""
+    def download_blob(self, name):
+        if name not in self.blobs:
+            raise KeyError(name)
+        data = self.blobs[name]
+
+        class _D:
+            def readall(_s):
+                return data
+        return _D()
+
+    def list_blobs(self, name_starts_with=""):
+        class _B:
+            def __init__(_s, n):
+                _s.name = n
+        return [_B(n) for n in list(self.blobs) if n.startswith(name_starts_with)]
+
+
+def test_publish_estimate_snapshots_the_prior_version(monkeypatch):
+    from deliverable import functions as dfn
+    fake = _HistContainer()
+    monkeypatch.setattr(dfn, "_container_client", lambda: fake)
+    eid = "contoso-ltd/dc-exit"
+
+    r1 = json.loads(dfn.publish_estimate_route(
+        _req({"package": P.run(), "engagement": eid})).get_body())
+    assert r1["snapshot"] is None                      # nothing to snapshot on the first publish
+
+    r2 = json.loads(dfn.publish_estimate_route(
+        _req({"package": P.run(), "engagement": eid})).get_body())
+    stamp = r2["snapshot"]
+    assert stamp and stamp.endswith("Z")
+
+    hp = f"engagements/{eid}/history/{stamp}"
+    assert f"{hp}/latest.json" in fake.blobs
+    assert f"{hp}/latest.xlsx" in fake.blobs
+    # the live latest.json is the new publish, the snapshot is the old one
+    assert json.loads(fake.blobs[f"engagements/{eid}/estimate/latest.json"])["meta"]["published_at"]
+    assert json.loads(fake.blobs[f"{hp}/latest.json"])["meta"]["engagement"] == eid
+
+
 def test_publish_estimate_rejects_empty_body(monkeypatch):
     from deliverable import functions as dfn
     monkeypatch.setattr(dfn, "_container_client", lambda: _FakeContainer())
