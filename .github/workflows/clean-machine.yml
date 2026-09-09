@@ -1,0 +1,96 @@
+name: clean-machine
+
+# PRD E9.2 — prove the whole stack provisions from nothing on a clean runner:
+# `azd up` (Bicep + postprovision hook + deploy) -> scripts/smoke.py -> `azd down`.
+# Runs on Linux AND Windows because the hooks are per-OS (postprovision.sh /
+# .ps1). A regression that breaks a fresh deploy — a bad Bicep change, a hook
+# that assumes a tool, a container that won't start — fails here with the check
+# named, before it reaches the live rg-landfall.
+#
+# DORMANT until armed: set repo variable CLEAN_MACHINE_CI=true and add the OIDC
+# secrets (AZURE_CLIENT_ID / AZURE_TENANT_ID / AZURE_SUBSCRIPTION_ID, and
+# AZURE_PRINCIPAL_ID = that SP's object id). See docs/clean-machine-ci.md.
+# Not wired to pull_request — a full azd up/down is ~20 min per OS and spends
+# real money; this is weekly + on demand. Flip `on:` to add pull_request once
+# the team accepts the cost.
+
+on:
+  workflow_dispatch:
+    inputs:
+      location:
+        description: Azure region to deploy the throwaway env in
+        required: false
+        default: ""
+  schedule:
+    - cron: "41 4 * * 1"      # Mondays 04:41 UTC
+
+concurrency:
+  group: clean-machine-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  id-token: write            # OIDC federated login
+  contents: read
+
+jobs:
+  clean-machine:
+    if: ${{ vars.CLEAN_MACHINE_CI == 'true' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 55
+    env:
+      AZURE_ENV_NAME: smoke-${{ github.run_id }}-${{ matrix.os == 'windows-latest' && 'win' || 'linux' }}
+      AZURE_LOCATION: ${{ github.event.inputs.location || vars.CLEAN_MACHINE_LOCATION || 'eastus2' }}
+      AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      AZURE_PRINCIPAL_ID: ${{ secrets.AZURE_PRINCIPAL_ID }}
+      MODEL_CAPACITY: "10"                       # keep the CI env's TPM footprint small
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install azd
+        uses: Azure/setup-azd@v2
+
+      - name: Azure login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: azd auth (federated, reuse the az login)
+        shell: bash
+        run: azd auth login --client-id "${{ secrets.AZURE_CLIENT_ID }}" --federated-credential-provider github --tenant-id "${{ secrets.AZURE_TENANT_ID }}"
+
+      - name: azd env create
+        shell: bash
+        run: |
+          azd env new "$AZURE_ENV_NAME" --location "$AZURE_LOCATION" --subscription "$AZURE_SUBSCRIPTION_ID" --no-prompt
+          azd env set MODEL_CAPACITY "$MODEL_CAPACITY"
+          [ -n "$AZURE_PRINCIPAL_ID" ] && azd env set AZURE_PRINCIPAL_ID "$AZURE_PRINCIPAL_ID" || true
+
+      - name: azd up (provision + hooks + deploy)
+        shell: bash
+        run: azd up --no-prompt
+
+      - name: Smoke test
+        shell: bash
+        run: python scripts/smoke.py --json "smoke-${{ matrix.os }}.json"
+
+      - name: Upload smoke result
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: smoke-${{ matrix.os }}
+          path: smoke-${{ matrix.os }}.json
+
+      - name: azd down (always — never leak a throwaway env)
+        if: always()
+        shell: bash
+        run: azd down --force --purge --no-prompt

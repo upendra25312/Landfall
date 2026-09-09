@@ -782,7 +782,7 @@ text and file list overlapping and illegible.
 | 8 | **Nothing sequences the pipeline** — the chat box is live before any inventory exists; a user can ask for "the full estimate" with an empty engagement | Med | No status/step affordance outside the (gated) E11.21 rail | E12.8 |
 | 9 | **Agent runs are an opaque spinner** — "The estimator is working… (Ns)" is the only signal for a multi-minute, multi-tool run; no message on a model 429 | Med | `working()` indicator; no tool-call surfacing | E12.9 |
 | 10 | **100 MB uploads stream through the web container** — competes with the ACA ingress timeout the calc path already fought | Med | `src/web/uploads.py` streamed 4 MB blocks through the app tier | E12.10 |
-| 11 | **Raw `*.azurecontainerapps.io` FQDN exposed to end users** — no Front Door, no WAF, wildcard cert, region leaked in the URL; weak for a tool ingesting client infrastructure inventory | Med | Container App default ingress, no edge tier | E12.11 |
+| 11 | **Raw `ca-web-tmglwfatwcsa2.lemonfield-….azurecontainerapps.io` FQDN** — ugly, leaks the region. No domain-name budget; Front Door / WAF unwarranted (Easy Auth + the SQL allow-list guard are the boundary). Two **$0** wins: rename the app + a free community subdomain (DuckDNS) + the free ACA managed cert. | Low | Container App name carries the `resourceToken`; no vanity hostname | E12.11 |
 | 12 | **No trust surface** — "lands in this engagement's private folder" is unbacked; no "signed in as…", no sign-out, no visible `visibility`, no link to `evidence/data-handling-statement.md` (written in C33) | Med | Chat page header + upload panel | E12.12 |
 
 **Recommendation:** E12.1–E12.4 + E12.6 are pure markup/CSS in one file with no behaviour
@@ -855,11 +855,63 @@ The eval-harness gates and the estimation engine are untouched.
 | **E12.8** | **Guided pipeline state (rail-less subset of E11.21)** — a compact status strip (Uploads · Analysis · Published estimate · POE) with state chips; soft-nudge (not a hard block) when the chat box is used before analysis has run | P1 | backlog | A user sees which pipeline steps are done for the active engagement; asking for an estimate on an empty engagement gets a helpful hint |
 | **E12.9** | **Agent progress transparency** — surface tool-call milestones ("rightsize_many · pricing 250 servers · plan_waves") in the working indicator; show a "busy, retrying" message on a model 429 | P2 | backlog | During a full-estimate run the user sees the running tool; a throttled model shows a message, not a dead spinner |
 | **E12.10** | **Direct-to-blob uploads** — issue a short-lived (≤ 15 min) user-delegation SAS scoped to the engagement prefix; the browser PUTs straight to ADLS; the app validates (magic bytes on the first block) + records the manifest | P2 | backlog | A 100 MB inventory file uploads without passing through the app tier's request body; the SAS is single-prefix and time-boxed; the manifest row + type check still happen |
-| **E12.11** | **Edge protection + custom domain** — Azure Front Door (or App Gateway) + WAF on `landfall.<domain>`; restrict the Container App ingress to the AFD private link / `X-Azure-FDID` | P2 | backlog | End users reach the app only via the custom domain behind the WAF; direct `*.azurecontainerapps.io` access is blocked; SOP + data-handling statement updated |
+| **E12.11** | **Nicer hostname, $0** — (a) rename the `web` Container App `ca-web-<token>` → `landfall-web` (drop the `resourceToken` for that one app in `resources.bicep`); optionally (b) a **free community subdomain** (DuckDNS `landfall.duckdns.org`) CNAME'd to the ACA FQDN + bind it → **free ACA managed cert** (auto-renew). **Not** Front Door, **not** a paid domain, **not** an IP allow-list — ingress stays open, Easy Auth is the gate. See the how-to below | P3 | backlog | The app URL is `landfall-web.<env>.<region>.azurecontainerapps.io` (and, if (b), `https://landfall.duckdns.org` with a valid cert); no paid resources added |
 | **E12.12** | **Trust surface in the UI** — "signed in as `<user>`" + sign-out, show the engagement `visibility`, link `evidence/data-handling-statement.md` from the Upload panel + footer | P1 | backlog | The active user, the engagement's visibility and a link to the data-handling statement are visible on the engagement page |
 
 **Not in scope here:** the full E11.21 engagement rail (sponsor-gated), the estimation
 maths, the eval gates.
+
+### E12.11 — how to: a nicer hostname for $0
+
+No Front Door, **no IP allow-list**, **no paid domain** — the app stays reachable
+from anywhere and Easy Auth (Entra) is the gate. The ACA `*.azurecontainerapps.io`
+FQDN is cosmetic; two free improvements.
+
+**(a) Rename the web Container App** — in `infra/resources.bicep`, change the
+`containerApp` name from `'${abbrs.appContainerApps}web-${resourceToken}'` to
+`'landfall-web'` (≤ 32 chars, lowercase, unique within the subscription — fine for
+a single-deployment tool). Re-provision: `azd provision` replaces the app (new
+FQDN, ~1 min gap) → `landfall-web.<random-env>.<region>.azurecontainerapps.io`.
+Still `.azurecontainerapps.io` with the random environment infix (that segment is
+assigned at environment creation and cannot be chosen for free), but no
+`resourceToken` noise. After re-provision, re-run `create_agent.py` and check
+`AGENT_ID` env on the new app.
+
+**(b) A free community subdomain + free ACA managed cert** — e.g. **DuckDNS**
+(`landfall.duckdns.org`, no cost, no policy friction; `is-a.dev` / `js.org` /
+`eu.org` also work but expect OSS/personal use). ACA **managed certificates are
+free** (GA, auto-renew); the subdomain is what's normally paid, and here it isn't.
+
+```sh
+RG=$(azd env get-value AZURE_RESOURCE_GROUP); WEB=$(azd env get-value SERVICE_WEB_NAME)
+APP_FQDN=$(az containerapp show -g "$RG" -n "$WEB" --query properties.configuration.ingress.fqdn -o tsv)
+ENV_ID=$(az containerapp show  -g "$RG" -n "$WEB" --query properties.environmentId -o tsv)
+VERIFY_ID=$(az containerapp show -g "$RG" -n "$WEB" --query properties.customDomainVerificationId -o tsv)
+
+# 1. register landfall.duckdns.org at duckdns.org (free, GitHub/Google login)
+# 2. DuckDNS only sets the A record itself; for a CNAME to $APP_FQDN use its
+#    "CNAME" field, OR point an A record at the ACA static IP:
+#      az containerapp env show -g "$RG" -n "$ENV_ID" --query properties.staticIp -o tsv
+#    and add the TXT:  asuid.landfall  ->  $VERIFY_ID   (DuckDNS "TXT" field)
+# 3. bind + free managed cert
+az containerapp hostname add  -g "$RG" -n "$WEB" --hostname landfall.duckdns.org
+az containerapp hostname bind -g "$RG" -n "$WEB" --hostname landfall.duckdns.org \
+  --environment "$ENV_ID" --validation-method CNAME     # no --certificate => free managed cert, SNI-bound
+```
+
+Pin (b) in Bicep for a reproducible `azd up` — a
+`Microsoft.App/managedEnvironments/managedCertificates` resource + on the app's
+`configuration.ingress`:
+
+```bicep
+customDomains: [
+  { name: 'landfall.duckdns.org', bindingType: 'SniEnabled', certificateId: <managedCert>.id }
+]
+```
+
+Gate (b) behind a param (`customHostname string = ''`) so the default deploy and
+the E9.2 clean-machine CI still run on the raw FQDN. Ingress stays
+`external: true` with no `ipSecurityRestrictions`.
 
 ---
 

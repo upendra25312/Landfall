@@ -143,19 +143,26 @@ def rubric(live: dict) -> list[dict]:
                 "record in evidence/trials/. A \"how Landfall works\" walkthrough (D2) is "
                 "still to write."},
 
-        {"dim": "Operability", "score": 3.0,
+        {"dim": "Operability", "score": 3.5,
          "bar": "CI `azd up → smoke → azd down` on Linux + Windows every PR; chaos drill "
                 "degrades cleanly.",
          "basis": "Deploy hooks are self-contained (no azd-on-PATH, SQL grant via Python — "
                   "E9.1); every PDCA cycle deploys api/web to the live rg-landfall and "
-                  "verifies. Not yet a clean-machine CI job, no `--tier prod` switch, no "
-                  "observability dashboard, no logged chaos drill.",
-         "evidence": [("deploy hooks", "../scripts/"),
-                      ("DEPLOY.md", "../DEPLOY.md"),
-                      ("PDCA deploy log", "../prd/pdca-log.md")],
-         "gap": "E9.2 clean-machine `azd up→smoke→down` CI on both OSes; E9.3 `--tier prod`; "
-                "E9.4 answer-quality observability; E9.5 export-before-teardown; a chaos "
-                "drill logged to evidence/chaos/."},
+                  "verifies. E9.2: `scripts/smoke.py` (8 checks — resources, Function host, "
+                  "web revision, SQL, blob containers, agent) passes green against the live "
+                  "deployment (evidence/ops/smoke-live.json), unit-tested; the "
+                  "`.github/workflows/clean-machine.yml` matrix (`azd up→smoke→down` on "
+                  "Linux + Windows) is written but DORMANT until the OIDC secrets are added "
+                  "— not yet proven green in CI. No `--tier prod` switch, no observability "
+                  "dashboard, no logged chaos drill.",
+         "evidence": [("smoke test", "../scripts/smoke.py"),
+                      ("smoke run (live)", "ops/smoke-live.json"),
+                      ("clean-machine CI", "../.github/workflows/clean-machine.yml"),
+                      ("deploy hooks", "../scripts/"),
+                      ("DEPLOY.md", "../DEPLOY.md")],
+         "gap": "arm + green the clean-machine CI on both OSes (one-time secret add); E9.3 "
+                "`--tier prod`; E9.4 answer-quality observability; E9.5 export-before-"
+                "teardown; a chaos drill logged to evidence/chaos/."},
 
         {"dim": "Security", "score": 3.5,
          "bar": "External pen test passes; isolation test passes; data-handling statement "
