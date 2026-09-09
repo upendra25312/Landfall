@@ -40,12 +40,28 @@ def _pick(v, table, default):
 # --------------------------------------------------------------------------
 # compute
 # --------------------------------------------------------------------------
+_LINUX_DISTRO = {
+    "ubuntu": "ubuntu", "ubuntu-pro": "ubuntu-pro", "ubuntu pro": "ubuntu-pro",
+    "debian": "ubuntu", "linux": "ubuntu", "centos": "ubuntu", "": "ubuntu",
+    "rhel": "redhat", "red hat": "redhat", "redhat": "redhat",
+    "rhel-ha": "rhel-ha", "rhel ha": "rhel-ha",
+    "sles": "sles-enterprise", "suse": "sles-enterprise", "sles-enterprise": "sles-enterprise",
+}
+
+
 def _vm_fields(c: dict) -> list[tuple]:
-    f: list[tuple] = [
-        ("operatingSystem", c.get("operatingSystem", "windows"), "select"),
-        ("type", c.get("type", "os-only"), "select"),
-        ("tier", c.get("tier", "standard"), "select"),
-    ]
+    os_ = _pick(c.get("operatingSystem") or c.get("os"),
+                {"linux": "linux", "windows": "windows", "rhel": "linux", "ubuntu": "linux",
+                 "suse": "linux", "sles": "linux", "centos": "linux", "debian": "linux"}, "windows")
+    f: list[tuple] = [("operatingSystem", os_, "select")]
+    if os_ == "windows":
+        # Windows 'type': os-only | biztalk | sql  (os-only is the plain-Windows case)
+        f.append(("type", c.get("type", "os-only"), "select"))
+    else:
+        # Linux 'type' is the distro; Ubuntu carries no OS surcharge (the safe default).
+        f.append(("type", _pick(c.get("distro") or c.get("linux_distro") or c.get("os_detail")
+                                or c.get("type") or c.get("os"), _LINUX_DISTRO, "ubuntu"), "select"))
+    f.append(("tier", c.get("tier", "standard"), "select"))
     cat = _pick(c.get("category"), {
         "general purpose": "generalpurpose", "compute optimized": "computeoptimized",
         "memory optimized": "memoryoptimized", "storage optimized": "storageoptimized",
@@ -60,7 +76,9 @@ def _vm_fields(c: dict) -> list[tuple]:
     f.append(("hours", _num(c.get("hours", _HOURS_MONTH)), "number"))
     if c.get("computeBillingOption"):
         f.append(("computeBillingOption", c["computeBillingOption"], "radio"))
-    if c.get("osBillingOption"):
+    # Azure Hybrid Benefit (osBillingOption) is a Windows/SQL-only control — Linux
+    # VM modules render no such radio, so only emit it for Windows.
+    if os_ == "windows" and c.get("osBillingOption"):
         f.append(("osBillingOption", c["osBillingOption"], "radio"))
     return f
 
@@ -109,28 +127,45 @@ def _storage_fields(c: dict) -> list[tuple]:
 
 
 def _files_fields(c: dict) -> list[tuple]:
-    """Azure Files — provisioned v2 billing (GB provisioned)."""
+    """Azure Files — provisioned v2 billing (GB provisioned). Premium (SSD) shares
+    prefix the v2 controls with ``ssd``; standard (HDD) shares use the bare names.
+    IOPS / throughput keep the calculator's storage-derived defaults."""
     gb = float(c.get("capacity_gb") or c.get("capacity") or 0)
+    tier = _pick(c.get("tier") or c.get("service_level"),
+                 {"premium": "premium", "standard": "standard"}, "premium")
+    p = "ssdProvisionedV2" if tier == "premium" else "provisionedV2"
     return [
-        ("performanceTier", _pick(c.get("tier") or c.get("service_level"),
-                                  {"premium": "premium", "standard": "standard"}, "premium"), "select"),
+        ("performanceTier", tier, "select"),
         ("redundancy", _pick(c.get("redundancy"),
                              {"lrs": "lrs", "zrs": "zrs", "grs": "grs", "gzrs": "gzrs"}, "lrs"), "select"),
         ("billingModel", "provisionedv2", "select"),
-        ("provisionedV2StorageFactor", "1", "select"),
-        ("provisionedV2StorageUnits", _num(round(gb)), "number"),
+        (f"{p}StorageFactor", "1", "select"),
+        (f"{p}StorageUnits", _num(round(gb)), "number"),
     ]
+
+
+_ANF_TIER = {"standard": "standard-storage", "premium": "premium-storage",
+             "ultra": "ultra-storage", "flexible": "flexible-storage"}
 
 
 def _anf_fields(c: dict) -> list[tuple]:
+    """Azure NetApp Files — the capacity-pool controls are prefixed with the tier
+    word (``premiumUnits``/``premiumHours`` for Premium Storage, etc.)."""
     tib = max(1.0, float(c.get("capacity_gb") or c.get("capacity") or 1024) / 1024.0)
-    return [
-        ("tier", _pick(c.get("service_level") or c.get("tier"),
-                       {"standard": "standard-storage", "premium": "premium-storage",
-                        "ultra": "ultra-storage", "flexible": "flexible-storage"}, "standard-storage"), "select"),
-        ("standardUnits", _num(round(tib, 1)), "number"),
-        ("standardHours", _num(_HOURS_MONTH), "number"),
+    tier = _pick(c.get("service_level") or c.get("tier"), _ANF_TIER, "standard-storage")
+    p = tier.split("-")[0]          # standard | premium | ultra | flexible
+    f = [
+        ("tier", tier, "select"),
+        (f"{p}Units", _num(round(tib, 1)), "number"),
+        (f"{p}Hours", _num(_HOURS_MONTH), "number"),
     ]
+    bo = _pick(c.get("billing_option") or c.get("reserved"),
+               {"1yr": "one-year", "1-year": "one-year", "1 year": "one-year",
+                "3yr": "three-year", "3-year": "three-year", "3 years": "three-year",
+                "payg": "payg"}, None)
+    if bo:
+        f.append((f"{p}StorageBillingOption", bo, "radio"))
+    return f
 
 
 # --------------------------------------------------------------------------
@@ -287,9 +322,12 @@ def _bastion_fields(c: dict) -> list[tuple]:
     ]
     if t != "basic" and c.get("scale_units"):
         f.append((f"{t}AdditionalScaleUnits", _num(max(0, int(c["scale_units"]) - 2)), "number"))
+    # the outbound-data-transfer control keeps the `standard` prefix for both the
+    # Standard and Premium tiers; only Basic renames it.
+    odt = "basic" if t == "basic" else "standard"
     f += [
-        (f"{t}OutboundDataTransferFactor", "1", "select"),
-        (f"{t}OutboundDataTransfer", _num(round(float(c.get("outbound_data_gb") or 5))), "number"),
+        (f"{odt}OutboundDataTransferFactor", "1", "select"),
+        (f"{odt}OutboundDataTransfer", _num(round(float(c.get("outbound_data_gb") or 5))), "number"),
     ]
     return f
 
@@ -365,7 +403,7 @@ ADAPTERS: dict[str, dict] = {
     "virtual-machines":      {"product": "Virtual Machines", "fields": _vm_fields, "verified": True},
     "managed-disks":         {"product": "Managed Disks", "fields": _disk_fields, "verified": True},
     "storage-accounts":      {"product": "Storage Accounts", "fields": _storage_fields, "verified": True},
-    "azure-files":           {"product": "Azure Files", "fields": _files_fields, "verified": False},
+    "azure-files":           {"product": "Azure Files", "fields": _files_fields, "verified": True},
     "azure-netapp-files":    {"product": "Azure NetApp Files", "fields": _anf_fields, "verified": True},
     "sql-managed-instance":  {"product": "Azure SQL Managed Instance", "fields": _sql_mi_fields, "verified": True},
     "sql-database":          {"product": "Azure SQL Database", "fields": _sql_db_fields, "verified": True},

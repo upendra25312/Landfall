@@ -39,7 +39,7 @@ SAMPLE: dict[str, dict] = {
     "storage-accounts": {"type": "block-blob", "tier": "standard", "access": "hot",
                          "redundancy": "lrs", "capacity_gb": 8192},
     "azure-files": {"tier": "premium", "redundancy": "lrs", "capacity_gb": 8192},
-    "azure-netapp-files": {"service_level": "standard", "capacity_gb": 4096},
+    "azure-netapp-files": {"service_level": "premium", "capacity_gb": 4096},
     "sql-managed-instance": {"tier": "general-purpose", "vcores": 8, "capacity_gb": 512, "count": 1},
     "sql-database": {"tier": "hyperscale", "vcores": 8, "capacity_gb": 512, "count": 1},
     "azure-database-for-postgresql": {"compute_tier": "generalpurpose", "capacity_gb": 256, "count": 1},
