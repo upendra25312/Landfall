@@ -18,7 +18,7 @@ import azure.functions as func
 import engagement as eng
 from cost.config import load_config
 from .design import design_landing_zone
-from .diagram import build_drawio, diagram_meta
+from .diagram import build_drawio, build_svg, diagram_meta
 from .calculator_spec import build_calculator_spec
 
 lz_bp = func.Blueprint()
@@ -104,6 +104,7 @@ def build_landing_zone_diagram_route(req: func.HttpRequest) -> func.HttpResponse
 
     try:
         xml = build_drawio(design)
+        svg = build_svg(design)
         meta = diagram_meta(design) | {"engagement": engagement, "built_at": _now(),
                                        "bytes": len(xml.encode())}
     except Exception as exc:                       # noqa: BLE001
@@ -116,9 +117,10 @@ def build_landing_zone_diagram_route(req: func.HttpRequest) -> func.HttpResponse
             prefix = eng.estimate_prefix(engagement)
             cc = _blob().get_container_client(eng.ANSWERS_CONTAINER)
             cc.upload_blob(f"{prefix}/landing_zone.drawio", xml.encode(), overwrite=True)
+            cc.upload_blob(f"{prefix}/landing_zone.svg", svg.encode(), overwrite=True)
             cc.upload_blob(f"{prefix}/landing_zone_diagram.json",
                            json.dumps(meta, default=str).encode(), overwrite=True)
-            stored = ["landing_zone.drawio", "landing_zone_diagram.json"]
+            stored = ["landing_zone.drawio", "landing_zone.svg", "landing_zone_diagram.json"]
         except Exception as exc:                   # noqa: BLE001
             logging.exception("could not store the diagram")
             return _json({"error": f"diagram built but not stored: {exc}"}, 500)

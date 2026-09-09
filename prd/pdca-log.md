@@ -63,8 +63,16 @@ raster + deck embed) becomes C27b, gated on a safe provision.
 
 ### Act
 
-- Committed on `c27-landing-zone-diagram`, merged to `main`, pushed. Deploy:
-  `azd deploy api` + `azd deploy web` + re-run `create_agent.py` (new tool + prompt).
+- Committed on `c27-landing-zone-diagram`, merged to `main`, pushed, deployed
+  (api 1m47s + web 1m38s + `create_agent.py`); CI `evals #49` green; **live-verified** —
+  the agent called `build_landing_zone_diagram` for `_default_/_default_` and stored the
+  `.drawio` (swedencentral, 9 spokes).
+- **Follow-up landed same day (`c27-svg`):** `diagram.py::build_svg(design)` — a
+  deterministic **self-contained SVG** (swimlane boxes, component rows, peering / hybrid /
+  DR edges, region label; no external refs). `build_landing_zone_diagram` + `publish_estimate`
+  now store `landing_zone.svg` too; `GET /dashboard/landing-zone-diagram` serves it by
+  default (`?fmt=drawio` for the source) and the dashboard renders it **inline** — the
+  `viewer.diagrams.net` iframe drops to a fallback. `tests/test_lz_diagram.py` → 15; 330 pass.
 - **C27b (deferred, needs `azd provision`):** the `ca-drawio` Container App
   (`simonkurtzmsft/drawio-mcp-server` mirrored to ACR + `drawio-export`) for server-side
   `.svg`/`.png`, the `to_pptx` / `to_docx` SVG embed (replacing the hand-drawn slide),

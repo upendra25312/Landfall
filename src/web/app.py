@@ -991,19 +991,28 @@ def landing_zone_xlsx(request: Request, e: str | None = None):
 
 
 @app.get("/dashboard/landing-zone-diagram")
-def landing_zone_diagram(request: Request, e: str | None = None, download: int = 0):
-    """The engagement's target landing-zone diagram as draw.io XML (E11.22). The
-    dashboard embeds it in the draw.io viewer; `?download=1` sends it as a file."""
+def landing_zone_diagram(request: Request, e: str | None = None,
+                         fmt: str = "svg", download: int = 0):
+    """The engagement's target landing-zone diagram (E11.22). `fmt=svg` (default) is
+    the self-contained SVG the dashboard renders inline; `fmt=drawio` is the editable
+    source; `?download=1` sends it as a file."""
     if (g := _guard_eid(request, e)):
         return g
-    blob = _read_estimate_blob("landing_zone.drawio", e)
+    fmt = fmt.lower()
+    if fmt == "drawio":
+        blob = _read_estimate_blob("landing_zone.drawio", e)
+        mime, ext = "application/xml", "drawio"
+    else:
+        blob = _read_estimate_blob("landing_zone.svg", e) or _read_estimate_blob("landing_zone.drawio", e)
+        mime, ext = ("image/svg+xml", "svg") if (blob and blob.lstrip().startswith(b"<svg")) \
+            else ("application/xml", "drawio")
     if blob is None:
         return JSONResponse({"error": "no landing-zone diagram built yet"}, status_code=404)
     if download:
         name = (e or "landfall").replace("/", "-") + "-landing-zone"
-        return Response(blob, media_type="application/xml", headers={
-            "Content-Disposition": f'attachment; filename="{name}.drawio"'})
-    return Response(blob, media_type="application/xml")
+        return Response(blob, media_type=mime, headers={
+            "Content-Disposition": f'attachment; filename="{name}.{ext}"'})
+    return Response(blob, media_type=mime)
 
 
 @app.get("/", response_class=HTMLResponse)

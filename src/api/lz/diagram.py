@@ -8,9 +8,14 @@ no MCP round-trips, no browser. The rules (swimlane nesting, the Azure colour
 palette, orthogonal edges, no hand-routed waypoints) are the vendored
 `docs/diagram-authoring/` ruleset applied in code, not agent reasoning.
 
-The `.drawio` file renders as-is in draw.io desktop and in the dashboard's
-embedded viewer. Server-side `.svg` / `.png` rendering is the `ca-drawio`
-container follow-up; this module is its input and stands alone without it.
+Two outputs, both deterministic and browser-free:
+  * `build_drawio(design)` — a draw.io (mxGraph) XML document, editable in draw.io
+    desktop.
+  * `build_svg(design)` — a self-contained SVG the dashboard renders inline and
+    `to_docx` / `to_pptx` can embed (no external viewer, no container).
+
+`.png` rasterisation + the full offline Azure icon set stay the `ca-drawio`
+container follow-up (C27b); this module stands alone without it.
 """
 from __future__ import annotations
 
@@ -168,6 +173,109 @@ def build_drawio(design: dict) -> str:
     x.cell(title, "1", 20, 0, _COL_W * 3, 28, colour="#FFFFFF")
 
     return x.document(title)
+
+
+# --------------------------------------------------------------- native SVG
+
+def _svg_text(x: int, y: int, s: str, *, size: int = 11, weight: str = "normal",
+              fill: str = "#1A1A1A", anchor: str = "start") -> str:
+    return (f'<text x="{x}" y="{y}" font-family="Segoe UI,Helvetica,Arial,sans-serif" '
+            f'font-size="{size}" font-weight="{weight}" fill="{fill}" '
+            f'text-anchor="{anchor}">{_esc(s)}</text>')
+
+
+def _svg_box(x: int, y: int, w: int, h: int, *, fill: str, stroke: str,
+             rx: int = 4, sw: int = 1, dash: str = "") -> str:
+    d = f' stroke-dasharray="{dash}"' if dash else ""
+    return (f'<rect x="{x}" y="{y}" width="{w}" height="{h}" rx="{rx}" '
+            f'fill="{fill}" stroke="{stroke}" stroke-width="{sw}"{d}/>')
+
+
+def build_svg(design: dict) -> str:
+    """design_landing_zone output -> a self-contained SVG string (no external refs)."""
+    design = design or {}
+    region = design.get("region") or "primary region"
+    dr_region = design.get("dr_region")
+    comps = _hub_components(design)
+    spokes = [s for s in (design.get("spokes") or []) if s.get("zone") != "sandbox"] \
+        + [s for s in (design.get("spokes") or []) if s.get("zone") == "sandbox"]
+
+    pad, col_w, gap, row_h, head = 24, 230, 40, 30, 30
+    top = 64
+    hub_h = head + 12 + max(1, len(comps)) * (row_h + 8)
+    spoke_h = head + 12 + 2 * (row_h + 8)
+    cols = 1 + len(spokes)
+    width = pad * 2 + cols * col_w + (cols - 1) * gap
+    body_bottom = top + max(hub_h, spoke_h) + 110 + (90 if dr_region else 0)
+    height = body_bottom + pad
+
+    parts: list[str] = [
+        f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {width} {height}" '
+        f'width="{width}" height="{height}" font-family="Segoe UI,Helvetica,Arial,sans-serif">',
+        f'<rect width="{width}" height="{height}" fill="#FFFFFF"/>',
+        _svg_text(pad, 28, f"Azure Landing Zone — {region}"
+                  + (f"  ·  DR {dr_region}" if dr_region else ""), size=15, weight="bold",
+                  fill=_C_HUB),
+        _svg_text(pad, 46, f"{len(spokes)} spoke(s) · "
+                  f"identity {(design.get('identity') or {}).get('model') or 'n/a'} · "
+                  f"connectivity {(design.get('connectivity') or {}).get('model') or 'n/a'}",
+                  size=10, fill="#5A6B76"),
+    ]
+
+    def _column(cx: int, label: str, sub: str, rows: list[str], colour: str, h: int) -> None:
+        parts.append(_svg_box(cx, top, col_w, h, fill="#FFFFFF", stroke=colour, sw=2))
+        parts.append(_svg_box(cx, top, col_w, head, fill=colour, stroke=colour))
+        parts.append(_svg_text(cx + 10, top + 19, label, size=11, weight="bold", fill="#FFFFFF"))
+        if sub:
+            parts.append(_svg_text(cx + col_w - 10, top + 19, sub, size=9, fill="#EAF3FB", anchor="end"))
+        for i, r in enumerate(rows):
+            ry = top + head + 10 + i * (row_h + 8)
+            parts.append(_svg_box(cx + 10, ry, col_w - 20, row_h, fill=_C_COMPONENT, stroke=_C_HUB))
+            parts.append(_svg_text(cx + 18, ry + 19, r, size=10))
+
+    # hub column
+    hub_cx = pad
+    _column(hub_cx, f"Hub VNet — {region}", (design.get("ip_plan") or {}).get("hub", ""),
+            comps, _C_HUB, hub_h)
+
+    # spoke columns + peering edges
+    for j, sp in enumerate(spokes):
+        cx = pad + (j + 1) * (col_w + gap)
+        colour = _spoke_colour(sp)
+        apps = sp.get("apps") or []
+        _column(cx, (_spoke_label(sp).split("\n")[0]),
+                sp.get("address_space") or "",
+                [f"{len(apps)} application(s)" if apps else "workload subnet",
+                 f"env: {sp.get('env') or 'n/a'}"], colour, spoke_h)
+        y_mid = top + min(hub_h, spoke_h) / 2
+        parts.append(f'<line x1="{hub_cx + col_w}" y1="{y_mid}" x2="{cx}" y2="{y_mid}" '
+                     f'stroke="{_C_EDGE_PEER}" stroke-width="1.5"/>')
+
+    # on-prem + hybrid edge
+    op_y = top + max(hub_h, spoke_h) + 40
+    parts.append(_svg_box(pad, op_y, col_w, 46, fill="#F2F2F2", stroke="#9AA7B0"))
+    parts.append(_svg_text(pad + 10, op_y + 20, "On-premises", size=11, weight="bold"))
+    parts.append(_svg_text(pad + 10, op_y + 36,
+                           (design.get("connectivity") or {}).get("model") or "ExpressRoute + VPN",
+                           size=9, fill="#5A6B76"))
+    parts.append(f'<line x1="{pad + col_w // 2}" y1="{op_y}" x2="{pad + col_w // 2}" y2="{top + hub_h}" '
+                 f'stroke="{_C_EDGE_HYBRID}" stroke-width="1.5"/>')
+    parts.append(_svg_text(pad + col_w // 2 + 6, op_y - 6, "ExpressRoute / VPN", size=9,
+                           fill=_C_EDGE_HYBRID))
+
+    # DR region
+    if dr_region:
+        dr_y = op_y + 70
+        parts.append(_svg_box(pad, dr_y, col_w * 2 + gap, 60, fill="#FDE7E9", stroke=_C_EDGE_DR,
+                              dash="6 3"))
+        parts.append(_svg_text(pad + 10, dr_y + 22, f"DR region — {dr_region}", size=11,
+                               weight="bold", fill=_C_EDGE_DR))
+        parts.append(_svg_text(pad + 10, dr_y + 40,
+                               "Paired region · ASR + native DB replication (tier 1–2) · GRS backup",
+                               size=9, fill="#7A2E33"))
+
+    parts.append("</svg>")
+    return "".join(parts)
 
 
 # --------------------------------------------------------------- MCP-call plan
