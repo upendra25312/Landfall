@@ -55,6 +55,12 @@ jobs:
           git diff --exit-code evidence/broken-dumps/ \
             || (echo "::error::evidence/broken-dumps/ is stale - run gen_dumps.py + check.py and commit" && exit 1)
 
+      - name: 5/5 scorecard (E10.6 — rubric + score + evidence links current)
+        run: |
+          python evidence/scorecard.py
+          git diff --exit-code evidence/SCORECARD.md \
+            || (echo "::error::evidence/SCORECARD.md is stale - run 'python evidence/scorecard.py' and commit it" && exit 1)
+
       - name: Fail if SCORECARD drifted from the committed copy
         run: |
           git diff --exit-code evals/SCORECARD.md \
