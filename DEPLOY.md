@@ -239,8 +239,60 @@ also removes the soft-deleted Key Vault and Foundry account so the names free up
 
 ---
 
+## Post-deploy smoke test (E9.2)
+
+`scripts/smoke.py` asserts a deployment is actually serving — every expected
+resource exists, the Function host and web container answer, SQL is reachable,
+the blob containers are there. Stdlib only; `az` must be logged in.
+
+```bash
+python scripts/smoke.py                    # uses `azd env get-values`, then os.environ
+python scripts/smoke.py --json smoke.json  # + structured result
+python scripts/smoke.py --deep             # + agent-resolves, + live query_inventory (needs SMOKE_API_TOKEN)
+```
+
+Exit code is non-zero on the first hard failure. A captured run against
+`rg-landfall` lives at `evidence/ops/smoke-live.json`.
+
+### Clean-machine CI — `.github/workflows/clean-machine.yml`
+
+Provisions a throwaway env from nothing on both Linux and Windows runners
+(`azd up` → `smoke.py` → `azd down --force --purge`), so a Bicep or hook
+regression fails in CI before it reaches the live environment. **Dormant until
+armed** — it needs an Entra service principal with rights to create resources +
+role assignments in a subscription, wired to GitHub via OIDC:
+
+1. Create an app registration + service principal; give it **Contributor** and
+   **Role Based Access Control Administrator** (or Owner) on the target
+   subscription (the Bicep creates data-plane role assignments).
+2. Add a **federated credential** on the app for
+   `repo:<org>/<repo>:ref:refs/heads/main` (and `:environment:` /
+   `:pull_request` if you extend the triggers).
+3. Repository → Settings → Secrets and variables → Actions:
+   - secrets: `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID`,
+     `AZURE_PRINCIPAL_ID` (the SP's **object id**, for the SQL admin + data-plane grants)
+   - variable: `CLEAN_MACHINE_CI` = `true`  (the job's `if:` guard)
+   - variable (optional): `CLEAN_MACHINE_LOCATION` (default `eastus2` — pick a
+     region with **10K TPM** free for `gpt-4o` + embeddings; the CI env sets
+     `MODEL_CAPACITY=10`)
+
+Until step 3's variable is set the workflow is skipped on every trigger. Trigger
+a manual run from the Actions tab once armed.
+
+**Known drift the CI would surface:** the live `web` Container App has Easy Auth
+enabled *imperatively* (not in `infra/resources.bicep`), so a fresh `azd up`
+brings the web app up with **no auth**. `smoke.py` treats both 200 and 401 on
+`/healthz` as "up", but the difference is real — fold the container-app
+`authConfig` into Bicep (an E8.2 follow-up) so live and fresh match.
+
+---
+
 ## Cost
 
 Idle: a few dollars a month (storage + Log Analytics). Per estimate run: a few tens of
 cents of `gpt-4o` tokens. AI Search Free, SQL Free offer, Container Apps and Functions
 free grants keep the rest at $0. Expect **$5–15/month** at 5–20 runs.
+
+A clean-machine CI run provisions a full throwaway stack: budget ~**$1–3** of
+compute/model spend per run (mostly the GP_S SQL + a few model tokens), then
+`azd down --purge` takes it to zero.
