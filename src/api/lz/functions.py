@@ -121,6 +121,14 @@ def build_landing_zone_diagram_route(req: func.HttpRequest) -> func.HttpResponse
             cc.upload_blob(f"{prefix}/landing_zone_diagram.json",
                            json.dumps(meta, default=str).encode(), overwrite=True)
             stored = ["landing_zone.drawio", "landing_zone.svg", "landing_zone_diagram.json"]
+            try:
+                from .render import rasterize
+                png = rasterize(svg)
+                if png:
+                    cc.upload_blob(f"{prefix}/landing_zone.png", png, overwrite=True)
+                    stored.append("landing_zone.png")
+            except Exception:                     # noqa: BLE001
+                logging.warning("build_landing_zone_diagram: raster skipped", exc_info=True)
         except Exception as exc:                   # noqa: BLE001
             logging.exception("could not store the diagram")
             return _json({"error": f"diagram built but not stored: {exc}"}, 500)

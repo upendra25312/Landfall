@@ -1002,6 +1002,9 @@ def landing_zone_diagram(request: Request, e: str | None = None,
     if fmt == "drawio":
         blob = _read_estimate_blob("landing_zone.drawio", e)
         mime, ext = "application/xml", "drawio"
+    elif fmt == "png":
+        blob = _read_estimate_blob("landing_zone.png", e)
+        mime, ext = "image/png", "png"
     else:
         blob = _read_estimate_blob("landing_zone.svg", e) or _read_estimate_blob("landing_zone.drawio", e)
         mime, ext = ("image/svg+xml", "svg") if (blob and blob.lstrip().startswith(b"<svg")) \

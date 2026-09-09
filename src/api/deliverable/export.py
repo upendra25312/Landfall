@@ -41,6 +41,22 @@ def export(package: dict, fmt: str) -> tuple[bytes, str, str]:
     return blob, f"{pid}.{fmt}", _MIME[fmt]
 
 
+def _diagram_png(package: dict) -> bytes | None:
+    """The rendered landing-zone diagram PNG, if `publish_estimate` attached one
+    (E11.22 / C27b). Accepts raw bytes or a base64 string under `landing_zone_png_b64`."""
+    v = package.get("landing_zone_png_b64") or package.get("landing_zone_png")
+    if isinstance(v, bytes):
+        return v if v[:8] == b"\x89PNG\r\n\x1a\n" else None
+    if isinstance(v, str) and v:
+        import base64
+        try:
+            b = base64.b64decode(v)
+            return b if b[:8] == b"\x89PNG\r\n\x1a\n" else None
+        except Exception:  # noqa: BLE001
+            return None
+    return None
+
+
 def _fmt(v):
     if isinstance(v, bool) or v is None:
         return "" if v is None else str(v)
@@ -211,10 +227,13 @@ def to_docx(package: dict) -> bytes:
         c[0].text, c[1].text = f["label"], f"{_fmt(f['value'])} {f['unit']}"
         c[2].text, c[3].text = f["confidence"], f["id"]
 
+    _lz_png = _diagram_png(package)
     for s in _sections(package):
         _h(f"{s['id']}. {s['title']}", 1)
         for line in _body_lines(s):
             doc.add_paragraph(line, style="List Bullet" if not line.startswith("|") else None)
+        if s.get("key") == "landing_zone" and _lz_png:
+            doc.add_picture(io.BytesIO(_lz_png), width=Inches(6.5))
 
     _h("Calculation appendix", 1)
     at = doc.add_table(rows=1, cols=5)
@@ -688,57 +707,71 @@ def to_pptx(package: dict) -> bytes:
                       note="CAF-aligned landing zone derived from the app portfolio and "
                            "compliance scope. The regulated spoke pair is data-driven: "
                            "apps carrying HIPAA / PCI-DSS scope land there, isolated.")
-    zones = sorted(by_zone.items(), key=lambda kv: -kv[1])[:5]
-    hub_cy = 1.75 + max(1, len(zones)) * 1.0 / 2
-    hub = s.shapes.add_shape(MSO_SHAPE.OVAL, Inches(MX + 0.35), Inches(hub_cy - 0.8),
-                             Inches(1.6), Inches(1.6))
-    hub.fill.solid(); hub.fill.fore_color.rgb = C(_PP["ink"]); hub.line.fill.background()
-    hub.shadow.inherit = False
-    htf = hub.text_frame
-    para(htf, "Platform", size=10, color="FFFFFF", bold=True, first=True,
-         align=PP_ALIGN.CENTER, space_after=0)
-    para(htf, "hub", size=10, color="FFFFFF", bold=True, align=PP_ALIGN.CENTER, space_after=0)
-    zy = 1.75
-    for zn, cnt in zones:
-        o = s.shapes.add_shape(MSO_SHAPE.OVAL, Inches(3.05), Inches(zy), Inches(1.5), Inches(0.86))
-        o.fill.solid(); o.fill.fore_color.rgb = C(_PP["azure"]); o.line.fill.background()
-        o.shadow.inherit = False
-        otf = o.text_frame
-        para(otf, str(zn).title(), size=9, color="FFFFFF", bold=True, first=True,
-             align=PP_ALIGN.CENTER, space_after=0)
-        para(otf, f"{cnt} spoke(s)", size=7.5, color="FFFFFF", align=PP_ALIGN.CENTER, space_after=0)
-        cn = s.shapes.add_connector(1, Inches(MX + 1.95), Inches(hub_cy),
-                                    Inches(3.05), Inches(zy + 0.43))
-        cn.line.color.rgb = C(_PP["line"]); cn.line.width = Pt(1.25)
-        cn.shadow.inherit = False
-        zy += 1.0
-    zone_rows = [[str(zn).title(), str(c),
-                  {"regulated": "Regulated scope — isolated spoke + Confidential MG",
-                   "online": "Internet-facing workloads",
-                   "corp": "Internal line-of-business",
-                   "sandbox": "Non-production experimentation"}.get(zn, "—")]
-                 for zn, c in zones]
-    table(s, 5.1, 1.75, SW - MX - 5.1, ["Zone", "Spokes", "Purpose"], zone_rows, [1.1, 0.8, 3.2])
-    band_y = 1.75 + 0.36 + 0.33 * len(zone_rows) + 0.3
-    rrect(s, 5.1, band_y, SW - MX - 5.1, 1.5, fill=_PP["mist"], line_c=_PP["line"], rounded=True)
-    bf = tbox(s, 5.35, band_y + 0.16, SW - MX - 5.6, 1.2)
-    para(bf, f"Identity   ·   {lz.get('identity') or 'n/a'}", size=10, color=_PP["ink"],
-         first=True, space_after=4)
-    para(bf, f"Connectivity   ·   {lz.get('connectivity') or 'n/a'}", size=10,
-         color=_PP["ink"], space_after=4)
-    para(bf, f"DR   ·   {lz.get('region') or 'n/a'} → {lz.get('dr_region') or 'n/a'} "
-             f"(ASR for tier 1–2)", size=10, color=_PP["ink"], space_after=4)
+
+    # E11.22 (C27b) — when the rendered diagram is available, use it instead of the
+    # hand-drawn hub-spoke.
     _conf = lz.get("design_conformance") or {}
-    if _conf.get("headline"):
-        para(bf, f"Design checklist   ·   {_conf['headline']}"
-                 + ("  (+ AI-LZ overlay)" if _conf.get("ai_lz_applicable") else ""),
-             size=10, color=_PP["ink"], space_after=0)
-    takeaway(s, f"{fv('lz_spokes', default='n/a')} spokes, "
-                f"{', '.join(lz.get('regulated_scopes') or []) or 'no'} regulated scope(s) "
-                f"— topology derived from the portfolio, not a template"
-                + (f"; {_conf['headline']} vs the Azure (AI) Landing Zone design checklist"
-                   if _conf.get("headline") else "")
-                + f". ({ref('lz_spokes')})")
+    _png = _diagram_png(package)
+    if _png:
+        s.shapes.add_picture(io.BytesIO(_png), Inches(MX), Inches(1.55),
+                             width=Inches(SW - 2 * MX))
+        takeaway(s, f"{fv('lz_spokes', default='n/a')} spokes, "
+                    f"{', '.join(lz.get('regulated_scopes') or []) or 'no'} regulated scope(s) "
+                    f"— topology derived from the portfolio, not a template"
+                    + (f"; {_conf['headline']} vs the Azure (AI) Landing Zone design checklist"
+                       if _conf.get("headline") else "")
+                    + f". ({ref('lz_spokes')})")
+    else:
+        zones = sorted(by_zone.items(), key=lambda kv: -kv[1])[:5]
+        hub_cy = 1.75 + max(1, len(zones)) * 1.0 / 2
+        hub = s.shapes.add_shape(MSO_SHAPE.OVAL, Inches(MX + 0.35), Inches(hub_cy - 0.8),
+                                 Inches(1.6), Inches(1.6))
+        hub.fill.solid(); hub.fill.fore_color.rgb = C(_PP["ink"]); hub.line.fill.background()
+        hub.shadow.inherit = False
+        htf = hub.text_frame
+        para(htf, "Platform", size=10, color="FFFFFF", bold=True, first=True,
+             align=PP_ALIGN.CENTER, space_after=0)
+        para(htf, "hub", size=10, color="FFFFFF", bold=True, align=PP_ALIGN.CENTER, space_after=0)
+        zy = 1.75
+        for zn, cnt in zones:
+            o = s.shapes.add_shape(MSO_SHAPE.OVAL, Inches(3.05), Inches(zy), Inches(1.5), Inches(0.86))
+            o.fill.solid(); o.fill.fore_color.rgb = C(_PP["azure"]); o.line.fill.background()
+            o.shadow.inherit = False
+            otf = o.text_frame
+            para(otf, str(zn).title(), size=9, color="FFFFFF", bold=True, first=True,
+                 align=PP_ALIGN.CENTER, space_after=0)
+            para(otf, f"{cnt} spoke(s)", size=7.5, color="FFFFFF", align=PP_ALIGN.CENTER, space_after=0)
+            cn = s.shapes.add_connector(1, Inches(MX + 1.95), Inches(hub_cy),
+                                        Inches(3.05), Inches(zy + 0.43))
+            cn.line.color.rgb = C(_PP["line"]); cn.line.width = Pt(1.25)
+            cn.shadow.inherit = False
+            zy += 1.0
+        zone_rows = [[str(zn).title(), str(c),
+                      {"regulated": "Regulated scope — isolated spoke + Confidential MG",
+                       "online": "Internet-facing workloads",
+                       "corp": "Internal line-of-business",
+                       "sandbox": "Non-production experimentation"}.get(zn, "—")]
+                     for zn, c in zones]
+        table(s, 5.1, 1.75, SW - MX - 5.1, ["Zone", "Spokes", "Purpose"], zone_rows, [1.1, 0.8, 3.2])
+        band_y = 1.75 + 0.36 + 0.33 * len(zone_rows) + 0.3
+        rrect(s, 5.1, band_y, SW - MX - 5.1, 1.5, fill=_PP["mist"], line_c=_PP["line"], rounded=True)
+        bf = tbox(s, 5.35, band_y + 0.16, SW - MX - 5.6, 1.2)
+        para(bf, f"Identity   ·   {lz.get('identity') or 'n/a'}", size=10, color=_PP["ink"],
+             first=True, space_after=4)
+        para(bf, f"Connectivity   ·   {lz.get('connectivity') or 'n/a'}", size=10,
+             color=_PP["ink"], space_after=4)
+        para(bf, f"DR   ·   {lz.get('region') or 'n/a'} → {lz.get('dr_region') or 'n/a'} "
+                 f"(ASR for tier 1–2)", size=10, color=_PP["ink"], space_after=4)
+        if _conf.get("headline"):
+            para(bf, f"Design checklist   ·   {_conf['headline']}"
+                     + ("  (+ AI-LZ overlay)" if _conf.get("ai_lz_applicable") else ""),
+                 size=10, color=_PP["ink"], space_after=0)
+        takeaway(s, f"{fv('lz_spokes', default='n/a')} spokes, "
+                    f"{', '.join(lz.get('regulated_scopes') or []) or 'no'} regulated scope(s) "
+                    f"— topology derived from the portfolio, not a template"
+                    + (f"; {_conf['headline']} vs the Azure (AI) Landing Zone design checklist"
+                       if _conf.get("headline") else "")
+                    + f". ({ref('lz_spokes')})")
 
     # ================= SLIDE 6 — disposition (6R) =================
     by_disp = dp.get("by_disposition") or {}
