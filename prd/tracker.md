@@ -16,6 +16,7 @@ Companion to [`prd/landfall-5x5-prd.md`](landfall-5x5-prd.md). Delivery log:
 | 2 — Security tail (E8.5–8.7) | 3 | 0 | 2 | 0 | 1 |
 | 3 — Sustain | 3 | 0 | 0 | 0 | 3 |
 | E11 — Engagement Workspaces | 26 | 25 | 0 | 0 | 1 (C26b, sponsor-gated) |
+| E12 — Workspace UX & front-end | 12 | 5 | 0 | 0 | 7 |
 
 _Last updated: 2026-09-09 (PDCA cycles 1–29). Cycles 19–28 delivered Epic E11 (engagement workspaces) end-to-end — all live. Cycle 29 closed the Phase 1 tail (E4.3 wave duration model + critical path, E6.2-full resource-loading curve + peak FTE, E1.7 per-engagement `_mapping.json`). Phase 1 engine is now complete; remaining road to 5/5 is Phase 2 (Evidence). Earlier history: C15 = first live deploy to `rg-landfall`/swedencentral (E1.1 / E1.5 / E1.6 / E5.4 / E5.5 verified; 3 deploy bugs fixed). C16 = **E8.2** Function App EasyAuth on (anon `/api/*` → 401, agent via MSI, ingestion intact). C17 = **E5.4 `.pptx` rebuilt** as a 12-slide narrative assessment deck (native charts, MEG lifecycle, watermark every slide), deployed + published live. **C18 = Epic E11 engagement tenancy (E11.1–E11.3) live** — per-engagement ADLS layout, SQL Row-Level Security by `SESSION_CONTEXT('engagement_id')` (fail-closed), `engagement` arg on `query_inventory` / assemble / export / publish + agent prompt; sample estate re-loaded as `_default_/_default_`, agent tenant-isolation verified end-to-end. Phase 1 engine complete bar E1.7 / E4.3 / full E6.2. Generation model: `export.py` deterministic Python via `export_estimate`/`publish_estimate` — **the Foundry agent orchestrates, it does not author documents**; the 4 external skills are design references (docx/xlsx) or a Phase-2 side-car (presentation-skill/ppt-master). 150 pytest + 32 golden SQL + 8 scenarios + 30 fault cases green. Known gap: `schema.sql` drops+recreates tables every apply (wipes inventory) — needs additive-only migrations (C23)._
 
@@ -146,6 +147,26 @@ many engagements, isolated by an `<customer>/<project>` key. The Foundry agent o
 | E11.13 | Evals — per-engagement isolation tests (two synthetic estates, assert no bleed) + a `run_engagement` scenario | P0 | planned | SRE | 19 | A row-leak regression fails CI |
 | E11.14 | **Ask & export to Excel** — `POST /api/answer_to_xlsx` + a "Download as Excel" button on chat answers with tabular tool output | P0 | planned | SWE + App Eng | 21 | Architect asks a question, gets the answer, downloads a workbook with the rows + the SQL + engagement + DRAFT note |
 
+## Epic E12 — Engagement Workspace UX & Front-End Hardening
+
+From a live front-end review of the chat page ([`engagement-workspaces-prd.md` §4.13 + §5a](engagement-workspaces-prd.md)),
+triggered by a user screenshot of a broken Upload panel. `src/web/app.py::index()` unless noted.
+
+| ID | Item | Pri | Status | Owner | Cycle | Acceptance |
+|---|---|---|---|---|---|---|
+| E12.1 | Dropzone render fix — `.uz` was an inline `<label>` styled as a block dropzone; padding + `<br>` lines + border overlapped | P0 | done | UX + FS | 34 | The Upload panel renders as one clean card; hint text + file list legible, non-overlapping at 1280 / 375 px. _`.uz{display:flex;flex-direction:column}`._ |
+| E12.2 | Intro-first layout — `#uploadpanel` → `<details>`, auto-opens only when the engagement has no inventory | P0 | done | UX + FS | 34 | A returning user sees the intro + prompt cards without scrolling; the panel is one collapsed `<summary>` row. |
+| E12.3 | Dropzone typographic hierarchy — prompt line (`.uzt`) + muted hint lines (`.uzh`); folded into E12.1. Contrast re-checked — 6.6:1, passes AA | P1 | done | UX | 34 | The dropzone reads as one prompt + supporting hints, not equal-weight small text. |
+| E12.4 | One primary action per view — `Start analysis` + `Create engagement` → secondary/outline | P1 | done | UX | 34 | A screenshot review confirms a single visual primary per screen state. _`button.send.secondary`._ |
+| E12.5 | Demote the `auto / data / docs` upload-kind radio behind a "classify manually" toggle + help text | P2 | backlog | UX | — | First-time users never touch the radio; the ✓ row shows the server-detected kind. |
+| E12.6 | Responsive header — `flex-wrap` + collapse the link cluster under ~680 px | P1 | done | FS | 34 | Header unbroken, no horizontal scroll, 375 → 1920 px. |
+| E12.7 | Chat page → static `chat.html` + served JS + a `Content-Security-Policy` with no `unsafe-inline` | P1 | backlog | FS | — | `index()` serves a file; CSP header present; existing chat tests pass. |
+| E12.8 | Guided pipeline state (rail-less subset of E11.21) — status strip (Uploads · Analysis · Estimate · POE) + soft-nudge before analysis has run | P1 | backlog | App Eng | — | The user sees which pipeline steps are done; an estimate ask on an empty engagement gets a hint. |
+| E12.9 | Agent progress transparency — tool-call milestones in the working indicator; a "busy, retrying" message on a model 429 | P2 | backlog | AI | — | During a full-estimate run the user sees the running tool; a throttled model shows a message. |
+| E12.10 | Direct-to-blob uploads — short-lived engagement-prefixed user-delegation SAS; browser PUTs straight to ADLS | P2 | backlog | Cloud Arch | — | A 100 MB file uploads without passing the app tier's request body; SAS ≤ 15 min, single prefix; manifest + type check still happen. |
+| E12.11 | Edge protection + custom domain — Front Door / App Gateway + WAF on `landfall.<domain>`; ingress locked to the AFD front | P2 | backlog | Cloud Arch | — | Users reach the app only via the custom domain behind the WAF; direct ACA FQDN blocked. |
+| E12.12 | UI trust surface — "signed in as `<user>`" + sign-out, show engagement `visibility`, link `evidence/data-handling-statement.md` | P1 | backlog | App Eng + Security | — | The active user, the visibility and a link to the data-handling statement are on the engagement page. |
+
 ## Phase 3 — Sustain
 
 | ID | Item | Pri | Status | Owner | Cycle | Acceptance |
@@ -191,3 +212,4 @@ many engagements, isolated by an `<customer>/<project>` key. The Foundry agent o
 | 31 | **E10.2 broken-dump corpus** — `evidence/broken-dumps/`: 9 damaged inventory files (unrecognised format, empty, header-only, missing-required-column, ragged rows, garbage numerics, duplicate keys, UTF-16, orphan endpoints), each proven handled per E1.4. `dq.py` +3 findings + a Low-confidence rule. `RESULTS.md` + CI drift gate; SOP v1.3. 375 pytest. | [pdca-log.md](pdca-log.md) · **done** |
 | 32 | **E10.3 + E10.6 — 5/5 scorecard** — `evidence/scorecard.py` → `evidence/SCORECARD.md`: 9-dimension rubric, live-pulled scores (**overall 3.67/5**), per-dimension "to reach 5/5", evidence index, residual risk. `evidence/evals/` history snapshots. `tests/test_scorecard.py` (6) + CI drift gate. 381 pytest. Code-only. | [pdca-log.md](pdca-log.md) · **done** |
 | 33 | **E8.6 + E8.7 — security tail** — chat threads bound to the caller's engagement `visibility` (`/api/chat` guards + stateless unscoped + per-turn `actor`); `evidence/data-handling-statement.md` drafted (pending signature). Security dimension 3.0→3.5, **overall 3.72/5**. SOP v1.4. 384 pytest. `azd deploy web`. | [pdca-log.md](pdca-log.md) · **done** |
+| 34 | **Epic E12 opened — front-end quick-wins** — live review of the chat page (screenshot: broken Upload panel) → `engagement-workspaces-prd.md` §4.13 + §5a (E12.1–E12.12). Shipped E12.1 (dropzone render fix — inline `<label>` → flex), E12.2 (`<details>` panel, intro leads), E12.3 (dropzone type hierarchy), E12.4 (button hierarchy), E12.6 (responsive header). Pure markup/CSS in `app.py::index()`. 386 pytest, evals green, no SCORECARD drift. `azd deploy web`. | [pdca-log.md](pdca-log.md) · **done** |

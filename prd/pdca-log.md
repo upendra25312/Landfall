@@ -5,6 +5,68 @@ Operating model: [`landfall-5x5-prd.md` §7](landfall-5x5-prd.md). Tracker:
 
 ---
 
+## Cycle 34 — front-end quick-wins on the chat page (Epic E12: E12.1–E12.4, E12.6)
+
+**Date:** 2026-09-09 · **Owner:** UX + Full-stack ·
+**Tracker:** E12.1–E12.4, E12.6 — the ship-now subset of a live front-end review
+(engagement-workspaces-prd.md §4.13). Triggered by a user screenshot showing the
+Upload panel rendered with its hint text and file list overlapping and illegible.
+
+### Plan
+
+- **Root cause** — `.uz` is a `<label>` (`display:inline` by default) styled as a
+  block dropzone: `padding:16px` + three `<br>` lines + a dashed border on an
+  inline box overlap; `#filerows` renders underneath.
+- Ship the pure markup/CSS fixes in `app.py::index()` with no behaviour/API change:
+  render fix (E12.1), intro-first collapsible panel (E12.2), dropzone type
+  hierarchy (E12.3), button hierarchy (E12.4), responsive header (E12.6).
+- Park the heavier items as Epic E12 backlog: file+CSP extraction (E12.7),
+  guided pipeline state (E12.8), progress transparency (E12.9), direct-to-blob
+  uploads (E12.10), edge/WAF + custom domain (E12.11), UI trust surface (E12.12).
+
+### Do
+
+- **`src/web/app.py::index()`**
+  - `.uz{display:flex;flex-direction:column;gap:5px}` — the dropzone is now a
+    clean card; copy split into `.uzt` (prompt, `--ink`, 13.5px) + two `.uzh`
+    muted hint lines. Contrast re-computed: `--muted` on `--panel` is 6.6:1 —
+    passes WCAG AA; the finding was density, not colour.
+  - `#uploadpanel` `<div>` → `<details>` with `<summary>Inventory &amp;
+    documents<span id=upcount></span></summary>`; `loadFiles()` sets
+    `upanel.open=true` only when the engagement has no inventory, and fills
+    `#upcount` with the file count. Returning users see the intro + prompt cards
+    first; a fresh engagement still gets the upload prompt.
+  - `button.send.secondary` (transparent + accent outline); `Start analysis` uses
+    it — `Send` is the only filled primary in the default view.
+  - `header{flex-wrap:wrap;gap:8px 12px}` + `@media(max-width:680px)` hides the
+    spacer and full-widths the title so the 6-control header doesn't break narrow.
+- **`tests/test_upload.py`** — +2: the panel is a `<details>` that doesn't lead
+  (asserts `.uz{display:flex`, `class=uzt`/`uzh`, the auto-open rule), and
+  `Start analysis` is the secondary button. Existing markup assertions
+  (`"Drop files here"`, `"startanalysis"`, `"/analyze"`, `"showUpload"`) preserved.
+- **`prd/engagement-workspaces-prd.md`** — §4.13 front-end defect review (12-row
+  finding table), Epic E12 work breakdown (`## 5a`, E12.1–E12.12 with status), a
+  C34 cadence row.
+
+### Check
+
+| gate | result |
+|---|---|
+| unit | **386 pytest** (+2), 2 skipped |
+| render fix | `TestClient.get("/")` serves valid HTML; `.uz` is `display:flex`; panel is `<details>` |
+| evals | 32/32 + 8/8 + 30/30, `evals/SCORECARD.md` + `evidence/SCORECARD.md` no drift |
+| scope | only `src/web/app.py` production code changed → `azd deploy web` only; no api/agent/infra |
+
+### Act
+
+- One commit on `c34-frontend-quickwins`, merged `--no-ff` to `main`
+  (`d25cbe3`), pushed. `azd deploy web` (`app.py` only).
+- Epic E12 opened on the tracker: 5 done (C34), 7 backlog. Next by scorecard
+  leverage is still **E9.2 clean-machine CI** (Operability 3→4); E12.7 (chat
+  page → static file + CSP) is the next front-end cycle.
+
+---
+
 ## Cycle 33 — security tail: thread-principal binding + data-handling statement (E8.6 / E8.7)
 
 **Date:** 2026-09-09 · **Owner:** SWE + Security ·
