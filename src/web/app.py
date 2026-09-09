@@ -1040,10 +1040,11 @@ def index():
  :root{--bg:#0b151d;--panel:#111f2a;--line:#25343f;--ink:#e6edf1;--muted:#94a5b0;--accent:#0e7c8b}
  *{box-sizing:border-box}
  body{font:15px/1.6 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;margin:0;background:var(--bg);color:var(--ink)}
- header{display:flex;align-items:center;gap:12px;padding:12px 20px;border-bottom:1px solid var(--line);font-weight:600;position:sticky;top:0;background:var(--bg);z-index:5}
- header .sp{flex:1}
- header a,header button.link{color:#7fd3dd;font-size:13px;text-decoration:none;background:none;border:0;cursor:pointer;font-family:inherit}
+ header{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;padding:12px 20px;border-bottom:1px solid var(--line);font-weight:600;position:sticky;top:0;background:var(--bg);z-index:5}
+ header .sp{flex:1;min-width:0}
+ header a,header button.link{color:#7fd3dd;font-size:13px;text-decoration:none;background:none;border:0;cursor:pointer;font-family:inherit;white-space:nowrap}
  header button.link:hover,header a:hover{text-decoration:underline}
+ @media(max-width:680px){header .sp{display:none}header>span:first-child{width:100%}}
  #log{max-width:820px;margin:0 auto;padding:20px 20px 8px}
  .m{margin:12px 0;padding:12px 14px;border-radius:10px;white-space:pre-wrap;word-wrap:break-word}
  .u{background:#152430}
@@ -1060,6 +1061,7 @@ def index():
  input:disabled{opacity:.55}
  button.send{padding:11px 20px;border-radius:8px;border:0;background:var(--accent);color:#fff;font-weight:600;cursor:pointer}
  button.send:disabled{opacity:.5;cursor:default}
+ button.send.secondary{background:transparent;border:1px solid var(--accent);color:#7fd3dd;font-weight:600}
  .intro{max-width:820px;margin:26px auto 6px;padding:0 20px}
  .intro h2{margin:0 0 8px;font-size:19px}
  .intro p{color:var(--muted);margin:0 0 14px}
@@ -1079,10 +1081,16 @@ def index():
  .mini .full{grid-column:1/-1}
  .warn{color:#f0a35e;font-size:12px}
  #uploadpanel{max-width:820px;margin:14px auto 0;padding:0 20px}
+ #uploadpanel>summary{cursor:pointer;font-size:13px;color:#7fd3dd;padding:6px 0;user-select:none}
+ #uploadpanel>summary::marker{color:var(--muted)}
+ #uploadpanel[open]>summary{margin-bottom:8px}
+ #upcount{color:var(--muted);font-weight:400;margin-left:6px}
  .utabs{display:flex;align-items:center;gap:12px;margin:0 0 8px;font-size:12px;color:var(--muted)}
  .utabs label{cursor:pointer}
- .uz{border:1.5px dashed var(--line);border-radius:12px;padding:16px;text-align:center;background:var(--panel);cursor:pointer;color:var(--muted);font-size:12.5px;line-height:1.7}
+ .uz{display:flex;flex-direction:column;gap:5px;border:1.5px dashed var(--line);border-radius:12px;padding:18px 16px;text-align:center;background:var(--panel);cursor:pointer;color:var(--muted);line-height:1.5}
  .uz.drag{border-color:#7fd3dd;color:var(--ink);background:#152430}
+ .uz .uzt{color:var(--ink);font-size:13.5px}
+ .uz .uzh{font-size:11.5px}
  .uz b{color:#7fd3dd}
  #filerows{list-style:none;margin:8px 0 0;padding:0}
  .frow{display:flex;align-items:center;gap:10px;padding:8px 10px;border:1px solid var(--line);border-radius:8px;margin-top:8px;font-size:13px}
@@ -1129,9 +1137,10 @@ def index():
    <button class=link type=button id=engcancel style="margin-left:10px">cancel</button></div>
  </form>
 </div>
-<div id=uploadpanel hidden>
+<details id=uploadpanel hidden>
+ <summary>Inventory &amp; documents<span id=upcount></span></summary>
  <div class=utabs>
-  <span style="color:var(--ink)">Inventory &amp; documents for <b id=upeng></b></span>
+  <span style="color:var(--ink)">Files for <b id=upeng></b></span>
   <span style="flex:1"></span>
   <label><input type=radio name=ukind value=auto checked> auto</label>
   <label><input type=radio name=ukind value=inventory> data</label>
@@ -1139,17 +1148,17 @@ def index():
  </div>
  <label class=uz id=uz>
   <input type=file id=ufile multiple hidden>
-  Drop files here or <b>browse</b><br>
-  CSV · Excel · TSV · JSON &mdash; server / application inventory &nbsp;·&nbsp; PDF · Word · PNG &mdash; diagrams, DR, compliance<br>
-  <span style="font-size:11px">up to 100&nbsp;MB each &mdash; lands in this engagement's private folder</span>
+  <span class=uzt>Drop files here or <b>browse</b></span>
+  <span class=uzh>CSV · Excel · TSV · JSON &mdash; server / application inventory<br>PDF · Word · PNG &mdash; diagrams, DR, compliance</span>
+  <span class=uzh>up to 100&nbsp;MB each &mdash; lands in this engagement's private folder</span>
  </label>
  <ul id=filerows></ul>
  <div id=analysisbar hidden>
-  <button class=send id=startanalysis type=button>Start analysis</button>
+  <button class="send secondary" id=startanalysis type=button>Start analysis</button>
   <span class=st id=analysisnote></span>
  </div>
  <div id=dqsummary hidden></div>
-</div>
+</details>
 <div id=toast class=toast></div>
 <div id=log><div id=welcome></div></div>
 <form id=f>
@@ -1300,10 +1309,13 @@ async function loadFiles(){
   try{const a=await (await fetch('/api/engagements/'+enc(c)+'/'+enc(p)+'/analysis')).json();
       ANALYSIS={};(a.reports||[]).forEach(r=>ANALYSIS[r.file]=r);
       if((a.summary||{}).files_ingested)renderDQ(a.summary);}catch(e){}
+  const n=(j.files||[]).length;
   (j.files||[]).forEach(f=>{if(f.kind==='inventory')hasInv=true;frows.appendChild(doneRow(f));});
+  document.getElementById('upcount').textContent=n?(' · '+n+(n===1?' file':' files')):'';
   if(j.over_soft_cap)toast('This engagement is over the 2 GB soft cap.');
  }catch(e){}
  abar.hidden=!hasInv;
+ if(!hasInv)upanel.open=true;        // fresh engagement — prompt the upload; returning users see it collapsed
 }
 function delFile(nm){
  return async()=>{if(!confirm('Remove '+nm+'?'))return;const [c,p]=ENG.split('/');

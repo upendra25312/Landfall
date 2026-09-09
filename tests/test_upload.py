@@ -195,6 +195,28 @@ def test_chat_page_has_upload_panel(client):
     assert "/upload" in html and "showUpload" in html
 
 
+def test_upload_panel_is_a_collapsible_details_that_does_not_lead(client):
+    """C34 / E12.1+E12.2 — the dropzone is a block flex container (was an inline
+    <label> whose padding + <br> lines overlapped), and the panel is a <details>
+    that sits above the intro but collapses so the value prop leads."""
+    _w, c, _s = client
+    html = c.get("/").text
+    assert "<details id=uploadpanel" in html          # collapsible, not a always-open <div>
+    assert "<summary>Inventory" in html
+    assert ".uz{display:flex" in html                 # the render fix — no more inline-label overlap
+    assert "class=uzt" in html and "class=uzh" in html  # prompt line vs muted hint lines
+    # the panel auto-opens only when the engagement has no inventory yet
+    assert "if(!hasInv)upanel.open=true" in html
+
+
+def test_start_analysis_is_a_secondary_button(client):
+    """C34 / E12.4 — one filled primary per view; Start analysis is outline."""
+    _w, c, _s = client
+    page = c.get("/").text
+    assert 'class="send secondary" id=startanalysis' in page
+    assert "button.send.secondary{background:transparent" in page
+
+
 # --- C20 / E11.6+E11.24: Start analysis + data-quality summary -------------
 
 def _dq_report(file, table, rows_loaded, confidence="Medium", findings=None, rows_rejected=0):
