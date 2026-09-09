@@ -12,7 +12,7 @@ Companion to [`prd/landfall-5x5-prd.md`](landfall-5x5-prd.md). Delivery log:
 | Phase | Items | Done | In review | In progress | Backlog |
 |---|---|---|---|---|---|
 | 1 — Engine | 37 | 8 | 28 | 1 | 0 |
-| 2 — Evidence | 12 | 0 | 0 | 0 | 12 |
+| 2 — Evidence | 12 | 0 | 1 | 0 | 11 |
 | 3 — Sustain | 3 | 0 | 0 | 0 | 3 |
 | E11 — Engagement Workspaces | 26 | 25 | 0 | 0 | 1 (C26b, sponsor-gated) |
 
@@ -116,7 +116,7 @@ _Last updated: 2026-09-09 (PDCA cycles 1–29). Cycles 19–28 delivered Epic E1
 | E9.3 | `--tier prod` parameter set + cost delta doc | P1 | backlog | SRE | — | One switch moves off Free tiers; delta documented. |
 | E9.4 | Answer-quality observability (traces + dashboard + alerts) | P1 | backlog | SRE | — | An operator can see a bad answer; tool error rate alerts. |
 | E9.5 | Export-before-teardown step | P2 | backlog | SRE | — | Close-out dumps tables + docs to a retained location first. |
-| E10.1 | `evidence/backtest/` — 3 estates × 3 methods + variance analysis | P0 | backlog | FinOps + Architect | — | Portfolio totals within ±15% across methods; variances explained. |
+| E10.1 | `evidence/backtest/` — 3 estates × 3 methods + variance analysis | P0 | in-review | FinOps + Architect | 30 | Portfolio totals within ±15% across methods; variances explained. _Done — `evidence/backtest/` (`estate_gen.py` small/midmarket/enterprise, `methods.py` engine/blended/bands over the shared right-sized footprint, `pricebook.py` non-linear synthetic book, `backtest.py` → `RESULTS.md`). **3/3 estates converge at 5.2–5.7% spread**; variance analysis per estate. `tests/test_backtest.py` (7) + `evals.yml` drift gate._ |
 | E10.2 | `evidence/broken-dumps/` corpus + expected DQ reports | P0 | backlog | SWE | — | 6+ damaged inputs; each handled per E1.4. |
 | E10.3 | `evidence/evals/` scorecard + history | P0 | backlog | Applied Sci | — | Latest scorecard published; history retained. |
 | E10.4 | `evidence/{pentest,trials,chaos}/` reports | P0/P1 | backlog | Security + SRE + Writer | — | Pen test passes; usability + comprehension trials meet bars; chaos drill logged. |
@@ -186,3 +186,4 @@ many engagements, isolated by an `<customer>/<project>` key. The Foundry agent o
 | 18 | **E11 C18** — engagement tenancy foundation: `engagement.py` + `engagement_sql.py`, `schema.sql` `engagement_id` + Row-Level Security on all 6 tables, `loader.load(…, engagement)`, blob trigger `raw/engagements/{c}/{p}/inventory/`, `engagements.py` blueprint (create/list), `engagement` arg on `query_inventory`/`assemble`/`export`/`publish` + agent prompt, dashboard `?e=`. 150 pytest. **Not deployed yet** | [pdca-log.md](pdca-log.md) · **done (code)** |
 | 19–28 | **Epic E11 — Engagement Workspaces** (C19 run_engagement · C20/20b analysis + discovery questionnaire · C21 history/answer-xlsx · C22 xlsx-model recalc gate · C23 access control + migration · C25/25b upload panel + calc-adapter accuracy · C26 conversation memory + zip export · C27/27b landing-zone diagram (.drawio/.svg + ca-drawio PNG) · C28 ALZ/AI-LZ checklist conformance). All deployed + live-verified. C26b (chat redesign) sponsor-gated. | [pdca-log.md](pdca-log.md) · **done** |
 | 29 | **Phase 1 tail** — E4.3 wave duration model (`schedule.py` → dated waves + critical path), E6.2-full resource loading (month-by-month FTE curve + peak FTE), E1.7 per-engagement `_mapping.json` column override. 356 pytest, evals green. | [pdca-log.md](pdca-log.md) · **done** |
+| 30 | **E10.1 cost-method back-test** — `evidence/backtest/`: 3 synthetic estates (small/midmarket/enterprise) × 3 pricing methods (catalogue SKU / blended $/vCPU / T-shirt bands) over a non-linear synthetic price book → all converge at 5.2–5.7% spread (±15% bar). `RESULTS.md` + variance analysis + CI drift gate. 363 pytest. | [pdca-log.md](pdca-log.md) · **done** |
