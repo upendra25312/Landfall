@@ -30,6 +30,9 @@ param agentId string = ''
 param deploymentTier string = 'free'
 var isProd = deploymentTier == 'prod'
 
+@description('Email for the answer-quality alert (E9.4). Empty = workbook only, no alert.')
+param alertEmail string = ''
+
 @description('Deploy the ca-drawio SVG->PNG rasteriser Container App (E11.22 / C27b). Off by default: the diagram already ships as .drawio + .svg without it; ca-drawio only adds the .png embed for .pptx / .docx. It was first stood up imperatively with `az containerapp create` to avoid a schema-dropping `azd provision`; flip this to true to reconcile it into IaC.')
 param deployDrawio bool = false
 
@@ -85,6 +88,63 @@ resource appInsights 'Microsoft.Insights/components@2020-02-02' = {
   properties: {
     Application_Type: 'web'
     WorkspaceResourceId: logAnalytics.id
+  }
+}
+
+// ---- Answer-quality observability (E9.4) -------------------------------------
+var hasAlert = !empty(alertEmail)
+
+resource answerQualityWorkbook 'Microsoft.Insights/workbooks@2023-06-01' = {
+  name: guid(resourceToken, 'answer-quality')
+  location: location
+  tags: tags
+  kind: 'shared'
+  properties: {
+    displayName: 'Landfall — answer quality'
+    category: 'workbook'
+    sourceId: appInsights.id
+    serializedData: loadTextContent('./workbook-answer-quality.json')
+    version: '1.0'
+  }
+}
+
+resource alertActionGroup 'Microsoft.Insights/actionGroups@2023-01-01' = if (hasAlert) {
+  name: '${abbrs.insightsComponents}alert-${resourceToken}'
+  location: 'global'
+  tags: tags
+  properties: {
+    groupShortName: 'landfall'
+    enabled: true
+    emailReceivers: [ { name: 'ops', emailAddress: alertEmail, useCommonAlertSchema: true } ]
+  }
+}
+
+resource toolErrorRateAlert 'Microsoft.Insights/scheduledQueryRules@2023-03-15-preview' = if (hasAlert) {
+  name: 'landfall-tool-error-rate-${resourceToken}'
+  location: location
+  tags: tags
+  properties: {
+    displayName: 'Landfall tool error rate > 5%'
+    description: 'The Function request failure rate (all OpenAPI tools) exceeded 5% over 15 minutes.'
+    severity: 2
+    enabled: true
+    scopes: [ appInsights.id ]
+    evaluationFrequency: 'PT5M'
+    windowSize: 'PT15M'
+    criteria: {
+      allOf: [
+        {
+          query: 'requests | summarize failRate = 100.0 * countif(success == false) / count(), n = count() | where n >= 5 | project failRate'
+          timeAggregation: 'Maximum'
+          metricMeasureColumn: 'failRate'
+          operator: 'GreaterThan'
+          threshold: 5
+          failingPeriods: { numberOfEvaluationPeriods: 1, minFailingPeriodsToAlert: 1 }
+        }
+      ]
+    }
+    autoMitigate: true
+    actions: { actionGroups: [ alertActionGroup.id ] }
   }
 }
 

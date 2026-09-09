@@ -152,32 +152,33 @@ def rubric(live: dict) -> list[dict]:
          "gap": "run the 60-minute comprehension test with 3 consultants new to Landfall "
                 "(protocol.md Trial A); record in evidence/trials/."},
 
-        {"dim": "Operability", "score": 4.0,
+        {"dim": "Operability", "score": 4.25,
          "bar": "CI `azd up → smoke → azd down` on Linux + Windows every PR; chaos drill "
                 "degrades cleanly.",
-         "basis": "Deploy hooks are self-contained (E9.1). E9.2: `scripts/smoke.py` "
-                  "(8 checks) passes green against the live deployment "
-                  "(evidence/ops/smoke-live.json), unit-tested; `clean-machine.yml` "
-                  "(`azd up→smoke→down` on Linux + Windows) is written but DORMANT until "
-                  "the OIDC secrets are added — not yet proven green in CI. E9.3: "
-                  "`DEPLOYMENT_TIER=prod` moves off every Free tier in one Bicep switch, "
-                  "cost delta documented. E9.5: `scripts/export_all.py` dumps every "
-                  "engagement (raw + answers + RLS-scoped SQL CSVs) to a re-importable "
-                  ".zip before teardown — run live (6,498 rows, retried through a paused "
-                  "DB). Chaos drill: 6 failure modes documented + probed "
-                  "(evidence/chaos/) — SQL auto-pause induced + observed, ca-drawio "
-                  "cold-start in place, the other 4 verified by inspection; all degrade "
-                  "to a slow/partial answer with a reason, never a wrong one. Still no "
-                  "observability dashboard, and the chaos drill is not yet induced "
-                  "end-to-end on a scratch env.",
+         "basis": "Deploy hooks self-contained (E9.1). E9.2: `scripts/smoke.py` passes "
+                  "green live (evidence/ops/smoke-live.json), unit-tested; "
+                  "`clean-machine.yml` (`azd up→smoke→down`, Linux + Windows) written but "
+                  "DORMANT until the OIDC secrets are added. E9.3: `DEPLOYMENT_TIER=prod` "
+                  "moves off every Free tier in one switch, cost delta documented. E9.4: "
+                  "`src/api/obs.py` emits structured `query_inventory` + "
+                  "`estimate_assembled` (confidence mix) events; per-tool volume / "
+                  "latency / error rate come free from Functions `requests`; the "
+                  "\"answer quality\" App Insights workbook + a KQL runbook "
+                  "(docs/observability.md) + a `scheduledQueryRules` failure-rate alert "
+                  "(dormant until `ALERT_EMAIL` is set) ship in Bicep. E9.5: "
+                  "`scripts/export_all.py` dumps every engagement to a re-importable .zip "
+                  "before teardown — run live (6,498 rows). Chaos drill (evidence/chaos/): "
+                  "6 failure modes, SQL auto-pause induced + observed, the rest verified "
+                  "by probe / inspection.",
          "evidence": [("smoke test", "../scripts/smoke.py"),
                       ("clean-machine CI", "../.github/workflows/clean-machine.yml"),
+                      ("observability", "../docs/observability.md"),
                       ("close-out export", "../scripts/export_all.py"),
-                      ("close-out run (live)", "ops/closeout-example.json"),
                       ("chaos drill", "chaos/RESULTS.md")],
-         "gap": "arm + green the clean-machine CI on both OSes (one-time secret add); E9.4 "
-                "answer-quality observability (traces + dashboard + alerts); induce the "
-                "chaos scenarios end-to-end on a scratch env."},
+         "gap": "arm + green the clean-machine CI on both OSes (one-time secret add); "
+                "forward the web tier's logs to App Insights (needs "
+                "azure-monitor-opentelemetry); induce the chaos scenarios C2-C6 "
+                "end-to-end on a scratch env."},
 
         {"dim": "Security", "score": 3.5,
          "bar": "External pen test passes; isolation test passes; data-handling statement "

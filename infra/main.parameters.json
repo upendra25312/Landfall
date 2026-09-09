@@ -15,6 +15,7 @@
     "agentId": { "value": "${AGENT_ID}" },
     "enableFunctionAuth": { "value": "${ENABLE_FUNCTION_AUTH=false}" },
     "functionAuthClientId": { "value": "${FUNCTION_AUTH_CLIENT_ID=}" },
+    "alertEmail": { "value": "${ALERT_EMAIL=}" },
     "deploymentTier": { "value": "${DEPLOYMENT_TIER=free}" }
   }
 }

@@ -154,15 +154,25 @@ def query_inventory(req: func.HttpRequest) -> func.HttpResponse:
     except ValueError as exc:
         return _json({"error": str(exc)}, 400)
 
+    import time as _time
+
+    from obs import eng_hash, event
+    _t0 = _time.monotonic()
+    _eh = eng_hash(engagement)
+
     sig = _sql_signature(question)
     try:
         sql = _sql_for(question)
     except ValueError as exc:
         logging.warning("query_inventory rejected q=%s: %s", sig["q_hash"], exc)
+        event("query_inventory", engagement=_eh, status="rejected", reason=str(exc)[:120],
+              ms=round((_time.monotonic() - _t0) * 1000))
         return _json({"error": f"could not build a safe query ({exc})", "sql": ""}, 400)
     except Exception as exc:                                   # noqa: BLE001
         logging.error("query_inventory text-to-SQL failed q=%s: %s", sig["q_hash"],
                       type(exc).__name__)
+        event("query_inventory", engagement=_eh, status="text_to_sql_error",
+              error=type(exc).__name__, ms=round((_time.monotonic() - _t0) * 1000))
         return _json({"error": "text-to-SQL failed"}, 502)
 
     sig = _sql_signature(question, sql)
@@ -185,10 +195,17 @@ def query_inventory(req: func.HttpRequest) -> func.HttpResponse:
     except Exception as exc:                                   # noqa: BLE001
         logging.error("query_inventory query failed q=%s: %s", sig["q_hash"],
                       type(exc).__name__)
+        event("query_inventory", engagement=_eh, status="query_error",
+              error=type(exc).__name__, tables=",".join(sig.get("tables", [])),
+              ms=round((_time.monotonic() - _t0) * 1000))
         return _json({"error": "query failed", "sql": sql}, 502)
 
     truncated = len(fetched) > MAX_ROWS
     rows = [[_cell(v) for v in r] for r in fetched[:MAX_ROWS]]
+    event("query_inventory", engagement=_eh, status="ok", rows=len(rows),
+          truncated=truncated, shape=sig.get("shape"),
+          tables=",".join(sig.get("tables", [])),
+          ms=round((_time.monotonic() - _t0) * 1000))
     return _json(
         {
             "sql": sql,

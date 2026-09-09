@@ -44,6 +44,9 @@ param functionAuthAllowedClientIds array = []
 @allowed(['free', 'prod'])
 param deploymentTier string = 'free'
 
+@description('Email for the answer-quality alert (E9.4 — Function tool error rate > 5% over 15 min). Empty = the answer-quality workbook is still deployed, but no alert / action group. azd env set ALERT_EMAIL you@example.com')
+param alertEmail string = ''
+
 var abbrs = loadJsonContent('./abbreviations.json')
 var resourceToken = toLower(uniqueString(subscription().id, environmentName, location))
 var tags = { 'azd-env-name': environmentName }
@@ -75,6 +78,7 @@ module resources './resources.bicep' = {
     functionAuthClientId: functionAuthClientId
     functionAuthAllowedClientIds: functionAuthAllowedClientIds
     deploymentTier: deploymentTier
+    alertEmail: alertEmail
   }
 }
 
