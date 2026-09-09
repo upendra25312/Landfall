@@ -711,6 +711,57 @@ def engagement_history(customer: str, project: str, request: Request):
     return JSONResponse({"engagement": eid, "versions": versions, "count": len(versions)})
 
 
+@app.get("/api/engagements/{customer}/{project}/pipeline")
+def engagement_pipeline(customer: str, project: str, request: Request):
+    """E13.2 / E12.8 — the four-step engagement pipeline state for the status strip:
+    Inventory -> Analysis -> Estimate -> Calculator POE. Aggregated from the same
+    blob + report reads the individual routes use; each step also carries what it
+    is waiting on so the UI can nudge without blocking."""
+    eng = _engagement(customer, project, request)
+    if not eng:
+        return JSONResponse({"error": "unknown engagement"}, status_code=404)
+    eid, base = eng
+
+    files = _list_files(base)
+    inv_n = sum(1 for f in files if f["kind"] == "inventory")
+    has_inv = inv_n > 0
+
+    an = _analysis_summary(eid, base)["summary"]
+    analysed = (an.get("files_ingested") or 0) > 0 and (an.get("rows_loaded") or 0) > 0
+
+    estimate = _read_estimate_blob("latest.json", eid) is not None
+
+    lz = _read_estimate_blob("landing_zone.json", eid)
+    poe_status = None
+    if lz:
+        try:
+            poe_status = (json.loads(lz).get("status") or "ready")
+        except Exception:  # noqa: BLE001
+            poe_status = "ready"
+    poe = poe_status == "ready"
+
+    steps = [
+        {"key": "uploads", "label": "Inventory", "done": has_inv,
+         "detail": (f"{inv_n} file{'s' if inv_n != 1 else ''}" if has_inv else "none yet")},
+        {"key": "analysis", "label": "Analysis", "done": analysed,
+         "detail": (f"{an['rows_loaded']} rows · {an.get('confidence') or '—'} confidence"
+                    if analysed else ("pending" if has_inv else "—")),
+         "waiting_on": None if has_inv else "uploads"},
+        {"key": "estimate", "label": "Estimate", "done": estimate,
+         "detail": "published" if estimate else "not yet",
+         "waiting_on": None if analysed else "analysis"},
+        {"key": "poe", "label": "Calculator POE", "done": poe,
+         "detail": (poe_status or "not yet") if lz else "not yet",
+         "waiting_on": None if estimate else "estimate"},
+    ]
+    return JSONResponse({
+        "engagement": eid,
+        "steps": steps,
+        "next": next((s["key"] for s in steps if not s["done"]), None),
+        "analysed": analysed,
+    })
+
+
 @app.get("/api/engagements/{customer}/{project}/chat")
 def engagement_chat_get(customer: str, project: str, request: Request):
     """The saved conversation for this engagement (E11.26) — the page renders it on

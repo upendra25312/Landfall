@@ -79,7 +79,7 @@ async function loadEngagements(){
 }
 function syncDashLink(){const a=document.getElementById('dashlink');
  if(a)a.href=ENG?('/dashboard?e='+encodeURIComponent(ENG)):'/dashboard';}
-engsel.onchange=()=>{ENG=engsel.value;localStorage.setItem('landfall.eng',ENG);
+engsel.onchange=()=>{ENG=engsel.value;localStorage.setItem('landfall.eng',ENG);HINTED=false;
  document.getElementById('expeng').hidden=!ENG;renderWelcome();showUpload();loadChat();syncDashLink();};
 
 // --- per-engagement conversation (E11.26) ------------------------------
@@ -126,8 +126,32 @@ function ukind(){return (document.querySelector('input[name=ukind]:checked')||{}
 function fmtSize(n){return n>=1048576?(n/1048576).toFixed(1)+' MB':n>=1024?Math.round(n/1024)+' KB':n+' B';}
 function engLabel(eid){const o=[...engsel.options].find(o=>o.value===eid);return o?o.textContent.split('  ·  ')[0]:eid;}
 function showUpload(){
- if(!ENG){upanel.hidden=true;return;}
- upanel.hidden=false;document.getElementById('upeng').textContent=engLabel(ENG);loadFiles();
+ if(!ENG){upanel.hidden=true;pipeEl.hidden=true;return;}
+ upanel.hidden=false;document.getElementById('upeng').textContent=engLabel(ENG);loadFiles();loadPipeline();
+}
+
+// --- Guided pipeline state (E13.2 / E12.8) ------------------------------
+const pipeEl=document.getElementById('pipeline');
+let PIPE=null,HINTED=false;
+const PIPE_ACTION={uploads:'Upload the client inventory in the panel above.',
+ analysis:'Click "Start analysis" once the inventory is uploaded.',
+ estimate:'Ask for "the full estimate" to produce and publish it.',
+ poe:'Ask for "the landing-zone cost (Calculator POE)".'};
+async function loadPipeline(){
+ if(!ENG){pipeEl.hidden=true;return;}
+ const [c,p]=ENG.split('/');
+ try{PIPE=await (await fetch('/api/engagements/'+enc(c)+'/'+enc(p)+'/pipeline')).json();}
+ catch(e){pipeEl.hidden=true;return;}
+ if(!PIPE||!PIPE.steps){pipeEl.hidden=true;return;}
+ const nx=PIPE.next;
+ pipeEl.innerHTML=PIPE.steps.map(s=>{
+  const cls=s.done?'done':(s.key===nx?'next':'todo');
+  const mk=s.done?'✓':(s.key===nx?'▸':'');
+  return '<div class="step '+cls+'"><div class=hd><span class=mk>'+mk+'</span>'+esc(s.label)+'</div>'
+   +'<div class=dt>'+esc(s.detail||'')+'</div></div>';
+ }).join('')
+ +(nx&&PIPE_ACTION[nx]?'<div class=hint>Next: '+esc(PIPE_ACTION[nx])+'</div>':'');
+ pipeEl.hidden=false;
 }
 let ANALYSIS={};   // file name -> ingest report
 const abar=document.getElementById('analysisbar'),anote=document.getElementById('analysisnote'),
@@ -199,6 +223,7 @@ async function startAnalysis(){
   anote.textContent='';
  }catch(e){anote.textContent='✗ '+e;}
  startBtn.disabled=false;
+ loadPipeline();
 }
 async function refreshRows(){
  if(!ENG)return;const [c,p]=ENG.split('/');
@@ -271,6 +296,13 @@ async function ask(v){
  }
  const w=document.getElementById('welcome');if(w)w.remove();
  q.value='';add(v,'u');
+ // E13.2 — a one-time, non-blocking nudge if nothing's been analysed yet
+ if(PIPE && PIPE.analysed===false && !HINTED){
+  HINTED=true;
+  add('Heads up — no inventory has been analysed for this engagement yet, so I have no '
+     +'server data to work from. Upload the client\\'s inventory and click "Start analysis" '
+     +'for a grounded estimate. I\\'ll still answer general questions.','a');
+ }
  setBusy(true);
  const ph=working();
  try{
@@ -282,6 +314,7 @@ async function ask(v){
   else{add(j.answer,'a',j.citations,{tables:j.tables,sql:j.sql,question:v});}
  }catch(err){clearInterval(ph._timer);ph.remove();add('Error: '+err,'a');}
  setBusy(false);
+ loadPipeline();
 }
 document.getElementById('f').onsubmit=e=>{e.preventDefault();ask(q.value);};
 loadCards();loadEngagements();loadRegions();q.focus();

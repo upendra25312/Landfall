@@ -7,8 +7,11 @@ reconciliation −73% → +27.9% (calc list vs internal RI/AHB); **C19** done & 
 (`run_engagement` bulk-ingest + hard engagement scoping); **C20** core done
 (Start analysis + data-quality summary; E11.25 questionnaire → C20b); **C21** done
 (versioned publish + engagement-aware dashboard + ask-&-export to Excel); **C22** done
-(live-model workbook + LibreOffice recalc CI gate; E11.9 deck-container deferred); C23 + C27–C28 planned) ·
-**Raised:** 2026-09-08 · **Last updated:** 2026-09-09 · **Owner panel:** see below · **Method:** PDCA
+(live-model workbook + LibreOffice recalc CI gate; E11.9 deck-container deferred); C23 + C27–C28 done ·
+**Epic E11 complete + live. Epic E12 6/12 (C34 + C41 + C42 live).** **Epic E13 opened
+2026-09-09** (§4.14 post-C42 expert-panel review) — E13.1 idempotent `schema.sql` is the
+keystone; **C43 = E13.2 guided pipeline state** (= E12.8 pulled forward)) ·
+**Raised:** 2026-09-08 · **Last updated:** 2026-09-09 (C43 / Epic E13) · **Owner panel:** see below · **Method:** PDCA
 **Rolls into:** the "Landfall to 5/5" PRD as **Epic E11**. Supersedes the
 "one `azd` deployment per engagement" assumption in
 [`audits/2026-09-07-production-readiness-review.md`](../audits/2026-09-07-production-readiness-review.md)
@@ -790,6 +793,51 @@ change — ship them as one cycle (C34) with a `azd deploy web`. E12.7 (file + C
 next cycle. E12.8 is the ship-without-the-rail subset of E11.21. E12.10–E12.12 are
 architecture items for the sustain phase. E12.5 / E12.9 are P2 polish.
 
+**Progress (2026-09-09):** E12.1–E12.4, E12.6 done (C34, live). E12.7 done (C41, live) —
+`index()` serves `src/web/chat.html` + `static/chat.{css,js}`; strict CSP on `/` + assets,
+relaxed CSP on `/dashboard` + `/questionnaire` pending their refactor; `nosniff` +
+frame + referrer on every response.
+
+---
+
+### 4.14 Expert-panel review (2026-09-09, post-C42) — Epic E13
+
+A second full-panel review — **Azure AI architect · cloud-architecture director · FinOps ·
+Python · Foundry · UI/UX · full-stack** — of the whole solution now that the engine is
+complete (4.03/5), E11 is live and E12 is 6/12. The panel was asked *"what is the highest
+leverage buildable work left, across every discipline?"* — not another cosmetic pass.
+
+| # | Finding | Lens | Sev | Item |
+|---|---|---|---|---|
+| 1 | **`schema.sql` DROP+CREATEs all 6 tables on every `postprovision`.** `azd provision` therefore wipes every engagement's inventory + the 250-server `_default_` estate. This one landmine blocks the *entire* provision-gated backlog: the C39 answer-quality workbook + failure-rate alert, the C42 web-tier alert, the E9.3 `prod`-tier live test, the E11.22 full `ca-drawio` infra, E12.11 the vanity hostname. Everything param-gated "not provisioned" is stuck behind it. | Cloud-arch director + Data eng | **High** | **E13.1** |
+| 2 | **No guided pipeline state.** The chat box is live before any inventory exists; nothing shows the Inventory → Analysis → Estimate → POE sequence or where this engagement is in it. The single biggest first-run stumble for a pre-sales user. Was E12.8; **pulled forward** — C41 unblocked it (real DOM code, no 700-line string). | UX + Full-stack | High | **E13.2** (= E12.8) |
+| 3 | **Agent is still on `gpt-4o`; no eval run against a current-generation model, and no adversarial-prompt eval.** `evals/` fault injection (30 cases) covers *data* faults, not prompt-injection → tool abuse or a coerced cross-engagement read (the exact things C40's threat model told an external tester to try). | Azure AI architect + Foundry | Med | **E13.3** |
+| 4 | **No budget or cost alert on Landfall's own Azure spend** — a tool that exists to teach cost discipline has no guardrail on itself. `ca-calc` at 2 vCPU / 4 GiB **always-on** (`minReplicas: 1` — KEDA scale-to-zero was reverted in C25b) is the largest single line (~$70–90/mo) for a container used a few times per engagement. | FinOps | Med | **E13.4** |
+| 5 | **No agent-run ceiling.** A runaway multi-tool loop, or an ever-growing `previous_response_id` chain on a long engagement, is unbounded token cost + latency. `web_chat.ms` (C42) now *measures* every turn but nothing *caps* it. | Foundry + FinOps | Med | **E13.5** |
+| 6 | **`src/web/app.py` is ~1060 lines in one module** — routes + blob helpers + chat + engagement CRUD + questionnaire + dashboard + telemetry. Split into `APIRouter` modules; tests already cover the behaviour so the risk is low. | Python | Low | **E13.6** |
+| 7 | **`dashboard.html` + `questionnaire.html` still carry inline `<style>` / handlers** → they run the *relaxed* CSP. Give them the E12.7 treatment (external assets) to earn the strict CSP everywhere. | Full-stack + Security | Low | **E13.7** |
+| 8 | **No type-check or lint gate in CI.** `ruff` / `mypy` (or `pyright`) over `src/` would catch a class of regressions the unit tests don't. | Python | Low | **E13.8** |
+| 9 | **Epic E12 tail unchanged** — E12.9 (agent progress transparency; C42's per-tool `ms` makes this cheaper), E12.10 (direct-to-blob upload SAS), E12.12 (trust surface: signed-in-as / visibility / data-handling link). | UX + Full-stack | Med/Low | **E13.9** (rolls E12.9 / E12.10 / E12.12) |
+| 10 | **Single-region, no DR for Landfall itself** (swedencentral only). Defensible for a tear-down-friendly pre-sales tool, but it should be an **explicit, recorded decision**, not an unstated gap an auditor finds. | Cloud-arch director | Low | **E13.10** (decision, not a build) |
+
+**Recommendation & sequencing:**
+
+- **E13.1 first** — it is the keystone. It unblocks five deferred items and removes the
+  reason every recent cycle ends "not provisioned". Rewrite `schema.sql` as additive /
+  idempotent (`IF NOT EXISTS` on every object, guarded `ALTER … ADD` per column, RLS
+  policy re-asserted not recreated), add a `DROP TABLE` guard to `scripts/apply_sql.py`
+  as belt-and-braces, static-verify in tests. **The change itself ships with no deploy;
+  the first safe `azd provision` is then the sponsor's to run** (it also lands the C39 +
+  C42 dormant IaC in one shot).
+- **E13.2 (guided pipeline state)** — the top *user-facing* item, fully shippable
+  (`azd deploy web`). A `GET …/pipeline` endpoint over the blob/SQL state already
+  exposed by `/files` + `/analysis` + `/history` + `landing_zone.json`; a compact status
+  strip; a soft (non-blocking) nudge when the chat is used before analysis has run.
+- **E13.3 / E13.4 / E13.5** are the AI-architecture + FinOps guardrails — one cycle each,
+  mostly param-gated Bicep + eval additions, no risky deploy.
+- **E13.6 / E13.7 / E13.8** are the sustain-phase quality items.
+- **E13.10** is a §7 sponsor decision to write down, not code.
+
 ---
 
 ## 5. Work breakdown — Epic E11: Engagement Workspaces
@@ -915,6 +963,29 @@ the E9.2 clean-machine CI still run on the raw FQDN. Ingress stays
 
 ---
 
+## 5b. Work breakdown — Epic E13: Provisioning safety, guardrails & sustain
+
+From the §4.14 review. E13.1 is the keystone (unblocks the provision-gated backlog);
+E13.2 is the top user-facing item; the rest are AI/FinOps guardrails + quality.
+
+| # | Item | P | Status | Acceptance (done when…) |
+|---|---|---|---|---|
+| **E13.1** | **Idempotent `schema.sql` → safe `azd provision`** — rewrite every object as `CREATE … IF NOT EXISTS` / guarded `ALTER TABLE … ADD`; the RLS predicate + `SECURITY POLICY` re-asserted, never dropped-and-recreated; `scripts/apply_sql.py` gains a hard guard that refuses any statement matching `DROP TABLE`/`TRUNCATE`. Static + structural test. **No deploy** — the change ships dormant; the sponsor runs the first safe `azd provision` (which also lands the C39 workbook + failure-rate alert and the C42 web-tier signals). | P0 | backlog | `schema.sql` re-applied against a populated DB is a no-op (0 rows lost); `apply_sql.py` raises on a `DROP TABLE`; `tests/test_schema_idempotent.py` proves no destructive DDL + every object guarded; `DEPLOY.md` documents "`azd provision` is now safe". |
+| **E13.2** | **Guided pipeline state** (= E12.8, pulled forward) — `GET /api/engagements/<c>/<p>/pipeline` aggregates Inventory / Analysis / Estimate / Calculator-POE state from the existing blob + report reads; a compact status strip on the chat page (done ✓ / next / to-do chips); a one-time, **non-blocking** inline hint when the chat is used before analysis has run. All JS in `chat.js` (strict CSP holds). | P1 | backlog | The strip shows the four steps with the right state for the active engagement and refreshes after Start analysis + after a publish; asking for an estimate on an un-analysed engagement gets a hint, not a block; `azd deploy web`. |
+| **E13.3** | **Model review + adversarial-prompt eval** — run `evals/runner.py` against a current-generation model (Foundry agent version bump), record the delta; add `evals/adversarial.py` (≈10 prompt-injection / coerced-cross-engagement / tool-abuse cases) to the harness as a **gate** — a jailbreak that reaches another engagement's rows or an out-of-scope tool call fails CI. | P1 | backlog | The scorecard records the model decision with eval numbers; `evals/runner.py` runs the adversarial set; a regression that weakens injection resistance fails CI. |
+| **E13.4** | **Cost guardrail on Landfall's own spend** — a param-gated `Microsoft.Consumption/budgets` (or Cost Management) budget + alert at 50/80/100 % of a `monthlyBudgetUsd` param (default off → byte-identical deploy), emailing `alertEmail` (reuse the C39 param). Plus a `ca-calc` scale review: a scheduled scale-to-0 overnight, or another KEDA attempt with the MI-auth path. | P2 | backlog | With `monthlyBudgetUsd` set, a budget + 3 alert thresholds deploy; `DEPLOY.md` documents it; `ca-calc` cost is cut or the always-on cost is explicitly accepted with a number. |
+| **E13.5** | **Agent-run ceiling** — a wall-clock + tool-call cap on a chat turn (the chat handler already times out the Responses call at 180 s for analyze; apply a turn budget to `/api/chat` too), and a documented `previous_response_id`-chain cap (archive → new thread after N turns or M tokens, surfaced as "start a fresh thread for a clean estimate"). | P2 | backlog | A pathological turn is cut with a clear message, not an open-ended spend; the chain length is bounded + the behaviour documented. |
+| **E13.6** | **Split `src/web/app.py`** into `APIRouter` modules (`routes/chat.py`, `routes/engagements.py`, `routes/dashboard.py`, `routes/questionnaire.py`), `app.py` wires them + the middleware. No behaviour change; the existing web tests are the safety net. | P2 | backlog | `app.py` < 150 lines; every route module < 300; full web-test suite green; `azd deploy web`. |
+| **E13.7** | **`dashboard.html` + `questionnaire.html` → external assets + strict CSP** — the E12.7 treatment for the other two pages; drop `_CSP_RELAXED` once nothing needs it. | P2 | backlog | All three pages serve the strict CSP; `_security_headers` has one policy; dashboard/questionnaire tests green. |
+| **E13.8** | **Lint + type gate in CI** — `ruff check` + `mypy`/`pyright` over `src/` in `evals.yml` (or a new `quality.yml`); fix or baseline the findings. | P3 | backlog | CI fails on a new lint/type error; the baseline is committed. |
+| **E13.9** | **Epic E12 tail** — E12.9 (tool-call milestones in the working indicator, using C42's per-tool `ms`; a "busy, retrying" message on a model 429), E12.10 (direct-to-blob upload via a ≤15-min engagement-prefixed user-delegation SAS), E12.12 (trust surface: "signed in as", visibility, `data-handling-statement.md` link). | P2 | backlog | Each sub-item's E12 acceptance met. |
+| **E13.10** | **DR / single-region — record the decision** (§7). Landfall runs in one region and is tear-down-friendly by design; the estimates it produces model DR, the tool itself does not. Write it down as an explicit sponsor decision with the rationale + the `--tier prod` note that `prod` still does not add DR. | P3 | decision | §7 has a numbered DR decision; no code. |
+
+**Not in scope here:** the estimation maths, the eval-harness *thresholds*, the E11.21
+sponsor-gated rail.
+
+---
+
 ## 6. PDCA cadence
 
 | Cycle | Scope | Exit |
@@ -934,6 +1005,9 @@ the E9.2 clean-machine CI still run on the raw FQDN. Ingress stays
 | **C27** | E11.22 (`ca-drawio` Container App — `simonkurtz-MSFT/drawio-mcp-server` + `drawio-export`; `lz/diagram.py` deterministic MCP-call plan; `build_landing_zone_diagram` Function + agent tool + prompt card; dashboard + deck + doc embed; skill refs vendored) | Producing a landing zone yields an engagement-specific `.drawio` + rendered SVG for the chosen region with correct Azure icons; same design → same diagram; the deck uses it. **Core done (2026-09-09), no new infra:** `src/api/lz/diagram.py` (pure) — `design_landing_zone` output → deterministic draw.io XML (hub + spoke swimlanes, components, peering/ER-VPN/DR edges, region-labelled) + `mcp_plan()` (the ordered call plan for when `ca-drawio` lands) + `diagram_meta()`. `build_landing_zone_diagram` Function (sync, no queue) writes `estimate/landing_zone.drawio` + `landing_zone_diagram.json`; `publish_estimate` regenerates it; OpenAPI tool + agent prompt line + "Landing-zone diagram" prompt card. `diagram.py::build_svg(design)` also emits a **self-contained SVG** (deterministic, no external refs); `build_landing_zone_diagram` + `publish_estimate` store `landing_zone.svg` alongside the `.drawio`. Web `GET /dashboard/landing-zone-diagram?e=` serves the SVG by default (`?fmt=drawio` for the source); the dashboard LZ card renders the **SVG inline** (no external viewer), with the `viewer.diagrams.net` iframe as a fallback and a Download .drawio link. Rules vendored to `docs/diagram-authoring/`. `tests/test_lz_diagram.py` (15). 330 pass. **C27b done (2026-09-09) — imperative, no `azd provision`:** `src/drawio/` is a tiny FastAPI + **CairoSVG** container (`POST /render` SVG→PNG, key-guarded, external ingress since the Function shares no VNet with the CAE) stood up with `az acr build` + `az containerapp create` (`ca-drawio-*`, minReplicas 0); `src/api/lz/render.py::rasterize(svg)` (best-effort, no-op without `DRAWIO_RENDER_URL`); `build_landing_zone_diagram` + `publish_estimate` store `landing_zone.png`; `export.py` `to_pptx` (replaces the hand-drawn hub-spoke slide) + `to_docx` embed the PNG (`_diagram_png`); web serves `?fmt=png`. `infra/resources.bicep` gets a param-gated `drawioApp` (`deployDrawio=false`) + `azure.yaml` a `drawio` service so it's captured as IaC. `tests/test_lz_render.py` (7). 337 pass. **Deployed + live-verified (`main`@`e86c43e`):** `ca-drawio-tmglwfatwcsa2` `/healthz` OK; `POST /render` rendered the real 14.7 KB `_default_` SVG → 5416×1192 PNG; agent `build_landing_zone_diagram` for `_default_/_default_` → `stored` includes `landing_zone.png`; `_default_` SQL still 250 servers (no provision). Cold-start fix (`e86c43e`): `rasterize()` timeout 20→45 s + one retry — the first build after `ca-drawio` scaled to zero was silently dropping the PNG. **Still optional:** the full `mxgraph.azure.*` icon set (needs the MCP engine) |
 | **C34** | **E12.1–E12.4 + E12.6** — front-end quick-wins pass (dropzone render fix, intro-first collapsible Upload panel, dropzone typographic hierarchy, button hierarchy, responsive header). Pure markup/CSS in `app.py::index()`, no behaviour or API change | Front-end review §4.13 findings 1–4, 6 closed; the Upload panel renders clean; the intro leads; `azd deploy web`; chat tests green |
 | **C28** | E11.23 (`design_landing_zone` checklist conformance — vendor the ALZ + AI-LZ design checklist; `checklist_conformance[]` + AI-LZ overlay; deliverable section + dashboard chip + agent prompt line) | **Done (2026-09-09):** checklists vendored to `docs/lz-design/`; `src/api/lz/conformance.py` scores the design (34 ALZ + 10 AI-LZ items, deterministic rules over structured output) → `checklist_summary`/`checklist_gaps` on `design_landing_zone`; assembled into the LZ section + `lz_conformance` figure; docx/pptx render the gaps; dashboard LZ card shows `N/M met` + a gaps drawer; agent prompt line. AI-LZ overlay `n/a` unless AI/ML workloads. 300 pass, evals PASS. Deploy: `azd deploy api` + `web` + re-run `create_agent.py` |
+| **C41** | E12.7 (chat page → `src/web/chat.html` + `static/chat.{css,js}` + strict CSP + response-hardening middleware) | **Done + live (2026-09-09):** `_security_headers` — strict CSP (no `unsafe-inline`) on `/` + `/static/*`, relaxed on `/dashboard` + `/questionnaire`, `nosniff` + `X-Frame-Options: DENY` + `Referrer-Policy` everywhere; `app.py` −357 lines; `tests/test_web_csp.py`; closes pentest T9; `azd deploy web`; 441 pytest |
+| **C42** | E9.4 web-tier telemetry — `src/web/telemetry.py` (`azure-monitor-opentelemetry`, no-op without the conn string) auto-instruments FastAPI + forwards `landfall.web` logs; a `web_chat` event per `/api/chat` turn | **Done + live (2026-09-09):** container logs confirm transmission to App Insights; `tests/test_web_telemetry.py`; Operability 4.25→4.5, overall 4.03; `azd deploy web`; 448 pytest |
+| **C43** | **E13.2 (= E12.8) — guided pipeline state.** `GET …/pipeline` aggregate + a status strip (Inventory · Analysis · Estimate · POE) on the chat page + a non-blocking pre-analysis hint. All JS in `chat.js`; strict CSP holds | Pipeline endpoint returns the 4-step state; the strip renders + refreshes for the active engagement; a pre-analysis chat gets a hint not a block; `azd deploy web`; web tests green |
 
 Each cycle logged in [`pdca-log.md`](pdca-log.md) (Plan / Do / Check / Act).
 
@@ -1025,6 +1099,16 @@ Each cycle logged in [`pdca-log.md`](pdca-log.md) (Plan / Do / Check / Act).
     the client fills offline + an upload that the importer parses to
     `raw/…/_discovery.json`, which feeds `assemble_estimate`'s assumptions register and
     `design_landing_zone`. New work E11.25, PDCA C20. See §4.5b.
+15. **Epic E13 — the post-C42 expert-panel review (2026-09-09).** The panel's top finding
+    is that `schema.sql` DROP+CREATEs the tables on every `postprovision`, so `azd
+    provision` wipes data — this blocks the whole provision-gated backlog (C39 workbook +
+    alert, C42 web alert, E9.3 prod live, E11.22 infra, E12.11 hostname). **E13.1
+    (idempotent `schema.sql`) is the keystone and ships first, with no deploy;** the
+    sponsor then runs the first safe `azd provision`. E13.2 (guided pipeline state, =
+    E12.8 pulled forward) is the top user-facing item. E13.3–E13.5 are AI/FinOps
+    guardrails (model + adversarial evals; budget alert; agent-run ceiling). E13.6–E13.8
+    are sustain-phase quality. E13.10 records the single-region / no-DR posture as an
+    explicit decision. See §4.14 + §5b.
 
 **Build order:** C18 done (E11.1–E11.3, live). C24 done. **C25 in progress** — `ca-calc`
 deployed; **next concrete step = the E11.16 async redesign** (Function 202 + `ca-calc`
