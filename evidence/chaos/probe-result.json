@@ -1,0 +1,40 @@
+{
+  "checks": [
+    {
+      "scenario": "C1",
+      "mitigation_in_place": true,
+      "detail": "src/api/tools.py retries the connection while the serverless DB resumes"
+    },
+    {
+      "scenario": "C2",
+      "mitigation_in_place": true,
+      "detail": "render.py timeout=45s attempts=2, skips the PNG on failure"
+    },
+    {
+      "scenario": "C2-live",
+      "mitigation_in_place": true,
+      "detail": "ca-drawio minReplicas=0 (cold start is the normal state)"
+    },
+    {
+      "scenario": "C3",
+      "mitigation_in_place": true,
+      "detail": "build_calculator_estimate returns 202 + status 'building'; poll tool reports it"
+    },
+    {
+      "scenario": "C4",
+      "mitigation_in_place": true,
+      "detail": "cost tools fall back to the estimation rate book when the live API is unreachable"
+    },
+    {
+      "scenario": "C5",
+      "mitigation_in_place": true,
+      "detail": "/api/chat returns 503 with a clear reason when AGENT_ID is unset"
+    },
+    {
+      "scenario": "C6",
+      "mitigation_in_place": true,
+      "detail": "the response-id pointer + transcript are only written after a successful response"
+    }
+  ],
+  "all_mitigations_in_place": true
+}
