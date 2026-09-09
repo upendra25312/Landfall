@@ -25,6 +25,16 @@ param functionAuthAllowedClientIds array = []
 @description('Foundry agent name. Empty on first provision; the postprovision hook creates the agent and stores AGENT_ID in the azd env so re-provisioning keeps it wired to both services.')
 param agentId string = ''
 
+@description('Deploy the ca-drawio SVG->PNG rasteriser Container App (E11.22 / C27b). Off by default: the diagram already ships as .drawio + .svg without it; ca-drawio only adds the .png embed for .pptx / .docx. It was first stood up imperatively with `az containerapp create` to avoid a schema-dropping `azd provision`; flip this to true to reconcile it into IaC.')
+param deployDrawio bool = false
+
+@description('ca-drawio container image. Set by `az acr build` / azd after the first build.')
+param drawioImageName string = ''
+
+@description('Shared key the Function sends as X-Drawio-Key; ca-drawio has external ingress because the Function App shares no VNet with the Container Apps environment. A non-secret gate on a stateless rasteriser.')
+@secure()
+param drawioKey string = ''
+
 // ---------- built-in role definition ids ----------
 var roles = {
   storageBlobDataOwner: 'b7e6dc6d-f1e8-4753-8033-0f276bb0955b'
@@ -393,6 +403,53 @@ resource calcApp 'Microsoft.App/containerApps@2024-10-02-preview' = {
 }
 
 // ==================================================================
+// ca-drawio - stateless SVG -> PNG rasteriser for the landing-zone diagram
+// (E11.22 / C27b). External ingress (no VNet path from the Function App),
+// scale to zero, guarded by drawioKey. Off unless deployDrawio = true.
+// ==================================================================
+resource drawioApp 'Microsoft.App/containerApps@2024-10-02-preview' = if (deployDrawio) {
+  name: '${abbrs.appContainerApps}drawio-${resourceToken}'
+  location: location
+  tags: union(tags, { 'azd-service-name': 'drawio' })
+  identity: {
+    type: 'UserAssigned'
+    userAssignedIdentities: { '${uami.id}': {} }
+  }
+  properties: {
+    managedEnvironmentId: containerEnv.id
+    configuration: {
+      activeRevisionsMode: 'Single'
+      ingress: {
+        external: true
+        targetPort: 8000
+        transport: 'auto'
+        allowInsecure: false
+      }
+      registries: [
+        { server: acr.properties.loginServer, identity: uami.id }
+      ]
+      secrets: [
+        { name: 'drawio-key', value: drawioKey }
+      ]
+    }
+    template: {
+      containers: [
+        {
+          name: 'drawio'
+          image: !empty(drawioImageName) ? drawioImageName : 'mcr.microsoft.com/azuredocs/containerapps-helloworld:latest'
+          resources: { cpu: json('0.5'), memory: '1Gi' }
+          env: [
+            { name: 'DRAWIO_KEY', secretRef: 'drawio-key' }
+            { name: 'APPLICATIONINSIGHTS_CONNECTION_STRING', value: appInsights.properties.ConnectionString }
+          ]
+        }
+      ]
+      scale: { minReplicas: 0, maxReplicas: 2 }
+    }
+  }
+}
+
+// ==================================================================
 // Excel batch runner - Azure Functions (Flex Consumption), Durable
 // ==================================================================
 resource functionPlan 'Microsoft.Web/serverfarms@2023-12-01' = {
@@ -459,6 +516,9 @@ resource functionApp 'Microsoft.Web/sites@2023-12-01' = {
         // ca-calc container drains the queue and writes landing_zone.* itself.
         { name: 'STORAGE_QUEUE_URL', value: storage.properties.primaryEndpoints.queue }
         { name: 'CALC_QUEUE', value: calcJobsQueue.name }
+        // ca-drawio SVG->PNG rasteriser (E11.22 / C27b) — only when deployed.
+        { name: 'DRAWIO_RENDER_URL', value: empty(drawioApp.?properties.?configuration.?ingress.?fqdn ?? '') ? '' : 'https://${drawioApp!.properties.configuration.ingress.fqdn}' }
+        { name: 'DRAWIO_RENDER_KEY', value: drawioKey }
       ]
     }
   }
@@ -679,6 +739,8 @@ output containerAppName string = containerApp.name
 output containerAppUri string = 'https://${containerApp.properties.configuration.ingress.fqdn}'
 output calcAppName string = calcApp.name
 // ca-calc has no ingress — it's a queue worker (E11.16); no URI to output.
+output drawioAppName string = deployDrawio ? drawioApp!.name : ''
+output drawioAppUri string = empty(drawioApp.?properties.?configuration.?ingress.?fqdn ?? '') ? '' : 'https://${drawioApp!.properties.configuration.ingress.fqdn}'
 output containerRegistryLoginServer string = acr.properties.loginServer
 output uamiClientId string = uami.properties.clientId
 output uamiPrincipalId string = uami.properties.principalId

@@ -29,6 +29,17 @@ services:
       path: Dockerfile
       remoteBuild: true
 
+  # ca-drawio (E11.22 / C27b): SVG -> PNG rasteriser for the landing-zone diagram
+  # embed in .pptx / .docx. First stood up with `az containerapp create` (no
+  # schema-dropping `azd provision`); `azd deploy drawio` updates its image.
+  drawio:
+    project: src/drawio
+    language: python
+    host: containerapp
+    docker:
+      path: Dockerfile
+      remoteBuild: true
+
 hooks:
   postprovision:
     windows:

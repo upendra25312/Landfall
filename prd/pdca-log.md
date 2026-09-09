@@ -73,6 +73,19 @@ raster + deck embed) becomes C27b, gated on a safe provision.
   now store `landing_zone.svg` too; `GET /dashboard/landing-zone-diagram` serves it by
   default (`?fmt=drawio` for the source) and the dashboard renders it **inline** — the
   `viewer.diagrams.net` iframe drops to a fallback. `tests/test_lz_diagram.py` → 15; 330 pass.
+- **C27b landed same day (`c27b-drawio-container`) — imperatively, no `azd provision`:**
+  `src/drawio/` is a ~30 MB FastAPI + **CairoSVG** container — one endpoint, `POST /render`
+  (SVG bytes → PNG), key-guarded, **external ingress** (the Function App shares no VNet with
+  the Container Apps environment — the C25 finding). Stood up with `az acr build` +
+  `az containerapp create` (`ca-drawio-*`, minReplicas 0) so a schema-dropping `azd provision`
+  was avoided entirely. `src/api/lz/render.py::rasterize(svg)` is best-effort — a no-op when
+  `DRAWIO_RENDER_URL` is unset, so nothing changes for local/CI. `build_landing_zone_diagram`
+  + `publish_estimate` store `landing_zone.png`; `export.py` `to_pptx` swaps its hand-drawn
+  hub-spoke slide for the render and `to_docx` embeds it under the landing-zone section
+  (`_diagram_png` decodes the b64 payload `publish_estimate` attaches to the package); web
+  serves `?fmt=png`. `infra/resources.bicep` gains a param-gated `drawioApp`
+  (`deployDrawio=false` — imperative today, flip to reconcile into IaC) + `azure.yaml` a
+  `drawio` service. `tests/test_lz_render.py` (7). **337 pass**, evals PASS, no drift.
 - **C27b (deferred, needs `azd provision`):** the `ca-drawio` Container App
   (`simonkurtzmsft/drawio-mcp-server` mirrored to ACR + `drawio-export`) for server-side
   `.svg`/`.png`, the `to_pptx` / `to_docx` SVG embed (replacing the hand-drawn slide),

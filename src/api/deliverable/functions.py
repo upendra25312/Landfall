@@ -160,28 +160,40 @@ def publish_estimate_route(req: func.HttpRequest) -> func.HttpResponse:
             cc.upload_blob(f"{prefix}/tools_raw.json",
                            json.dumps(raw, default=str).encode("utf-8"), overwrite=True)
             written.append("tools_raw.json")
-        for fmt in ("xlsx", "docx", "pptx"):
-            blob, _name, _mime = export(package, fmt)
-            cc.upload_blob(f"{prefix}/latest.{fmt}", blob, overwrite=True)
-            written.append(f"latest.{fmt}")
-
-        # E11.22 — regenerate the target landing-zone diagram from the design.
+        # E11.22 — regenerate the target landing-zone diagram from the design BEFORE
+        # the exports, so the .pptx / .docx can embed the rendered PNG (C27b).
         # Deterministic + fast; best-effort so it never fails a publish.
         lz_design = body.get("landing_zone") if isinstance(body.get("landing_zone"), dict) else None
         if lz_design:
             try:
                 from lz.diagram import build_drawio, build_svg, diagram_meta
+                svg = build_svg(lz_design)
                 cc.upload_blob(f"{prefix}/landing_zone.drawio", build_drawio(lz_design).encode(),
                                overwrite=True)
-                cc.upload_blob(f"{prefix}/landing_zone.svg", build_svg(lz_design).encode(),
-                               overwrite=True)
+                cc.upload_blob(f"{prefix}/landing_zone.svg", svg.encode(), overwrite=True)
                 cc.upload_blob(f"{prefix}/landing_zone_diagram.json",
                                json.dumps(diagram_meta(lz_design) | {"engagement": engagement,
                                                                      "built_at": _now()}).encode(),
                                overwrite=True)
                 written += ["landing_zone.drawio", "landing_zone.svg", "landing_zone_diagram.json"]
+                try:
+                    from lz.render import rasterize
+                    png = rasterize(svg)
+                    if png:
+                        cc.upload_blob(f"{prefix}/landing_zone.png", png, overwrite=True)
+                        import base64 as _b64
+                        package["landing_zone_png_b64"] = _b64.b64encode(png).decode()
+                        written.append("landing_zone.png")
+                except Exception:                 # noqa: BLE001
+                    logging.warning("publish_estimate: diagram raster skipped", exc_info=True)
             except Exception:                     # noqa: BLE001
                 logging.warning("publish_estimate: landing-zone diagram skipped", exc_info=True)
+
+        for fmt in ("xlsx", "docx", "pptx"):
+            blob, _name, _mime = export(package, fmt)
+            cc.upload_blob(f"{prefix}/latest.{fmt}", blob, overwrite=True)
+            written.append(f"latest.{fmt}")
+        package.pop("landing_zone_png_b64", None)   # transient embed payload — not persisted
     except Exception as exc:                       # noqa: BLE001
         logging.exception("publish_estimate failed")
         return _json({"error": f"publish failed: {exc}"}, 500)
