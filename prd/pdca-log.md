@@ -5,6 +5,77 @@ Operating model: [`landfall-5x5-prd.md` §7](landfall-5x5-prd.md). Tracker:
 
 ---
 
+## Cycle 38 — close-out export + chaos drill (E9.5 + evidence/chaos/)
+
+**Date:** 2026-09-09 · **Owner:** SRE ·
+**Tracker:** E9.5 + the chaos-drill part of E10.4 — the last two Operability
+gaps that don't need GitHub secrets (E9.2) or a new subsystem (E9.4).
+
+### Plan
+
+- E9.5: a script that retains every engagement before `azd down --purge`.
+  E11.26 already exports one engagement over HTTP; E9.5 is "all of them, from an
+  operator shell, including a SQL dump".
+- Chaos drill: document + probe how the system degrades when each critical-path
+  dependency is down. Induce what's safe on the shared env; inspect the rest.
+
+### Do
+
+- **`scripts/export_all.py`** — `list_engagements` (blobs matching
+  `engagements/*/*/_engagement.json` in `raw`), then per engagement a
+  `zipfile` of `raw/engagements/<eid>/**` + `answers/engagements/<eid>/**` +
+  `export.json`, same format as the web export so it re-imports via
+  `POST /api/engagements/import`. `--sql` adds `sql/<table>.csv` for the six
+  tables — **binds `sp_set_session_context 'engagement_id'` first** (RLS fails
+  closed, so a naive `WHERE engagement_id = ?` returns 0 rows). `_sql_connect`
+  retries 5 × 20 s while a paused serverless DB resumes. A SQL failure is caught
+  per engagement — `sql/_ERROR.txt` in the zip, blob export still written (raw/
+  is the source of truth and re-ingests on import). `--dry-run` lists + sizes.
+  **Live:** `_default_/_default_` → 532 KB, 1 raw + 12 answers + **6,498 SQL
+  rows**, retried through the auto-pause → `evidence/ops/closeout-example.json`.
+- **`DEPLOY.md`** — "Close-out — export before you tear down (E9.5)" under the
+  per-engagement section.
+- **`evidence/chaos/`** — `scenarios.md`: 6 failure modes (C1 SQL auto-pause,
+  C2 ca-drawio at zero, C3 ca-calc down, C4 Retail Prices API unreachable,
+  C5 `AGENT_ID` unset, C6 model 429) — expected degradation, the code path, the
+  induce command. `probe.py` (non-destructive) reads Azure state + the code and
+  confirms each mitigation → **7/7**. `RESULTS.md`: C1 **induced + observed**
+  this session (smoke saw `Paused`; `export_all --sql` hit "not currently
+  available", retried, resumed in ~40 s); C2 **partially induced** (ca-drawio
+  live at `minReplicas 0`, cold-start retry in `render.py` was itself a real
+  incident fix); C3–C6 **verified by inspection**. Governing rule stated: a down
+  dependency → a slow/partial answer with a reason, never a wrong one.
+- **`tests/test_export_all.py`** (6) — enumerate, zip raw+answers, skip empties,
+  SQL-failure-keeps-blobs, dry-run writes nothing, one zip per engagement.
+  **`tests/test_chaos.py`** (3) — probe reports all mitigations, docs exist, and
+  a removed mitigation (drop the SQL retry) fails C1.
+- **`evidence/scorecard.py`** — Operability 3.75 → **4.0**. Basis rewritten;
+  E9.5 + chaos struck from the gap; evidence links updated. **Overall 3.92 →
+  3.94.** `.gitattributes` pins `evidence/chaos/*.json`.
+
+### Check
+
+| gate | result |
+|---|---|
+| unit | **422 pytest** (+8), 2 skipped |
+| close-out (live) | 6,498 rows + 13 blobs zipped for `_default_`; SQL retry resumed a paused DB |
+| chaos probe | 7/7 mitigations in place; `test_chaos` proves a removed one is caught |
+| evals | 32/32 + 8/8 + 30/30; `evals/SCORECARD.md` no drift; `evidence/SCORECARD.md` regenerated |
+| scope | operator script + evidence + docs → **no deploy**, no prod code, no infra |
+
+### Act
+
+- One commit on `c38-closeout-chaos`, merged `--no-ff` to `main` (`5b92081`),
+  pushed. No `azd` anything.
+- Operability is 4.0. To 5.0: arm + green the E9.2 CI on both OSes (needs the
+  OIDC secrets — not doable here), **E9.4** answer-quality observability, and
+  induce C2–C6 end-to-end on a scratch env.
+- Next by scorecard leverage: **E9.4** (observability — traces + dashboard +
+  alerts, the last Operability build item) or **E8.5** (private endpoints,
+  Security 3.5) or the E10.4 human trials.
+
+---
+
 ## Cycle 37 — `DEPLOYMENT_TIER` switch: one flag off the Free tiers (E9.3)
 
 **Date:** 2026-09-09 · **Owner:** SRE ·
