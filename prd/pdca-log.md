@@ -66,12 +66,12 @@ E13.2 this cycle (shippable); E13.3-5 next (guardrails); E13.6-8 sustain.
 | unit | **455 pytest**, 2 skipped (+7 `test_pipeline`) |
 | local | `/pipeline` returns the right 4-step state across empty / uploaded / analysed / published / POE-building; `/` + assets keep the strict CSP; no inline style/script |
 | evals | 32/32 + 8/8 + 30/30; `evals/SCORECARD.md` no drift; `evidence/SCORECARD.md` unchanged (Usability 2.0 needs the trials — a strip doesn't move the number, it makes the eventual trial pass) |
-| live | `azd deploy web`; `scripts/smoke.py` re-run |
+| live | `azd deploy web` → SUCCESS (1m52s), revision Healthy; `scripts/smoke.py` **8/8**; `GET …/pipeline` returns `401` behind Easy Auth (routed, not a 404) |
 | scope | PRD + **production web code** → `azd deploy web` (no infra, no agent change, no eval change) |
 
 ### Act
 
-- `c43-pipeline` → merged `--no-ff` to `main`, pushed. **`azd deploy web`.**
+- `c43-pipeline` → merged `--no-ff` to `main` (`3164c0f`), pushed. **`azd deploy web`.**
 - PRD updated: §4.14 (E13 review) + §5b (E13 breakdown) + §7 decision 15 + C43
   cadence row + status line. `tracker.md`: Epic E13 section, E12.8 → done,
   progress rows, cycle-43 index row.
