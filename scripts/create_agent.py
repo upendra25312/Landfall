@@ -48,7 +48,8 @@ _OPENAPI_TOOLS = {
     "estimate_compute_cost": "Monthly Azure compute + managed-disk cost (bill of materials, PAYG/reserved/AHB, per-environment, low/expected/high) for a set of servers. Right-sizes and prices in one call.",
     "estimate_storage_cost": "Monthly Azure cost for the storage inventory (dbo.storage) - file shares (Files Premium / NetApp), DB volumes (SQL MI / Hyperscale / Flexible Server / Oracle), object (Blob). Block/managed-disk volumes are covered by estimate_compute_cost and excluded here.",
     "estimate_run_rate_extras": "Run-rate lines beyond compute + storage - backup, internet egress, monitoring (Log Analytics + Defender), support plan - plus one-time migration cost (tooling, replication, dual-run). Pass the servers and the compute+storage monthly total.",
-    "design_landing_zone": "Client-specific CAF Azure Landing Zone from the application portfolio - management groups, subscriptions, hub-spoke VNets + IP plan, policy set, identity, connectivity, DR, and a dedicated regulated spoke per compliance scope. Topology is derived from the data.",
+    "design_landing_zone": "Client-specific CAF Azure Landing Zone from the application portfolio - management groups, subscriptions, hub-spoke VNets + IP plan, policy set, identity, connectivity, DR, and a dedicated regulated spoke per compliance scope. Topology is derived from the data. The output also carries checklist_summary + checklist_gaps (scored against the Azure (AI) Landing Zone design checklist).",
+    "build_landing_zone_diagram": "Renders the engagement's target landing-zone diagram (.drawio) deterministically from its published design - hub + spoke swimlanes, components, peering / ExpressRoute / VPN / DR edges, region-labelled. Fast + synchronous. Call after design_landing_zone / publish_estimate (publish_estimate also regenerates it). The dashboard's landing-zone card shows it inline with a Download .drawio link.",
     "build_calculator_estimate": "STARTS an async run of the REAL Azure Pricing Calculator for an engagement (the ca-calc container drives it and takes a few minutes). Translates the published estimate (landing zone + right-sized workloads) into calculator line items - Landfall supplies quantities, the calculator supplies prices. Returns 202 'building' immediately - it does NOT return the total. Call publish_estimate first; after calling this, tell the user the POE is building and to watch the dashboard, or poll get_calculator_estimate.",
     "get_calculator_estimate": "Polls the state of an engagement's Pricing Calculator POE started by build_calculator_estimate: building | ready | failed | none. When ready it carries the calculator's monthly total, annual, line count and the reconciliation vs the internal run-rate. Use it to answer 'is the POE ready?'.",
     "score_dispositions": "Rule-derived 6R disposition (Rehost / Replatform / Repurchase / Retire / Retain / Refactor) + rationale + confidence per application, from OS EOL, stack, criticality, internet-facing and DB engine. Repurchase / Refactor / Retire need business sign-off.",
@@ -100,6 +101,9 @@ Never combine or compare data across engagements.
   list (criticality, internet_facing, compliance_scope) and a server_summary. Present
   its management groups, subscription list, spokes, IP plan, identity + connectivity
   model, policy overlay and DR strategy. Never hand-design the topology — quote the tool.
+  After it, call `build_landing_zone_diagram` with the `engagement` to render the target
+  diagram; the diagram follows the vendored draw.io Azure authoring rules (swimlane
+  nesting, palette, orthogonal edges) — it is not free-drawn.
   The output also carries `checklist_summary` + `checklist_gaps` — the design scored
   against the Azure (AI) Landing Zone design checklist. When the user asks about the
   target architecture, state `checklist_summary.headline` ("N/M checklist items met")

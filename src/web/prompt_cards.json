@@ -14,6 +14,7 @@
   "cards": [
     { "label": "Full estimate",        "icon": "◴", "prompt": "Produce the full migration estimate for this engagement and publish it to the dashboard." },
     { "label": "Landing zone",          "icon": "▦", "prompt": "Design the Azure landing zone for this engagement and walk me through the management groups, spokes, identity, connectivity, policy and DR." },
+    { "label": "Landing-zone diagram",  "icon": "◫", "prompt": "Design the landing zone for this engagement and build the target landing-zone diagram, then tell me where to download the .drawio." },
     { "label": "Landing-zone cost (Calculator POE)", "icon": "$", "prompt": "Build the Azure Pricing Calculator estimate for this engagement's landing zone and target workloads, and publish it to the dashboard as the Proof of Estimate." },
     { "label": "Run-rate cost",         "icon": "∑", "prompt": "Break down the Azure run-rate cost with the top cost drivers, the low-expected-high range, the reserved-instance term and the price date." },
     { "label": "Disposition & waves",   "icon": "➤", "prompt": "Score the 6R dispositions for every application and build the risk-ordered migration wave plan. Call out the pilot wave and any regulated wave." },

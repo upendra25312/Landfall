@@ -5,6 +5,75 @@ Operating model: [`landfall-5x5-prd.md` §7](landfall-5x5-prd.md). Tracker:
 
 ---
 
+## Cycle 27 — target landing-zone diagram, deterministic (E11.22, core — no new infra)
+
+**Date:** 2026-09-09 · **Owner:** Azure AI Architect + App Eng ·
+**Tracker:** E11.22 (core done; C27b = the `ca-drawio` container) · **Decisions:**
+[`engagement-workspaces-prd.md`](engagement-workspaces-prd.md) §4.10 + decision 9 —
+a deterministic driver over the diagram engine; the agent does not free-draw.
+
+### Plan
+
+`design_landing_zone` produces the whole topology as JSON but the deliverable had no
+picture of it — the deck's hub-spoke slide is hand-drawn and generic. §4.10's design is
+a deterministic `design → draw.io` mapping (the skill's rules coded in `lz/diagram.py`)
+feeding a `ca-drawio` container that renders `.svg`/`.png`. The container needs
+`azd provision` (new Container App) which runs the schema-drop postprovision hook — so
+this cycle ships **the deterministic core with zero new infra**: emit the `.drawio` XML
+directly and render it in the browser with the draw.io viewer. The container (server-side
+raster + deck embed) becomes C27b, gated on a safe provision.
+
+### Do
+
+- **`src/api/lz/diagram.py`** (pure, no network) — `build_drawio(design)` → a valid
+  `<mxfile>` document: the hub VNet + every spoke as a swimlane group, hub components and
+  a per-spoke workload cell inside, `orthogonalEdgeStyle` edges for peering /
+  ExpressRoute-VPN (on-prem) / DR (dashed), labelled with the real `region` / `dr_region`
+  and the actual hub components. Palette + swimlane nesting + "no hand-routed edges" from
+  the vendored rules. `_esc` escapes `& < > " '`. Also `mcp_plan(design)` (the ordered
+  create-group / add-cell-of-shape / add-edge / export-xml plan for the engine) +
+  `_shape_for()` (component → `mxgraph.azure.*` key) + `diagram_meta()`.
+- **`build_landing_zone_diagram` Function** (`lz/functions.py`, sync — no queue): reads
+  the design from the body (`design` / `applications`) or the engagement's
+  `tools_raw.json`; writes `estimate/landing_zone.drawio` + `landing_zone_diagram.json`;
+  409 if there's no design. `GET ?engagement=` returns the meta. `src/api/openapi/
+  build_landing_zone_diagram.json`; `_OPENAPI_TOOLS` entry + a system-prompt line
+  ("after design_landing_zone, call build_landing_zone_diagram") + a "Landing-zone
+  diagram" prompt card. `publish_estimate` regenerates the diagram from
+  `body["landing_zone"]` (best-effort).
+- **Web** — `GET /dashboard/landing-zone-diagram?e=` serves the XML (`?download=1` →
+  file); the dashboard LZ card `renderLZDiagram()` embeds it in an
+  `viewer.diagrams.net/?...#R<xml>` iframe (client-side, no container) + a Download
+  .drawio link.
+- **`docs/diagram-authoring/`** — `xml-authoring-rules.md`, `azure.md` (palette + shape
+  map), `layout-antipatterns.md`, vendored with source + retrieval date.
+- **`tests/test_lz_diagram.py`** (13) — valid XML + structure (base layer, swimlanes,
+  edges, every cell parented), determinism, no-DR, thin design, regulated colour, XML
+  escaping, `mcp_plan` + `meta`; the Function route (inline / stored / 409 / design-from-
+  apps / GET meta), `publish_estimate` regenerates it, and the web serves + embeds it.
+
+### Study
+
+| # | Result |
+|---|---|
+| sample estate | `build_drawio` → 37 cells, 7 edges, hub + 5 spoke swimlanes, `swedencentral` / `westeurope` labelled; parses as well-formed XML; opens in draw.io desktop |
+| determinism | same design → byte-identical XML |
+| wiring | `publish_estimate` writes `landing_zone.drawio`; `GET /dashboard/landing-zone-diagram` serves it; the card renders it in the viewer iframe |
+| suite | **328 pytest** (+13 −0), evals **PASS**, scorecard no drift |
+
+### Act
+
+- Committed on `c27-landing-zone-diagram`, merged to `main`, pushed. Deploy:
+  `azd deploy api` + `azd deploy web` + re-run `create_agent.py` (new tool + prompt).
+- **C27b (deferred, needs `azd provision`):** the `ca-drawio` Container App
+  (`simonkurtzmsft/drawio-mcp-server` mirrored to ACR + `drawio-export`) for server-side
+  `.svg`/`.png`, the `to_pptx` / `to_docx` SVG embed (replacing the hand-drawn slide),
+  the full `mxgraph.azure.*` icon set via the engine, and the optional raw MCP tool.
+  Bicep + `DRAWIO_MCP_URL`. Do the provision with `postprovision:` commented out in
+  `azure.yaml` (schema DROP), then `git checkout azure.yaml`.
+
+---
+
 ## Cycle 20b — discovery questionnaire, served and round-trippable (E11.25)
 
 **Date:** 2026-09-09 · **Owner:** App Eng + Pre-sales Architect ·
