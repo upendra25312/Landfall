@@ -98,16 +98,33 @@ which writes the assembled package + the three exports to `answers/estimate/`.
 
 These need the portal or a couple of CLI calls once, after the first `azd up`:
 
-1. **Lock down the chat UI.** The Container App ingress is public until you add auth.
+1. **Lock down the chat UI** — Easy Auth on `ca-web`. **A fresh `azd up` leaves the
+   web app open** (threat T5). One Entra app registration, then either
+   `azd provision` (IaC) or `az` (imperative).
+
    ```bash
    RG=$(azd env get-value AZURE_RESOURCE_GROUP); WEB=$(azd env get-value SERVICE_WEB_NAME)
-   TENANT=$(az account show --query tenantId -o tsv)
    FQDN=$(az containerapp show -g "$RG" -n "$WEB" --query properties.configuration.ingress.fqdn -o tsv)
    APPID=$(az ad app create --display-name "landfall-web ($WEB)" --sign-in-audience AzureADMyOrg \
      --web-redirect-uris "https://$FQDN/.auth/login/aad/callback" --enable-id-token-issuance true \
      --query appId -o tsv)
    az ad sp create --id "$APPID"
    SECRET=$(az ad app credential reset --id "$APPID" --years 2 --query password -o tsv)
+   ```
+
+   **IaC (preferred — survives a re-provision):**
+   ```bash
+   azd env set WEB_AUTH_CLIENT_ID "$APPID"
+   azd env set --secret WEB_AUTH_CLIENT_SECRET   # paste $SECRET when prompted
+   azd provision                                  # comment out the postprovision hook first (schema.sql drops tables)
+   ```
+   With `WEB_AUTH_CLIENT_ID` set, `infra/resources.bicep` deploys the
+   `authConfigs` (`RedirectToLoginPage`, tenant-restricted audience). Empty = no
+   Bicep-managed web auth.
+
+   **Imperative (if you can't re-provision):**
+   ```bash
+   TENANT=$(az account show --query tenantId -o tsv)
    az containerapp secret set -g "$RG" -n "$WEB" --secrets "microsoft-provider-authentication-secret=$SECRET"
    az containerapp auth microsoft update -g "$RG" -n "$WEB" --client-id "$APPID" \
      --client-secret-name microsoft-provider-authentication-secret \

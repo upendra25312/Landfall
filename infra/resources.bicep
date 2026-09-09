@@ -33,6 +33,13 @@ var isProd = deploymentTier == 'prod'
 @description('Email for the answer-quality alert (E9.4). Empty = workbook only, no alert.')
 param alertEmail string = ''
 
+@description('Entra app-registration client id for ca-web Easy Auth (E8.2/E8.5). Empty = no Bicep-managed web auth — a fresh deploy has NO web auth (the live env keeps whatever was set with `az containerapp auth`). Set WEB_AUTH_CLIENT_ID + WEB_AUTH_CLIENT_SECRET and re-provision to manage it as IaC. See DEPLOY.md.')
+param webAuthClientId string = ''
+@secure()
+@description('Client secret for the ca-web Easy Auth app registration. Required when webAuthClientId is set.')
+param webAuthClientSecret string = ''
+var hasWebAuth = !empty(webAuthClientId)
+
 @description('Deploy the ca-drawio SVG->PNG rasteriser Container App (E11.22 / C27b). Off by default: the diagram already ships as .drawio + .svg without it; ca-drawio only adds the .png embed for .pptx / .docx. It was first stood up imperatively with `az containerapp create` to avoid a schema-dropping `azd provision`; flip this to true to reconcile it into IaC.')
 param deployDrawio bool = false
 
@@ -379,6 +386,9 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
       registries: [
         { server: acr.properties.loginServer, identity: uami.id }
       ]
+      secrets: hasWebAuth ? [
+        { name: 'web-auth-client-secret', value: webAuthClientSecret }
+      ] : []
     }
     template: {
       containers: [
@@ -398,6 +408,36 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
       // prod: keep one replica warm so there is no cold start on the chat UI.
       scale: { minReplicas: isProd ? 1 : 0, maxReplicas: isProd ? 4 : 2 }
     }
+  }
+}
+
+// ca-web Easy Auth (E8.2 / E8.5 threat T5). Only when webAuthClientId is set —
+// otherwise this stays as it was configured with `az containerapp auth` on the
+// live env, and a FRESH deploy has NO web auth (documented in DEPLOY.md).
+// Unauthenticated browsers get a login redirect; API clients get 401.
+resource webAuthConfig 'Microsoft.App/containerApps/authConfigs@2024-03-01' = if (hasWebAuth) {
+  parent: containerApp
+  name: 'current'
+  properties: {
+    platform: { enabled: true }
+    globalValidation: {
+      unauthenticatedClientAction: 'RedirectToLoginPage'
+      redirectToProvider: 'azureactivedirectory'
+    }
+    identityProviders: {
+      azureActiveDirectory: {
+        enabled: true
+        registration: {
+          openIdIssuer: '${environment().authentication.loginEndpoint}${subscription().tenantId}/v2.0'
+          clientId: webAuthClientId
+          clientSecretSettingName: 'web-auth-client-secret'
+        }
+        validation: {
+          allowedAudiences: [ webAuthClientId, 'api://${webAuthClientId}' ]
+        }
+      }
+    }
+    login: { preserveUrlFragmentsForLogins: false }
   }
 }
 

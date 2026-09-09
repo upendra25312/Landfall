@@ -180,23 +180,28 @@ def rubric(live: dict) -> list[dict]:
                 "azure-monitor-opentelemetry); induce the chaos scenarios C2-C6 "
                 "end-to-end on a scratch env."},
 
-        {"dim": "Security", "score": 3.5,
+        {"dim": "Security", "score": 3.75,
          "bar": "External pen test passes; isolation test passes; data-handling statement "
                 "signed.",
-         "basis": "Function EasyAuth on (anon → 401); SQL Row-Level Security fail-closed by "
-                  "SESSION_CONTEXT; SQL allow-list guard + statement timeout; no client SQL "
-                  "in logs; per-engagement access control (visibility + audit trail); chat "
-                  "threads bound to the caller's visibility — a leaked response id is inert "
-                  "(E8.6); per-engagement isolation tests in the suite (E8.2–8.4, E11.3, "
-                  "E11.10). Data-handling statement drafted.",
-         "evidence": [("SQL guard", "../src/api/sqlguard.py"),
-                      ("access control", "../src/api/engagement.py"),
+         "basis": "Function + web EasyAuth on (anon → 401, verified live); SQL Row-Level "
+                  "Security fail-closed by SESSION_CONTEXT; SQL allow-list guard + statement "
+                  "timeout; no client SQL in logs; per-engagement access control (visibility "
+                  "+ audit trail); chat threads bound to the caller's visibility (E8.6); "
+                  "isolation tests in the suite (E8.2–8.4, E11.3, E11.10). A written threat "
+                  "model + a 16-check self-assessment (evidence/pentest/) — 15 pass, the "
+                  "one finding (no CSP/nosniff) folds into E12.7; the SQL guard rejects 11 "
+                  "injection payloads + neutralises comment tricks. `ca-web` EasyAuth is "
+                  "now param-gated in Bicep (was imperative). Data-handling statement "
+                  "drafted, not signed.",
+         "evidence": [("threat model", "pentest/threat-model.md"),
+                      ("self-assessment", "pentest/RESULTS.md"),
+                      ("SQL guard", "../src/api/sqlguard.py"),
                       ("isolation + chat-binding tests", "../tests/test_access_control.py"),
-                      ("audit trail", "../src/api/audit.py"),
                       ("data-handling statement", "data-handling-statement.md")],
-         "gap": "external pen test (evidence/pentest/); CISO/security-officer signature on "
-                "the data-handling statement (E8.7); private endpoints + drop the all-Azure "
-                "SQL firewall rule (E8.5)."},
+         "gap": "external pen test → evidence/pentest/external-<date>/; CISO signature on "
+                "the data-handling statement (E8.7); E8.5 private endpoints + drop the "
+                "all-Azure SQL firewall rule; migrate the live web-auth config to the "
+                "Bicep param + pin functionAuthAllowedClientIds to the Foundry MSI."},
 
         {"dim": "Reliability", "score": 5.0 if ev_ok else 2.0,
          "bar": "Eval CI gate: ≥95% text-to-SQL, 0 un-sourced numbers, byte-identical "
