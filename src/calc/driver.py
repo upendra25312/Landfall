@@ -177,19 +177,28 @@ async def build_estimate(spec: dict) -> dict:
         header = await page.evaluate(
             "() => (document.querySelector('[class*=stickyCostHeader]')||{}).innerText || ''")
 
-        shot = await page.screenshot(full_page=True)
-
+        # Export is the POE — it must succeed. Do it before the screenshot so a
+        # renderer crash can't cost us the run.
         async with page.expect_download(timeout=_NAV_TIMEOUT) as dl:
             await page.click("button.export-button")
         path = await (await dl.value).path()
         with open(path, "rb") as fh:
             xlsx = fh.read()
 
+        # Screenshot is best-effort: a full-page shot of a 50+ module page can OOM
+        # Chromium's renderer in a memory-capped container. Viewport-only, guarded —
+        # never lose a completed estimate over a missing PNG.
+        shot = b""
+        try:
+            shot = await page.screenshot(full_page=False)
+        except Exception:  # noqa: BLE001
+            logging.warning("calculator screenshot failed (non-fatal)", exc_info=True)
+
         await browser.close()
 
     return {
         "xlsx_b64": base64.b64encode(xlsx).decode(),
-        "screenshot_b64": base64.b64encode(shot).decode(),
+        "screenshot_b64": base64.b64encode(shot).decode() if shot else "",
         "applied": applied,
         "skipped": skipped,
         "monthly_header": " ".join((header or "").split()),

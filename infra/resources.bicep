@@ -351,7 +351,7 @@ resource calcApp 'Microsoft.App/containerApps@2024-10-02-preview' = {
         {
           name: 'calc'
           image: !empty(calcImageName) ? calcImageName : 'mcr.microsoft.com/azuredocs/containerapps-helloworld:latest'
-          resources: { cpu: json('1.0'), memory: '2Gi' } // Chromium needs headroom
+          resources: { cpu: json('2.0'), memory: '4Gi' } // Chromium + a 50+ module page + export needs headroom (C25b)
           env: [
             { name: 'APPLICATIONINSIGHTS_CONNECTION_STRING', value: appInsights.properties.ConnectionString }
             // ca-calc drains the calc-jobs queue and writes landing_zone.{xlsx,json,png}
