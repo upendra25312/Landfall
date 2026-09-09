@@ -14,6 +14,7 @@ import os
 import json
 import pathlib
 import logging
+import time as _time
 
 from fastapi import FastAPI, Request, UploadFile, Form
 from fastapi.responses import HTMLResponse, JSONResponse, Response
@@ -22,9 +23,12 @@ from azure.ai.projects import AIProjectClient
 
 import access as _acl
 import discovery as _disc
+import telemetry as _obs
 import uploads as _up
 
 logging.basicConfig(level=logging.INFO)
+_obs.configure_telemetry()          # E9.4 — forward to App Insights when the conn string is set
+log = logging.getLogger("landfall.web")
 
 PROJECT_ENDPOINT = os.environ.get("FOUNDRY_PROJECT_ENDPOINT", "")
 AGENT_NAME = os.environ.get("AGENT_ID", "")  # Foundry agents are addressed by name
@@ -113,7 +117,7 @@ def _read_estimate_blob(name: str, engagement: str | None = None) -> bytes | Non
         except Exception:  # noqa: BLE001 - missing blob -> try the next location
             continue
         if prefix == "estimate":  # pre-E11 flat path — one-release back-compat shim
-            logging.warning("serving %s from the legacy flat estimate/ path — run "
+            log.warning("serving %s from the legacy flat estimate/ path — run "
                             "scripts/migrate_to_default_engagement.py --apply", name)
         return data
     return None
@@ -171,15 +175,22 @@ def health():
 
 @app.post("/api/chat")
 async def chat(req: Request):
+    _t0 = _time.monotonic()
     body = await req.json()
     question = (body.get("message") or "").strip()
     engagement = (body.get("engagement") or "").strip().strip("/")
+
+    def _ms() -> int:
+        return round((_time.monotonic() - _t0) * 1000)
+
     if not question:
         return JSONResponse({"error": "empty message"}, status_code=400)
     if not AGENT_NAME:
+        _obs.event("web_chat", status="agent_unconfigured", ms=_ms())
         return JSONResponse({"error": "AGENT_ID not set - run the postprovision hook"}, status_code=503)
 
     actor = _principal(req)[0] or "anonymous"
+    _eh = _obs.eng_hash(engagement)
 
     # E8.6 — a conversation can only be resumed through the engagement's server-side
     # pointer, and only after the caller's visibility has been checked. The engagement
@@ -189,6 +200,7 @@ async def chat(req: Request):
         _parts = engagement.split("/")
         _eng = _engagement(_parts[0], _parts[-1], req) if len(_parts) == 2 else None
         if not _eng:
+            _obs.event("web_chat", engagement=_eh, status="unknown_engagement", ms=_ms())
             return JSONResponse({"error": "unknown engagement"}, status_code=404)
         engagement = _eng[0]
     chat_doc = _load_chat(engagement) if engagement else {}
@@ -214,6 +226,8 @@ async def chat(req: Request):
         resp = _openai_client().responses.create(**kwargs)
         text = (resp.output_text or "").strip()
         if not text:
+            _obs.event("web_chat", engagement=_eh, status="empty_agent_response",
+                       agent_status=getattr(resp, "status", None), ms=_ms())
             return JSONResponse(
                 {"error": f"agent returned no text (status {resp.status})", "thread_id": resp.id},
                 status_code=502,
@@ -241,11 +255,15 @@ async def chat(req: Request):
             try:
                 _save_chat(engagement, chat_doc)
             except Exception:  # noqa: BLE001
-                logging.exception("could not persist the conversation for %s", engagement)
+                log.exception("could not persist the conversation for %s", engagement)
+        _obs.event("web_chat", engagement=_eh, status="ok", scoped=bool(engagement),
+                   cited=len(cites), tables=len(tables), chars=len(text), ms=_ms())
         return {"answer": text, "citations": cites, "thread_id": resp.id,
                 "tables": tables, "sql": last_sql}
     except Exception as exc:  # noqa: BLE001
-        logging.exception("chat failed")
+        log.exception("chat failed")
+        _obs.event("web_chat", engagement=_eh, status="error",
+                   error=type(exc).__name__, ms=_ms())
         return JSONResponse({"error": str(exc)}, status_code=500)
 
 
@@ -318,7 +336,7 @@ def engagements_list(request: Request):
                          "currency", "licensing_program", "status", "created_by", "created_at",
                          "target_region_calculator_supported")})
     except Exception as exc:  # noqa: BLE001
-        logging.warning("engagements_list failed: %s", exc)
+        log.warning("engagements_list failed: %s", exc)
         return JSONResponse({"engagements": [], "error": str(exc)})
     out.sort(key=lambda x: x.get("created_at") or "", reverse=True)
     return JSONResponse({"engagements": out})
@@ -365,7 +383,7 @@ async def engagements_create(request: Request):
         for rel in ("inventory/.keep", "docs/.keep"):
             cc.upload_blob(f"engagements/{eid}/{rel}", b"", overwrite=True)
     except Exception as exc:  # noqa: BLE001
-        logging.exception("engagement create failed")
+        log.exception("engagement create failed")
         return JSONResponse({"error": f"provisioning failed: {exc}"}, status_code=500)
     return JSONResponse(manifest, status_code=201)
 
@@ -500,7 +518,7 @@ async def engagement_upload(customer: str, project: str, request: Request,
     try:
         bc.commit_block_list(blocks, metadata=meta, content_settings=ContentSettings(content_type=ctype))
     except Exception as exc:  # noqa: BLE001
-        logging.exception("upload commit failed")
+        log.exception("upload commit failed")
         return JSONResponse({"error": f"could not store {name}: {exc}"}, status_code=500)
 
     resp = {
@@ -528,7 +546,7 @@ async def engagement_upload(customer: str, project: str, request: Request,
                 resp["discovery_note"] = ("PDF questionnaires aren't parsed — re-export "
                                           "the answers as .xlsx or .docx to feed the estimate")
         except Exception as exc:  # noqa: BLE001
-            logging.warning("discovery import skipped for %s: %s", name, exc)
+            log.warning("discovery import skipped for %s: %s", name, exc)
 
     return JSONResponse(resp, status_code=201)
 
@@ -654,7 +672,7 @@ async def engagement_analyze(customer: str, project: str, request: Request):
             )
             triggered = True
         except Exception:  # noqa: BLE001
-            logging.exception("analyze: run_engagement via agent failed for %s", eid)
+            log.exception("analyze: run_engagement via agent failed for %s", eid)
 
     result = _analysis_summary(eid, base)
     result["triggered"] = triggered
@@ -888,7 +906,7 @@ def prompt_cards():
     try:
         return JSONResponse(json.loads((_HERE / "prompt_cards.json").read_text(encoding="utf-8")))
     except Exception as exc:  # noqa: BLE001
-        logging.warning("prompt_cards.json unreadable: %s", exc)
+        log.warning("prompt_cards.json unreadable: %s", exc)
         return JSONResponse({"intro": {"title": "Landfall — Migration Estimator",
                                        "body": "Ask about the client inventory, sizing, waves or cost.",
                                        "capabilities": []}, "cards": []})
@@ -912,7 +930,7 @@ async def answer_to_xlsx(req: Request):
         from answer_xlsx import build_answer_workbook
         blob = build_answer_workbook(engagement, question, answer, tables, body.get("sql"))
     except Exception as exc:  # noqa: BLE001
-        logging.exception("answer_to_xlsx failed")
+        log.exception("answer_to_xlsx failed")
         return JSONResponse({"error": f"could not build the workbook: {exc}"}, status_code=500)
     stem = (engagement or "landfall").replace("/", "-")
     return Response(blob, media_type=_EXPORT_MIME["xlsx"], headers={

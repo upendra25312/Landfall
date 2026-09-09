@@ -152,7 +152,7 @@ def rubric(live: dict) -> list[dict]:
          "gap": "run the 60-minute comprehension test with 3 consultants new to Landfall "
                 "(protocol.md Trial A); record in evidence/trials/."},
 
-        {"dim": "Operability", "score": 4.25,
+        {"dim": "Operability", "score": 4.5,
          "bar": "CI `azd up → smoke → azd down` on Linux + Windows every PR; chaos drill "
                 "degrades cleanly.",
          "basis": "Deploy hooks self-contained (E9.1). E9.2: `scripts/smoke.py` passes "
@@ -165,7 +165,11 @@ def rubric(live: dict) -> list[dict]:
                   "latency / error rate come free from Functions `requests`; the "
                   "\"answer quality\" App Insights workbook + a KQL runbook "
                   "(docs/observability.md) + a `scheduledQueryRules` failure-rate alert "
-                  "(dormant until `ALERT_EMAIL` is set) ship in Bicep. E9.5: "
+                  "(dormant until `ALERT_EMAIL` is set) ship in Bicep. The web tier "
+                  "(`src/web/telemetry.py`) forwards its logs + per-route `requests` "
+                  "telemetry via azure-monitor-opentelemetry and emits a `web_chat` "
+                  "event per chat turn (status / latency / citations, hashed engagement) "
+                  "- deployed live. E9.5: "
                   "`scripts/export_all.py` dumps every engagement to a re-importable .zip "
                   "before teardown — run live (6,498 rows). Chaos drill (evidence/chaos/): "
                   "6 failure modes, SQL auto-pause induced + observed, the rest verified "
@@ -176,9 +180,9 @@ def rubric(live: dict) -> list[dict]:
                       ("close-out export", "../scripts/export_all.py"),
                       ("chaos drill", "chaos/RESULTS.md")],
          "gap": "arm + green the clean-machine CI on both OSes (one-time secret add); "
-                "forward the web tier's logs to App Insights (needs "
-                "azure-monitor-opentelemetry); induce the chaos scenarios C2-C6 "
-                "end-to-end on a scratch env."},
+                "add the `web_chat` / web-`requests` signals to the workbook + a "
+                "web-tier alert; induce the chaos scenarios C2-C6 end-to-end on a "
+                "scratch env."},
 
         {"dim": "Security", "score": 3.75,
          "bar": "External pen test passes; isolation test passes; data-handling statement "
