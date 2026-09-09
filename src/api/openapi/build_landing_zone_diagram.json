@@ -1,0 +1,66 @@
+{
+  "openapi": "3.0.1",
+  "info": {
+    "title": "build_landing_zone_diagram",
+    "description": "Render the engagement's target Azure landing-zone diagram (draw.io / .drawio) deterministically from its published design — the hub VNet and every spoke as a swimlane, hub components as cells, peering / ExpressRoute / VPN / DR edges, labelled with the engagement's target and DR regions. Fast and synchronous. Call it after design_landing_zone / publish_estimate; publish_estimate also regenerates it automatically.",
+    "version": "1.0.0"
+  },
+  "servers": [{ "url": "https://REPLACE/api" }],
+  "paths": {
+    "/build_landing_zone_diagram": {
+      "post": {
+        "operationId": "build_landing_zone_diagram",
+        "summary": "Render the target landing-zone diagram (.drawio) for an engagement",
+        "description": "Pass {\"engagement\": \"<customer>/<project>\"}. Reads the engagement's landing-zone design from its published tools_raw.json, builds the .drawio XML, and stores landing_zone.drawio + landing_zone_diagram.json under the engagement. The dashboard's landing-zone card then shows the diagram inline with a Download .drawio link, and to_pptx / to_docx embed it. You can also pass {\"design\": {...design_landing_zone output...}} or {\"applications\": [...], \"server_summary\": {...}} to render without a stored estimate.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "engagement": { "type": "string", "description": "Engagement id '<customer>/<project>'." },
+                  "design": { "type": "object", "description": "A design_landing_zone result to render directly (optional)." },
+                  "applications": { "type": "array", "items": { "type": "object" }, "description": "Portfolio to design + render if no stored estimate (optional)." },
+                  "server_summary": { "type": "object", "description": "Server rollup accompanying applications (optional)." }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Diagram built (and stored, when an engagement was given)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "engagement": { "type": "string", "nullable": true },
+                    "stored": { "type": "array", "items": { "type": "string" } },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "region": { "type": "string", "nullable": true },
+                        "dr_region": { "type": "string", "nullable": true },
+                        "hub_components": { "type": "array", "items": { "type": "string" } },
+                        "spoke_count": { "type": "integer" },
+                        "regulated": { "type": "boolean" }
+                      }
+                    },
+                    "drawio": { "type": "string", "nullable": true, "description": "The XML, returned inline only when no engagement was given." },
+                    "dashboard_hint": { "type": "string" }
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "No landing-zone design available to render",
+            "content": { "application/json": { "schema": { "type": "object", "properties": { "error": { "type": "string" } } } } }
+          }
+        }
+      }
+    }
+  }
+}

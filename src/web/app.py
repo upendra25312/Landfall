@@ -990,6 +990,22 @@ def landing_zone_xlsx(request: Request, e: str | None = None):
         "Content-Disposition": f'attachment; filename="{name}.xlsx"'})
 
 
+@app.get("/dashboard/landing-zone-diagram")
+def landing_zone_diagram(request: Request, e: str | None = None, download: int = 0):
+    """The engagement's target landing-zone diagram as draw.io XML (E11.22). The
+    dashboard embeds it in the draw.io viewer; `?download=1` sends it as a file."""
+    if (g := _guard_eid(request, e)):
+        return g
+    blob = _read_estimate_blob("landing_zone.drawio", e)
+    if blob is None:
+        return JSONResponse({"error": "no landing-zone diagram built yet"}, status_code=404)
+    if download:
+        name = (e or "landfall").replace("/", "-") + "-landing-zone"
+        return Response(blob, media_type="application/xml", headers={
+            "Content-Disposition": f'attachment; filename="{name}.drawio"'})
+    return Response(blob, media_type="application/xml")
+
+
 @app.get("/", response_class=HTMLResponse)
 def index():
     return """<!doctype html><html><head><meta charset=utf-8>

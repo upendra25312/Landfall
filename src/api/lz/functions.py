@@ -18,6 +18,7 @@ import azure.functions as func
 import engagement as eng
 from cost.config import load_config
 from .design import design_landing_zone
+from .diagram import build_drawio, diagram_meta
 from .calculator_spec import build_calculator_spec
 
 lz_bp = func.Blueprint()
@@ -48,6 +49,85 @@ def design_landing_zone_route(req: func.HttpRequest) -> func.HttpResponse:
         logging.exception("design_landing_zone failed")
         return _json({"error": f"landing-zone design failed: {exc}"}, 500)
     return _json(result)
+
+
+@lz_bp.route(route="build_landing_zone_diagram", methods=["POST", "GET"],
+             auth_level=func.AuthLevel.ANONYMOUS)
+def build_landing_zone_diagram_route(req: func.HttpRequest) -> func.HttpResponse:
+    """POST {"engagement": "<customer>/<project>"} — render the engagement's target
+    landing-zone diagram from its published design and store it at
+    answers/engagements/<c>/<p>/estimate/landing_zone.drawio (+ .json meta). Fast +
+    synchronous — deterministic XML, no browser. Falls back to a design passed
+    directly in the body ({"design": {...}} or {"applications": [...], "server_summary": {...}}).
+
+    GET ?engagement= — the diagram meta (or 404)."""
+    try:
+        raw_eng = (req.params.get("engagement")
+                   or ((req.get_json() or {}) if req.method == "POST" else {}).get("engagement"))
+    except ValueError:
+        raw_eng = req.params.get("engagement")
+    try:
+        engagement = eng.normalize_engagement(raw_eng) if raw_eng else None
+    except ValueError as exc:
+        return _json({"error": str(exc)}, 400)
+
+    if req.method == "GET":
+        if not engagement:
+            return _json({"error": "need ?engagement="}, 400)
+        meta = _read_json(eng.ANSWERS_CONTAINER,
+                          f"{eng.estimate_prefix(engagement)}/landing_zone_diagram.json")
+        if not meta:
+            return _json({"engagement": engagement, "status": "none",
+                          "hint": "POST to build_landing_zone_diagram after design_landing_zone"}, 404)
+        return _json(meta)
+
+    try:
+        body = req.get_json() or {}
+    except ValueError:
+        body = {}
+
+    design = body.get("design")
+    if not design and body.get("applications"):
+        try:
+            design = design_landing_zone(body["applications"][:2000], body.get("server_summary"),
+                                         load_config(overrides=body.get("config")))
+        except Exception as exc:                   # noqa: BLE001
+            return _json({"error": f"could not design the landing zone: {exc}"}, 500)
+    if not design and engagement:
+        tools_raw = _read_json(eng.ANSWERS_CONTAINER,
+                               f"{eng.estimate_prefix(engagement)}/tools_raw.json") or {}
+        design = tools_raw.get("landing_zone")
+    if not design:
+        return _json({"error": "no landing-zone design — pass {\"design\": {...}} or "
+                               "{\"applications\": [...]}, or publish_estimate first so "
+                               "tools_raw.json has one"}, 409)
+
+    try:
+        xml = build_drawio(design)
+        meta = diagram_meta(design) | {"engagement": engagement, "built_at": _now(),
+                                       "bytes": len(xml.encode())}
+    except Exception as exc:                       # noqa: BLE001
+        logging.exception("build_landing_zone_diagram failed")
+        return _json({"error": f"diagram build failed: {exc}"}, 500)
+
+    stored = []
+    if engagement:
+        try:
+            prefix = eng.estimate_prefix(engagement)
+            cc = _blob().get_container_client(eng.ANSWERS_CONTAINER)
+            cc.upload_blob(f"{prefix}/landing_zone.drawio", xml.encode(), overwrite=True)
+            cc.upload_blob(f"{prefix}/landing_zone_diagram.json",
+                           json.dumps(meta, default=str).encode(), overwrite=True)
+            stored = ["landing_zone.drawio", "landing_zone_diagram.json"]
+        except Exception as exc:                   # noqa: BLE001
+            logging.exception("could not store the diagram")
+            return _json({"error": f"diagram built but not stored: {exc}"}, 500)
+
+    return _json({"engagement": engagement, "stored": stored, "meta": meta,
+                  "drawio": xml if not engagement else None,
+                  "dashboard_hint": (f"open the dashboard for {engagement} — the landing-zone "
+                                     f"card shows the diagram and a Download .drawio link"
+                                     if engagement else "diagram returned inline")})
 
 
 # --------------------------------------------------------------------------

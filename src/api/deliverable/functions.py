@@ -164,6 +164,22 @@ def publish_estimate_route(req: func.HttpRequest) -> func.HttpResponse:
             blob, _name, _mime = export(package, fmt)
             cc.upload_blob(f"{prefix}/latest.{fmt}", blob, overwrite=True)
             written.append(f"latest.{fmt}")
+
+        # E11.22 — regenerate the target landing-zone diagram from the design.
+        # Deterministic + fast; best-effort so it never fails a publish.
+        lz_design = body.get("landing_zone") if isinstance(body.get("landing_zone"), dict) else None
+        if lz_design:
+            try:
+                from lz.diagram import build_drawio, diagram_meta
+                xml = build_drawio(lz_design)
+                cc.upload_blob(f"{prefix}/landing_zone.drawio", xml.encode(), overwrite=True)
+                cc.upload_blob(f"{prefix}/landing_zone_diagram.json",
+                               json.dumps(diagram_meta(lz_design) | {"engagement": engagement,
+                                                                     "built_at": _now()}).encode(),
+                               overwrite=True)
+                written += ["landing_zone.drawio", "landing_zone_diagram.json"]
+            except Exception:                     # noqa: BLE001
+                logging.warning("publish_estimate: landing-zone diagram skipped", exc_info=True)
     except Exception as exc:                       # noqa: BLE001
         logging.exception("publish_estimate failed")
         return _json({"error": f"publish failed: {exc}"}, 500)
