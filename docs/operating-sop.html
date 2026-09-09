@@ -307,6 +307,23 @@ az rest --method post --resource https://search.azure.com \
 
   <hr class="rule">
 
+  <section id="access">
+    <h2 class="sec"><span class="n">Ref</span>Access control &amp; audit</h2>
+    <p class="sub">Each engagement records who created it and who may see it. The engagements list — and every engagement-scoped read (files, analysis, history, dashboard, chat, export) — is filtered by this.</p>
+    <div class="scroll"><table>
+      <thead><tr><th><code>visibility</code></th><th>Who sees the engagement</th></tr></thead>
+      <tbody>
+        <tr><td><code>owner</code> <em>(default)</em></td><td>Only the Entra user who created it.</td></tr>
+        <tr><td><code>group:&lt;object-id&gt;</code></td><td>The creator, plus anyone whose token carries that Entra group. Requires the app registration to emit <code>groups</code> claims.</td></tr>
+        <tr><td><code>all</code></td><td>Anyone who can sign in to this Landfall instance.</td></tr>
+      </tbody>
+    </table></div>
+    <p class="detail">Set it in the New-engagement form, or later by editing <code>raw/engagements/&lt;c&gt;/&lt;p&gt;/_engagement.json</code>. An engagement you can't see returns <em>404</em> (web) / <em>403</em> (API) — the same as one that doesn't exist. When no Easy Auth header is present (a local or unlocked deployment) filtering is off and everything is visible; lock the UI down (see appendix) to make visibility mean something.</p>
+    <p class="detail"><strong>Audit trail</strong> — every engagement create, <code>run_engagement</code>, <code>publish_estimate</code> and calculator run appends an attributable line to <code>answers/engagements/&lt;c&gt;/&lt;p&gt;/_audit.jsonl</code>. Read it at <code>GET /api/engagements/&lt;c&gt;/&lt;p&gt;/audit</code> (newest first): each entry has <code>at</code>, <code>actor</code>, <code>event</code> and event detail.</p>
+  </section>
+
+  <hr class="rule">
+
   <section id="tools">
     <h2 class="sec"><span class="n">Ref</span>The agent's tools</h2>
     <p class="sub">You don't call these — the agent picks them. Knowing which one answered helps you judge the answer.</p>
@@ -384,10 +401,11 @@ az rest --method post --resource https://search.azure.com \
       <li><strong>Harden <code>query_inventory</code></strong> — recommended. It ships as an anonymous HTTP function; put Entra auth in front of it with <code>scripts/funcapp-auth.json</code> and re-attach the tool with <code>AGENT_TOOL_AUTH=managed python scripts/create_agent.py</code>.</li>
       <li><strong>Change the agent's prompt or tools</strong> — edit <code>scripts/create_agent.py</code> and re-run it. It publishes a new agent <em>version</em>; the chat UI and batch runner reference the agent by name and pick it up with no redeploy.</li>
       <li><strong>Add the client's OpenAPI / SQL connection</strong> — if <code>create_agent.py</code> warns it found no search connection, add it in the Foundry portal (Management center → Connected resources) and re-run.</li>
+      <li><strong>Migrate a pre-E11 deployment</strong> — a deployment from before per-engagement workspaces keeps a flat <code>raw/inventory/</code> + <code>answers/estimate/</code> layout and un-keyed SQL rows. The web app still serves the flat estimate path for one release (it logs a warning). To fold it into the <code>_default_/_default_</code> engagement: <code>python scripts/migrate_to_default_engagement.py</code> (dry-run — prints the plan), then <code>--apply</code>. Idempotent; needs <code>STORAGE_URL</code> and the <code>AZURE_SQL_*</code> env for the SQL backfill.</li>
       <li><strong>Costs</strong> — idle a few dollars a month; ~$5–15/month at 5–20 estimate runs. <code>azd down --purge</code> between engagements.</li>
     </ul>
   </section>
 
-  <footer>Landfall · Operating Guide v1.0 · 2026-09-07 · Outputs are DRAFT estimates and require architect review before external use</footer>
+  <footer>Landfall · Operating Guide v1.1 · 2026-09-09 · Outputs are DRAFT estimates and require architect review before external use</footer>
 
 </div>

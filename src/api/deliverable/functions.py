@@ -23,6 +23,7 @@ import os
 
 import azure.functions as func
 
+import audit
 import engagement as eng
 from cost.config import load_config
 from .assemble import assemble_estimate
@@ -161,6 +162,13 @@ def publish_estimate_route(req: func.HttpRequest) -> func.HttpResponse:
         except Exception as exc:                   # noqa: BLE001
             logging.warning("publish_estimate: POE auto-kick skipped — %s", exc)
             poe = {"status": "skipped", "reason": str(exc)}
+
+    _actor = (eng.principal_from_easyauth(req.headers.get("x-ms-client-principal"))[0]
+              or req.headers.get("x-ms-client-principal-name") or "unknown")
+    audit.record(_container_client(), engagement, "publish_estimate", actor=_actor,
+                 package_id=package.get("meta", {}).get("package_id"),
+                 published=written, snapshot=snapshot,
+                 poe=(poe or {}).get("status") if isinstance(poe, dict) else None)
 
     return _json({
         "engagement": engagement,

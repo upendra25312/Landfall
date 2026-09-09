@@ -23,6 +23,7 @@ import azure.functions as func
 from azure.identity import DefaultAzureCredential
 from azure.storage.blob import BlobServiceClient
 
+import audit
 import engagement as eng
 from .core import normalize
 from .dq import build_report, render_markdown
@@ -124,8 +125,15 @@ def ingest_blob(src: func.InputStream):
     _process(engagement, name, src.read())
 
 
-def _run_audit(engagement: str, entry: dict) -> None:
-    """Append one JSON line to answers/…/_ingest/_runs.jsonl (best-effort audit)."""
+def _principal(req: func.HttpRequest) -> str:
+    name, _ = eng.principal_from_easyauth(req.headers.get("x-ms-client-principal"))
+    return (name or req.headers.get("x-ms-client-principal-name")
+            or req.headers.get("x-ms-client-principal-id") or "unknown")
+
+
+def _run_audit(engagement: str, entry: dict, actor: str | None = None) -> None:
+    """Append one JSON line to answers/…/_ingest/_runs.jsonl (kept for back-compat)
+    and one attributable line to the engagement audit trail (E11.10)."""
     key = f"{eng.ingest_report_prefix(engagement)}/_runs.jsonl"
     try:
         bc = _blob().get_blob_client(eng.ANSWERS_CONTAINER, key)
@@ -137,6 +145,10 @@ def _run_audit(engagement: str, entry: dict) -> None:
         bc.upload_blob(prev + line, overwrite=True)
     except Exception:                           # noqa: BLE001
         logging.exception("could not write ingest run-audit for %s", engagement)
+    audit.record(_blob().get_container_client(eng.ANSWERS_CONTAINER), engagement,
+                 entry.get("op") or "run_engagement", actor=actor,
+                 file_count=entry.get("file_count"), rows_loaded=entry.get("rows_loaded"),
+                 rows_rejected=entry.get("rows_rejected"), files=entry.get("files"))
 
 
 @ingest_bp.route(route="run_engagement", methods=["POST"], auth_level=func.AuthLevel.ANONYMOUS)
@@ -201,7 +213,8 @@ def run_engagement(req: func.HttpRequest) -> func.HttpResponse:
     _run_audit(engagement, {k: result[k] for k in
                             ("engagement", "file_count", "rows_loaded", "rows_rejected", "ran_at")}
                | {"op": "run_engagement",
-                  "files": [f.get("file") for f in files]})
+                  "files": [f.get("file") for f in files]},
+               actor=_principal(req))
     return _json(result)
 
 

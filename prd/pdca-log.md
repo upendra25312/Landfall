@@ -5,6 +5,71 @@ Operating model: [`landfall-5x5-prd.md` §7](landfall-5x5-prd.md). Tracker:
 
 ---
 
+## Cycle 23 — engagement access control + audit + pre-E11 migration (E11.10, E11.11)
+
+**Date:** 2026-09-09 · **Owner:** App Eng + Azure AI Architect ·
+**Tracker:** E11.10, E11.11 (done) · **Decisions:**
+[`engagement-workspaces-prd.md`](engagement-workspaces-prd.md) §7 decision 2 —
+creator + optional group share, recorded on `_engagement.json`.
+
+### Plan
+
+C18–C22 built per-engagement tenancy (ADLS layout, SQL RLS, hard `engagement`
+scoping) but nothing yet stopped one signed-in user from *listing* or *opening*
+another user's engagement, and there was no attributable record of who ran or
+published what. Two gaps to close: (E11.10) visibility filtering + an audit trail;
+(E11.11) a clean path for a deployment that predates the engagement layout.
+
+### Do
+
+- **`src/api/engagement.py`** — `normalize_visibility` (`owner` | `group:<id>` |
+  `all`, fail-closed), `can_view(manifest, viewer, groups)`, `principal_from_easyauth`
+  (decodes the base64 `x-ms-client-principal`, incl. `groups` claims). Mirrored, self-
+  contained, in **`src/web/access.py`** (the web container doesn't ship `src/api`).
+- **`src/api/audit.py`** — `record` / `read` over
+  `answers/engagements/<c>/<p>/_audit.jsonl` (append-only, best-effort). Wired into
+  engagement-create, `run_engagement`, `publish_estimate`. `GET …/audit` on both the
+  Function (`engagements.py`) and the web app, newest-first.
+- **Enforcement** — Function `_list` + `engagement_one` (403); web `engagements_list`,
+  every engagement-scoped read via `_engagement(customer, project, request)` (404 —
+  indistinguishable from absent), and the `/dashboard/*` routes via `_guard_eid`.
+- **`scripts/migrate_to_default_engagement.py`** — dry-run by default; `--apply` moves
+  the flat `raw/inventory/` + `raw/docs/` + `answers/estimate/` blobs under
+  `engagements/_default_/_default_/…`, writes the seed `_engagement.json`
+  (`visibility: all`), and backfills un-keyed rows across the 6 SQL tables (RLS policy
+  toggled off around the `UPDATE`). Idempotent.
+- **Shim** — `_read_estimate_blob` still resolves the pre-E11 flat `estimate/` path for
+  one release and logs a deprecation warning when it does.
+- **Docs** — `operating-sop.html` gains an "Access control & audit" ref section + an
+  operator migration step (v1.1).
+- **Tests** — `tests/test_access_control.py` (can_view matrix ×2 modules, principal
+  decode, Function list filtering + groups, 403; web list + 404 guard + dashboard 403 +
+  audit route), `tests/test_audit.py` (record/read roundtrip, resilience, publish wires
+  it), `tests/test_migration.py` (dry-run is a no-op, apply moves + seeds, idempotent).
+
+### Study
+
+| # | Result |
+|---|---|
+| visibility matrix | `owner` → creator only; `group:<id>` → creator + members; `all` → anyone; unknown value → fail-closed to `owner`; no Easy Auth header → filtering off (local deploy sees all) |
+| enforcement | Function `_list` returns own + public + matched-group only; `engagement_one` 403; web engagement-scoped reads + `/dashboard/data` 404/403 for a non-viewer |
+| audit | create / `run_engagement` / `publish_estimate` each append an `{at, actor, event, …}` line; `GET …/audit` returns them newest-first |
+| migration | dry-run prints the plan and changes nothing; `--apply` moves 4 blobs + writes the manifest; second `--apply` is a no-op |
+| suite | **287 pytest** (+30 -0), evals **PASS**, scorecard no drift |
+
+### Act
+
+- Committed on `c23-access-control-migration`, merged to `main`, pushed. Deploy: `azd
+  deploy api` + `azd deploy web` + re-run `create_agent.py` (no agent-prompt change this
+  cycle — the audit route is not an agent tool).
+- **Carry:** `_audit.jsonl` is last-write-wins (fine for the pre-sales single-writer
+  case; add an append lease if it goes concurrent); `group:` needs the app registration
+  to emit `groups` claims — document in DEPLOY.md; a dashboard "audit" tab; run the
+  migration script live against `rg-landfall` (SQL side is a no-op there — C18 already
+  re-loaded the sample estate as `_default_/_default_`).
+
+---
+
 ## Cycle 26 — per-engagement conversation memory + engagement export / import (E11.26)
 
 **Date:** 2026-09-08 · **Owner:** Azure AI Architect + FinOps + App Eng ·
