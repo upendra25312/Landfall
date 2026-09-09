@@ -761,6 +761,35 @@ its HTTP endpoint in Azure — the internal ingress only rendered "Error 404 —
 App stopped" to anyone who opened the URL. Removed; `ca-calc` is a pure `calc-jobs`
 queue worker (`minReplicas: 1`). `/healthz` + `/build` stay in `app.py` for local dev.
 
+### 4.13 Front-end defect review (2026-09-09) — Epic E12
+
+A live review of the chat page (`ca-web-*`, engagement `Sample Estate / Reference
+Migration` selected) by the UI/UX + full-stack + Azure architecture + practice-director
+panel found one rendering defect and a set of hardening gaps. This is the **actionable,
+ship-now** companion to the §4.9 findings (which are mostly parked behind the
+sponsor-gated E11.21 rail). Screenshot on file: the Upload panel renders with its hint
+text and file list overlapping and illegible.
+
+| # | Finding | Severity | Root cause / evidence | Item |
+|---|---|---|---|---|
+| 1 | **Upload dropzone renders broken** — "Drop files here", the format hint and "up to 100 MB" paint over each other; the dashed border fragments into two offset boxes; the uploaded-file list is hidden underneath | High | `.uz` is a `<label>` (`display:inline` by default) styled as a block dropzone — `padding:16px` + three `<br>` lines + a border on an inline box overlap. `src/web/app.py` `.uz` rule + `<label class=uz>` | E12.1 |
+| 2 | **Value prop is below the fold** — the Upload panel + "Start analysis" sit above the product intro, the capability list and the prompt-card CTA | High | Markup order: `#uploadpanel` precedes `#log`/`#welcome` | E12.2 |
+| 3 | **Dropzone text is dense + flat** — three concepts at 11–12.5 px with no size hierarchy; hard to scan (contrast itself was re-checked and **passes AA** — `--muted #94a5b0` on `--panel #111f2a` is 6.6 : 1) | Low | Visual review; contrast re-computed | E12.3 |
+| 4 | **No visual hierarchy** — `Start analysis`, `Send` and `Create engagement` are all the same filled accent button | Med | `button.send` used for every action | E12.4 |
+| 5 | **`auto / data / docs` radio is noise** — a classification decision ~95% of users shouldn't make (the server re-derives type from magic bytes), no help text, cryptic labels | Med | `.utabs` radio group; `uploads.py` already magic-byte-checks | E12.5 |
+| 6 | **Header breaks on a narrow viewport** — engagement `<select>` + 5 look-alike teal links on one row, no wrap/collapse | Med | `header{display:flex}` with no `flex-wrap`/breakpoint | E12.6 |
+| 7 | **Chat page is a ~700-line Python string** — inline `<style>`/`<script>`/`onclick=`, so **no Content-Security-Policy is possible**; unlike `dashboard.html`/`questionnaire.html` it is not a file, not linted, not markup-tested | Med | `app.py::index()` returns a triple-quoted literal | E12.7 |
+| 8 | **Nothing sequences the pipeline** — the chat box is live before any inventory exists; a user can ask for "the full estimate" with an empty engagement | Med | No status/step affordance outside the (gated) E11.21 rail | E12.8 |
+| 9 | **Agent runs are an opaque spinner** — "The estimator is working… (Ns)" is the only signal for a multi-minute, multi-tool run; no message on a model 429 | Med | `working()` indicator; no tool-call surfacing | E12.9 |
+| 10 | **100 MB uploads stream through the web container** — competes with the ACA ingress timeout the calc path already fought | Med | `src/web/uploads.py` streamed 4 MB blocks through the app tier | E12.10 |
+| 11 | **Raw `*.azurecontainerapps.io` FQDN exposed to end users** — no Front Door, no WAF, wildcard cert, region leaked in the URL; weak for a tool ingesting client infrastructure inventory | Med | Container App default ingress, no edge tier | E12.11 |
+| 12 | **No trust surface** — "lands in this engagement's private folder" is unbacked; no "signed in as…", no sign-out, no visible `visibility`, no link to `evidence/data-handling-statement.md` (written in C33) | Med | Chat page header + upload panel | E12.12 |
+
+**Recommendation:** E12.1–E12.4 + E12.6 are pure markup/CSS in one file with no behaviour
+change — ship them as one cycle (C34) with a `azd deploy web`. E12.7 (file + CSP) is the
+next cycle. E12.8 is the ship-without-the-rail subset of E11.21. E12.10–E12.12 are
+architecture items for the sustain phase. E12.5 / E12.9 are P2 polish.
+
 ---
 
 ## 5. Work breakdown — Epic E11: Engagement Workspaces
@@ -809,6 +838,31 @@ sizing or prices.
 
 ---
 
+## 5a. Work breakdown — Epic E12: Engagement Workspace UX & Front-End Hardening
+
+Actionable to-do list from the §4.13 review. `src/web/app.py::index()` unless noted.
+The eval-harness gates and the estimation engine are untouched.
+
+| # | Item | P | Status | Acceptance (done when…) |
+|---|---|---|---|---|
+| **E12.1** | **Dropzone render fix** — make `.uz` a block/flex container so its hint text, the border and `#filerows` stop overlapping (it is a `<label>`, inline by default, with `padding` + `<br>` lines + a border) | P0 | done (C34) | The Upload panel renders as one clean dashed card; the hint text and the file list are legible and non-overlapping at 1280 px and 375 px |
+| **E12.2** | **Intro-first layout** — the Upload panel currently sits above the product intro + prompt cards. Collapse it into a `<details>` open only when the engagement has zero inventory files; the welcome + cards render first | P0 | done (C34) | On an engagement that already has inventory, a returning user sees the intro + cards without scrolling; the Upload panel is one collapsed row they expand |
+| **E12.3** | **Dropzone typographic hierarchy** — split the dropzone copy into a prompt line (`.uzt`, larger, `--ink`) + two muted hint lines (`.uzh`, smaller); folded into E12.1's restructure. Contrast was re-checked and already passes AA (6.6 : 1) — the issue is density, not colour | P1 | done (C34) | The dropzone reads as one prompt + supporting hints, not a wall of equal-weight small text |
+| **E12.4** | **One primary action per view** — keep `Send` (or the current step's action) as the only filled accent button; `Start analysis` + `Create engagement` become secondary/outline | P1 | done (C34) | A screenshot review confirms a single visual primary per screen state |
+| **E12.5** | **Demote the upload "kind" radio** — default `auto`, move `data / docs` behind a small "classify manually" toggle, add one-line help; the server's magic-byte classification stays authoritative and is shown on each ✓ row | P2 | backlog | First-time users never touch the radio; the ✓ row shows the detected kind |
+| **E12.6** | **Responsive header** — `flex-wrap` + group the engagement actions; collapse the link cluster to a menu under ~640 px | P1 | done (C34) | The header is unbroken with no horizontal scroll from 375 px to 1920 px |
+| **E12.7** | **Chat page → static file + CSP** — extract `index()` to `src/web/chat.html` + a served JS file (like `dashboard.html`), drop inline `onclick=`, send a `Content-Security-Policy` with no `unsafe-inline`; behaviour unchanged | P1 | backlog | `index()` serves a file; the response carries a CSP without `unsafe-inline`; existing chat tests pass |
+| **E12.8** | **Guided pipeline state (rail-less subset of E11.21)** — a compact status strip (Uploads · Analysis · Published estimate · POE) with state chips; soft-nudge (not a hard block) when the chat box is used before analysis has run | P1 | backlog | A user sees which pipeline steps are done for the active engagement; asking for an estimate on an empty engagement gets a helpful hint |
+| **E12.9** | **Agent progress transparency** — surface tool-call milestones ("rightsize_many · pricing 250 servers · plan_waves") in the working indicator; show a "busy, retrying" message on a model 429 | P2 | backlog | During a full-estimate run the user sees the running tool; a throttled model shows a message, not a dead spinner |
+| **E12.10** | **Direct-to-blob uploads** — issue a short-lived (≤ 15 min) user-delegation SAS scoped to the engagement prefix; the browser PUTs straight to ADLS; the app validates (magic bytes on the first block) + records the manifest | P2 | backlog | A 100 MB inventory file uploads without passing through the app tier's request body; the SAS is single-prefix and time-boxed; the manifest row + type check still happen |
+| **E12.11** | **Edge protection + custom domain** — Azure Front Door (or App Gateway) + WAF on `landfall.<domain>`; restrict the Container App ingress to the AFD private link / `X-Azure-FDID` | P2 | backlog | End users reach the app only via the custom domain behind the WAF; direct `*.azurecontainerapps.io` access is blocked; SOP + data-handling statement updated |
+| **E12.12** | **Trust surface in the UI** — "signed in as `<user>`" + sign-out, show the engagement `visibility`, link `evidence/data-handling-statement.md` from the Upload panel + footer | P1 | backlog | The active user, the engagement's visibility and a link to the data-handling statement are visible on the engagement page |
+
+**Not in scope here:** the full E11.21 engagement rail (sponsor-gated), the estimation
+maths, the eval gates.
+
+---
+
 ## 6. PDCA cadence
 
 | Cycle | Scope | Exit |
@@ -826,6 +880,7 @@ sizing or prices.
 | **C26** | E11.26 (per-engagement conversation memory + engagement export/import; `ca-calc` ingress removed) | **Done (2026-09-08):** conversation persists per engagement server-side; an engagement `.zip`-exports and re-imports across `azd down`/`up`; live-verified |
 | **C26b** | E11.21 (engagement-first chat view — rail, status strip, Markdown answers, per-message toolbar, dashboard tab, responsive header) — **sponsor sign-off required first** | The §4.9 panel findings are closed; the chat page is engagement-first, not chat-first |
 | **C27** | E11.22 (`ca-drawio` Container App — `simonkurtz-MSFT/drawio-mcp-server` + `drawio-export`; `lz/diagram.py` deterministic MCP-call plan; `build_landing_zone_diagram` Function + agent tool + prompt card; dashboard + deck + doc embed; skill refs vendored) | Producing a landing zone yields an engagement-specific `.drawio` + rendered SVG for the chosen region with correct Azure icons; same design → same diagram; the deck uses it. **Core done (2026-09-09), no new infra:** `src/api/lz/diagram.py` (pure) — `design_landing_zone` output → deterministic draw.io XML (hub + spoke swimlanes, components, peering/ER-VPN/DR edges, region-labelled) + `mcp_plan()` (the ordered call plan for when `ca-drawio` lands) + `diagram_meta()`. `build_landing_zone_diagram` Function (sync, no queue) writes `estimate/landing_zone.drawio` + `landing_zone_diagram.json`; `publish_estimate` regenerates it; OpenAPI tool + agent prompt line + "Landing-zone diagram" prompt card. `diagram.py::build_svg(design)` also emits a **self-contained SVG** (deterministic, no external refs); `build_landing_zone_diagram` + `publish_estimate` store `landing_zone.svg` alongside the `.drawio`. Web `GET /dashboard/landing-zone-diagram?e=` serves the SVG by default (`?fmt=drawio` for the source); the dashboard LZ card renders the **SVG inline** (no external viewer), with the `viewer.diagrams.net` iframe as a fallback and a Download .drawio link. Rules vendored to `docs/diagram-authoring/`. `tests/test_lz_diagram.py` (15). 330 pass. **C27b done (2026-09-09) — imperative, no `azd provision`:** `src/drawio/` is a tiny FastAPI + **CairoSVG** container (`POST /render` SVG→PNG, key-guarded, external ingress since the Function shares no VNet with the CAE) stood up with `az acr build` + `az containerapp create` (`ca-drawio-*`, minReplicas 0); `src/api/lz/render.py::rasterize(svg)` (best-effort, no-op without `DRAWIO_RENDER_URL`); `build_landing_zone_diagram` + `publish_estimate` store `landing_zone.png`; `export.py` `to_pptx` (replaces the hand-drawn hub-spoke slide) + `to_docx` embed the PNG (`_diagram_png`); web serves `?fmt=png`. `infra/resources.bicep` gets a param-gated `drawioApp` (`deployDrawio=false`) + `azure.yaml` a `drawio` service so it's captured as IaC. `tests/test_lz_render.py` (7). 337 pass. **Deployed + live-verified (`main`@`e86c43e`):** `ca-drawio-tmglwfatwcsa2` `/healthz` OK; `POST /render` rendered the real 14.7 KB `_default_` SVG → 5416×1192 PNG; agent `build_landing_zone_diagram` for `_default_/_default_` → `stored` includes `landing_zone.png`; `_default_` SQL still 250 servers (no provision). Cold-start fix (`e86c43e`): `rasterize()` timeout 20→45 s + one retry — the first build after `ca-drawio` scaled to zero was silently dropping the PNG. **Still optional:** the full `mxgraph.azure.*` icon set (needs the MCP engine) |
+| **C34** | **E12.1–E12.4 + E12.6** — front-end quick-wins pass (dropzone render fix, intro-first collapsible Upload panel, dropzone typographic hierarchy, button hierarchy, responsive header). Pure markup/CSS in `app.py::index()`, no behaviour or API change | Front-end review §4.13 findings 1–4, 6 closed; the Upload panel renders clean; the intro leads; `azd deploy web`; chat tests green |
 | **C28** | E11.23 (`design_landing_zone` checklist conformance — vendor the ALZ + AI-LZ design checklist; `checklist_conformance[]` + AI-LZ overlay; deliverable section + dashboard chip + agent prompt line) | **Done (2026-09-09):** checklists vendored to `docs/lz-design/`; `src/api/lz/conformance.py` scores the design (34 ALZ + 10 AI-LZ items, deterministic rules over structured output) → `checklist_summary`/`checklist_gaps` on `design_landing_zone`; assembled into the LZ section + `lz_conformance` figure; docx/pptx render the gaps; dashboard LZ card shows `N/M met` + a gaps drawer; agent prompt line. AI-LZ overlay `n/a` unless AI/ML workloads. 300 pass, evals PASS. Deploy: `azd deploy api` + `web` + re-run `create_agent.py` |
 
 Each cycle logged in [`pdca-log.md`](pdca-log.md) (Plan / Do / Check / Act).
