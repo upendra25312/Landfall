@@ -193,3 +193,72 @@ def test_chat_page_has_upload_panel(client):
     html = c.get("/").text
     assert "uploadpanel" in html and "Drop files here" in html
     assert "/upload" in html and "showUpload" in html
+
+
+# --- C20 / E11.6+E11.24: Start analysis + data-quality summary -------------
+
+def _dq_report(file, table, rows_loaded, confidence="Medium", findings=None, rows_rejected=0):
+    return json.dumps({"summary": {
+        "file": file, "table": table, "profile": table + "-like",
+        "rows_in": rows_loaded + rows_rejected, "rows_loaded": rows_loaded,
+        "rows_rejected": rows_rejected, "status": "ok",
+        "confidence_hint": confidence, "findings": findings or [],
+    }}).encode()
+
+
+@pytest.fixture()
+def analysed(client, monkeypatch):
+    webapp, c, store = client
+    answers = {
+        "engagements/contoso-ltd/dc-exit/_ingest/servers.dq.json":
+            {"data": _dq_report("servers.csv", "servers", 250, "Medium",
+                                ["3 servers (100%) have no utilisation history — LOW confidence right-sizing."])},
+        "engagements/contoso-ltd/dc-exit/_ingest/apps.dq.json":
+            {"data": _dq_report("apps.csv", "applications", 40, "High")},
+    }
+    acont = _Container({k: {"data": v["data"], "metadata": {},
+                            "mtime": _dt.datetime(2026, 9, 8, tzinfo=_dt.timezone.utc)}
+                        for k, v in answers.items()})
+    monkeypatch.setattr(webapp, "_estimate_container", lambda: acont)
+    return webapp, c, store
+
+
+def test_analysis_reads_the_dq_reports(analysed):
+    _w, c, _s = analysed
+    j = c.get("/api/engagements/contoso-ltd/dc-exit/analysis").json()
+    assert j["summary"]["files_ingested"] == 2
+    assert j["summary"]["rows_loaded"] == 290
+    assert j["summary"]["tables"] == {"servers": 250, "applications": 40}
+    assert j["summary"]["confidence"] == "Medium"          # lowest across files
+    assert any("utilisation history" in f for f in j["summary"]["findings"])
+    assert {r["file"] for r in j["reports"]} == {"servers.csv", "apps.csv"}
+
+
+def test_analyze_returns_summary_and_skips_agent_when_unconfigured(analysed):
+    _w, c, _s = analysed
+    c.post("/api/engagements/contoso-ltd/dc-exit/upload",
+           files={"file": ("servers.csv", b"hostname,vcpu\na,2\n", "text/csv")})
+    j = c.post("/api/engagements/contoso-ltd/dc-exit/analyze").json()
+    assert j["triggered"] is False                          # AGENT_ID not set in the test env
+    assert j["summary"]["files_ingested"] == 2
+    assert j["summary"]["pending"] == []                    # servers.csv has a report
+
+
+def test_analyze_400_without_inventory(analysed):
+    _w, c, _s = analysed
+    r = c.post("/api/engagements/contoso-ltd/dc-exit/analyze")
+    assert r.status_code == 400
+
+
+def test_pending_lists_uploaded_files_with_no_report_yet(analysed):
+    _w, c, _s = analysed
+    c.post("/api/engagements/contoso-ltd/dc-exit/upload",
+           files={"file": ("extra.csv", b"a,b\n1,2\n", "text/csv")})
+    j = c.get("/api/engagements/contoso-ltd/dc-exit/analysis").json()
+    assert j["summary"]["pending"] == ["extra.csv"]
+
+
+def test_chat_page_has_start_analysis(client):
+    _w, c, _s = client
+    html = c.get("/").text
+    assert "startanalysis" in html and "Start analysis" in html and "/analyze" in html
