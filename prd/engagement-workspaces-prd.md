@@ -8,10 +8,12 @@ reconciliation −73% → +27.9% (calc list vs internal RI/AHB); **C19** done & 
 (Start analysis + data-quality summary; E11.25 questionnaire → C20b); **C21** done
 (versioned publish + engagement-aware dashboard + ask-&-export to Excel); **C22** done
 (live-model workbook + LibreOffice recalc CI gate; E11.9 deck-container deferred); C23 + C27–C28 done ·
-**Epic E11 complete + live. Epic E12 6/12 (C34 + C41 + C42 live).** **Epic E13 opened
-2026-09-09** (§4.14 post-C42 expert-panel review) — E13.1 idempotent `schema.sql` is the
-keystone; **C43 = E13.2 guided pipeline state** (= E12.8 pulled forward)) ·
-**Raised:** 2026-09-08 · **Last updated:** 2026-09-09 (C43 / Epic E13) · **Owner panel:** see below · **Method:** PDCA
+**Epic E11 complete + live. Epic E12 7/12 (C34 + C41 + C42 + C43 live).** **Epic E13
+opened 2026-09-09** (§4.14 review; §4.15 cost model + ephemeral operation; §7 decision 16
+= $40–50/mo budget, `azd up`/`azd down --purge`, `free` tier only). C43 shipped E13.2
+(guided pipeline state). **Next: E13.4 (cost alert, default ON) + E13.11 (safe teardown /
+rehydrate).**) ·
+**Raised:** 2026-09-08 · **Last updated:** 2026-09-09 (§4.15 cost model / decision 16) · **Owner panel:** see below · **Method:** PDCA
 **Rolls into:** the "Landfall to 5/5" PRD as **Epic E11**. Supersedes the
 "one `azd` deployment per engagement" assumption in
 [`audits/2026-09-07-production-readiness-review.md`](../audits/2026-09-07-production-readiness-review.md)
@@ -820,23 +822,90 @@ leverage buildable work left, across every discipline?"* — not another cosmeti
 | 9 | **Epic E12 tail unchanged** — E12.9 (agent progress transparency; C42's per-tool `ms` makes this cheaper), E12.10 (direct-to-blob upload SAS), E12.12 (trust surface: signed-in-as / visibility / data-handling link). | UX + Full-stack | Med/Low | **E13.9** (rolls E12.9 / E12.10 / E12.12) |
 | 10 | **Single-region, no DR for Landfall itself** (swedencentral only). Defensible for a tear-down-friendly pre-sales tool, but it should be an **explicit, recorded decision**, not an unstated gap an auditor finds. | Cloud-arch director | Low | **E13.10** (decision, not a build) |
 
-**Recommendation & sequencing:**
+**Recommendation & sequencing** (revised 2026-09-09 for the §4.15 cost model):
 
-- **E13.1 first** — it is the keystone. It unblocks five deferred items and removes the
-  reason every recent cycle ends "not provisioned". Rewrite `schema.sql` as additive /
-  idempotent (`IF NOT EXISTS` on every object, guarded `ALTER … ADD` per column, RLS
-  policy re-asserted not recreated), add a `DROP TABLE` guard to `scripts/apply_sql.py`
-  as belt-and-braces, static-verify in tests. **The change itself ships with no deploy;
-  the first safe `azd provision` is then the sponsor's to run** (it also lands the C39 +
-  C42 dormant IaC in one shot).
-- **E13.2 (guided pipeline state)** — the top *user-facing* item, fully shippable
-  (`azd deploy web`). A `GET …/pipeline` endpoint over the blob/SQL state already
-  exposed by `/files` + `/analysis` + `/history` + `landing_zone.json`; a compact status
-  strip; a soft (non-blocking) nudge when the chat is used before analysis has run.
-- **E13.3 / E13.4 / E13.5** are the AI-architecture + FinOps guardrails — one cycle each,
-  mostly param-gated Bicep + eval additions, no risky deploy.
+- **E13.2 (guided pipeline state) — done, C43.** Shipped `azd deploy web`.
+- **E13.4 (cost guardrail) + E13.11 (safe teardown / rehydrate) next** — the
+  ephemeral-operation constraint makes these the highest-leverage items: the budget
+  is protected by a default-ON Cost-Management alert and by making `azd down --purge`
+  a one-command, export-first operation. Both fit an ephemeral `azd up` well.
+- **E13.1 (idempotent `schema.sql`)** — still good hygiene, no longer a keystone
+  (teardown recreates the DB every session; export first via E9.5). Its residual
+  value: fold the C39 workbook + C42 alert + E13.4 budget into the **default `azd up`**
+  so an ephemeral deploy has them from minute one.
+- **E13.3 (model + adversarial evals) / E13.5 (agent-run ceiling)** — AI-architecture
+  guardrails; E13.5 also caps token spend, which matters on this budget.
 - **E13.6 / E13.7 / E13.8** are the sustain-phase quality items.
 - **E13.10** is a §7 sponsor decision to write down, not code.
+- **E13.12 (`docs/learning-path.md`)** serves the sponsor's stated learning goal —
+  low effort, high value for that goal.
+
+---
+
+### 4.15 Cost model & ephemeral operation ($40–50 / month) — added 2026-09-09
+
+The sponsor sets a **hard USD 40–50 / month budget** and will run the solution
+**ephemerally** — `azd up` when an engagement needs work, **`azd down --purge`**
+when it doesn't — and also uses Landfall to **learn Azure AI Foundry, Azure
+Container Apps and enterprise-scale solution design**. This section is the FinOps +
+cloud-architecture panel's grounded read (against live `rg-landfall`, 2026-09-09).
+
+**Does it fit?**
+
+| Operating pattern | ~Monthly cost | Verdict |
+|---|---|---|
+| **Ephemeral — deployed ~40 h/month, `azd down --purge` otherwise** | **$8–20 all-in** (mostly model tokens) | Comfortably under budget |
+| **Left always-on** | **$35–65 baseline + tokens** | Marginal; `ca-calc` (`minReplicas: 1`, 2 vCPU / 4 GiB — the only always-on container) is ~$25–45 of it |
+| **`DEPLOYMENT_TIER=prod`** | **+$350–450/month** | **Never, for this budget** — flips AI Search free→`basic` (~$75) + SQL off the Free offer |
+
+**Why ephemeral is cheap here** — with `--purge`, a torn-down deployment costs
+**$0** (no soft-delete retention on Cognitive Services / Key Vault / Log
+Analytics). Already free / near-zero *while up and idle*: AI Search **free** SKU,
+SQL **serverless + Free offer + 60-min auto-pause**, `ca-web` + `ca-drawio`
+**`minReplicas: 0`**, Functions **Flex Consumption**, model = **pay-per-token**
+(`modelCapacity: 30` is a TPM rate limit, not reserved PTU). ACR **Basic**
+(~$5/mo, prorated to ~$0.30 for a 40 h month).
+
+**The five cost levers (in priority order):**
+
+1. **`azd down --purge` between sessions** — the single biggest control. `--purge`
+   (not plain `azd down`) so nothing lingers in soft-delete.
+2. **Never `DEPLOYMENT_TIER=prod`.** `free` (default) is byte-identical to today.
+3. **A Cost-Management budget + alert** (E13.4, now **P1**) at $50 with
+   50 / 80 / 100 % email thresholds — the safety net for "forgot to tear down".
+   Default **ON** now that there is a real number.
+4. **`ca-calc` `minReplicas: 1 → 0`** (E13.4) — it only costs while the stack is
+   up, but it is the thing that runs up a bill if a teardown is missed. C25b's
+   KEDA scale-to-zero didn't scale *up* on a queued message (MI-auth path); the
+   fallbacks are an HTTP wake-ping before the queue drop, a newer-API KEDA retry,
+   or a `scripts/` scale-to-0 toggle.
+5. **A small Log Analytics daily cap** (~0.5 GB, E13.4) so a telemetry loop can't
+   run up ingestion.
+
+**Teardown / rehydrate flow** (E13.11 makes this two scripts):
+
+```
+scripts/export_all.py --sql        # E9.5 — every engagement → a re-importable .zip (SQL + blobs)
+azd down --purge --no-prompt        # stop the meter; RG gone
+  … later …
+azd up                              # fresh stack (~8–12 min cold)
+scripts/import … / POST /api/engagements/import   # restore the engagements you need
+```
+
+**Learning-goal alignment** — the codebase is already a working reference for all
+three goals; **E13.12** adds `docs/learning-path.md` mapping *Azure AI Foundry*
+(the prompt agent + Responses API + OpenAPI tools + `create_agent.py` + the eval
+harness), *Azure Container Apps* (the 3 containers, `minReplicas: 0`, KEDA, the
+queue-decouple pattern, Easy Auth, managed certs) and *enterprise-scale design*
+(RLS multi-tenancy, deterministic-tools-under-an-agent, `evidence/` scorecard,
+param-gated tiers, PDCA) to where each lives in the repo.
+
+**Impact on E13.1** — under teardown/rehydrate the DB is recreated every session
+anyway (export first, E9.5), so the `schema.sql` DROP is far less dangerous than
+under a long-lived deployment. E13.1 stays worth doing, but its real value shifts
+to: make the C39 workbook + C42 alert + the E13.4 budget part of the **default
+`azd up`** so a fresh ephemeral deploy simply has them — no param dance, no
+mid-session `azd provision`.
 
 ---
 
@@ -965,21 +1034,27 @@ the E9.2 clean-machine CI still run on the raw FQDN. Ingress stays
 
 ## 5b. Work breakdown — Epic E13: Provisioning safety, guardrails & sustain
 
-From the §4.14 review. E13.1 is the keystone (unblocks the provision-gated backlog);
-E13.2 is the top user-facing item; the rest are AI/FinOps guardrails + quality.
+From the §4.14 review, re-weighted by the §4.15 cost model + ephemeral-operation
+constraint (2026-09-09). **E13.2 done (C43).** Under `azd up` / `azd down --purge`
+the top items are now the **FinOps + ephemeral guardrails** — E13.4 (cost alert,
+default ON) and E13.11 (safe teardown / rehydrate) — since a missed `azd down` or a
+stray `--tier prod` is what actually threatens the $40–50/mo budget. E13.1 stays
+worth doing but is no longer a keystone (the DB is recreated every session anyway).
 
 | # | Item | P | Status | Acceptance (done when…) |
 |---|---|---|---|---|
 | **E13.1** | **Idempotent `schema.sql` → safe `azd provision`** — rewrite every object as `CREATE … IF NOT EXISTS` / guarded `ALTER TABLE … ADD`; the RLS predicate + `SECURITY POLICY` re-asserted, never dropped-and-recreated; `scripts/apply_sql.py` gains a hard guard that refuses any statement matching `DROP TABLE`/`TRUNCATE`. Static + structural test. **No deploy** — the change ships dormant; the sponsor runs the first safe `azd provision` (which also lands the C39 workbook + failure-rate alert and the C42 web-tier signals). | P0 | backlog | `schema.sql` re-applied against a populated DB is a no-op (0 rows lost); `apply_sql.py` raises on a `DROP TABLE`; `tests/test_schema_idempotent.py` proves no destructive DDL + every object guarded; `DEPLOY.md` documents "`azd provision` is now safe". |
 | **E13.2** | **Guided pipeline state** (= E12.8, pulled forward) — `GET /api/engagements/<c>/<p>/pipeline` aggregates Inventory / Analysis / Estimate / Calculator-POE state from the existing blob + report reads; a compact status strip on the chat page (done ✓ / next / to-do chips); a one-time, **non-blocking** inline hint when the chat is used before analysis has run. All JS in `chat.js` (strict CSP holds). | P1 | backlog | The strip shows the four steps with the right state for the active engagement and refreshes after Start analysis + after a publish; asking for an estimate on an un-analysed engagement gets a hint, not a block; `azd deploy web`. |
 | **E13.3** | **Model review + adversarial-prompt eval** — run `evals/runner.py` against a current-generation model (Foundry agent version bump), record the delta; add `evals/adversarial.py` (≈10 prompt-injection / coerced-cross-engagement / tool-abuse cases) to the harness as a **gate** — a jailbreak that reaches another engagement's rows or an out-of-scope tool call fails CI. | P1 | backlog | The scorecard records the model decision with eval numbers; `evals/runner.py` runs the adversarial set; a regression that weakens injection resistance fails CI. |
-| **E13.4** | **Cost guardrail on Landfall's own spend** — a param-gated `Microsoft.Consumption/budgets` (or Cost Management) budget + alert at 50/80/100 % of a `monthlyBudgetUsd` param (default off → byte-identical deploy), emailing `alertEmail` (reuse the C39 param). Plus a `ca-calc` scale review: a scheduled scale-to-0 overnight, or another KEDA attempt with the MI-auth path. | P2 | backlog | With `monthlyBudgetUsd` set, a budget + 3 alert thresholds deploy; `DEPLOY.md` documents it; `ca-calc` cost is cut or the always-on cost is explicitly accepted with a number. |
+| **E13.4** | **Cost guardrail on Landfall's own spend** (see §4.15) — a `Microsoft.Consumption/budgets` at `monthlyBudgetUsd` (**default 50, ON** — the sponsor has a real number) with 50 / 80 / 100 % email alerts to `alertEmail` (reuse the C39 param); a Log Analytics `dailyQuotaGb` cap (~0.5); `ca-calc` `minReplicas: 1 → 0` (HTTP wake-ping before the queue drop, or a newer-API KEDA retry, or a `scripts/` scale toggle). All in the **default `azd up`** path (not param-gated-off) so an ephemeral deploy has the guardrail from minute one. | **P1** | backlog | A fresh `azd up` creates the $50 budget + 3 thresholds + the LA cap; `ca-calc` scales to zero (POE first-run cold start acceptable) **or** its always-on cost is written down; `DEPLOY.md` + §4.15 documented. |
 | **E13.5** | **Agent-run ceiling** — a wall-clock + tool-call cap on a chat turn (the chat handler already times out the Responses call at 180 s for analyze; apply a turn budget to `/api/chat` too), and a documented `previous_response_id`-chain cap (archive → new thread after N turns or M tokens, surfaced as "start a fresh thread for a clean estimate"). | P2 | backlog | A pathological turn is cut with a clear message, not an open-ended spend; the chain length is bounded + the behaviour documented. |
 | **E13.6** | **Split `src/web/app.py`** into `APIRouter` modules (`routes/chat.py`, `routes/engagements.py`, `routes/dashboard.py`, `routes/questionnaire.py`), `app.py` wires them + the middleware. No behaviour change; the existing web tests are the safety net. | P2 | backlog | `app.py` < 150 lines; every route module < 300; full web-test suite green; `azd deploy web`. |
 | **E13.7** | **`dashboard.html` + `questionnaire.html` → external assets + strict CSP** — the E12.7 treatment for the other two pages; drop `_CSP_RELAXED` once nothing needs it. | P2 | backlog | All three pages serve the strict CSP; `_security_headers` has one policy; dashboard/questionnaire tests green. |
 | **E13.8** | **Lint + type gate in CI** — `ruff check` + `mypy`/`pyright` over `src/` in `evals.yml` (or a new `quality.yml`); fix or baseline the findings. | P3 | backlog | CI fails on a new lint/type error; the baseline is committed. |
 | **E13.9** | **Epic E12 tail** — E12.9 (tool-call milestones in the working indicator, using C42's per-tool `ms`; a "busy, retrying" message on a model 429), E12.10 (direct-to-blob upload via a ≤15-min engagement-prefixed user-delegation SAS), E12.12 (trust surface: "signed in as", visibility, `data-handling-statement.md` link). | P2 | backlog | Each sub-item's E12 acceptance met. |
 | **E13.10** | **DR / single-region — record the decision** (§7). Landfall runs in one region and is tear-down-friendly by design; the estimates it produces model DR, the tool itself does not. Write it down as an explicit sponsor decision with the rationale + the `--tier prod` note that `prod` still does not add DR. | P3 | decision | §7 has a numbered DR decision; no code. |
+| **E13.11** | **Ephemeral-deploy hardening** (§4.15) — `scripts/teardown.sh` (`export_all.py --sql` → `azd down --purge --no-prompt` → assert the RG is gone) + `scripts/rehydrate.sh` (`azd up` → re-run `create_agent.py` → optional engagement import); a cold-start timing check folded into the E9.2 smoke; `DEPLOY.md` "Deploy for a session / tear down after" runbook. | P1 | backlog | One command tears the stack down safely with the engagements exported first; one command brings it back; the runbook + timings are in `DEPLOY.md`; a missed export is impossible (teardown refuses if `export_all` fails). |
+| **E13.12** | **`docs/learning-path.md`** — map the sponsor's three learning goals to the repo: **Azure AI Foundry** (`src/api` OpenAPI tools, `scripts/create_agent.py`, the prompt-agent + Responses API pattern in `src/web/app.py::chat`, `evals/`), **Azure Container Apps** (`infra/resources.bicep` the 3 apps + managed env, `minReplicas: 0`, the `ca-calc` queue-decouple in §4.6 / decision 10, Easy Auth, managed certs in §5a), **enterprise-scale design** (RLS multi-tenancy §7.1, deterministic-tools-under-an-agent §3.1, `evidence/` scorecard + PDCA, param-gated tiers E9.3). Link it from `docs/index.html`. | P2 | backlog | `docs/learning-path.md` exists, is linked, and points at real files/sections for each goal; `tests/test_docs.py` checks the links resolve. |
 
 **Not in scope here:** the estimation maths, the eval-harness *thresholds*, the E11.21
 sponsor-gated rail.
@@ -1108,7 +1183,19 @@ Each cycle logged in [`pdca-log.md`](pdca-log.md) (Plan / Do / Check / Act).
     E12.8 pulled forward) is the top user-facing item. E13.3–E13.5 are AI/FinOps
     guardrails (model + adversarial evals; budget alert; agent-run ceiling). E13.6–E13.8
     are sustain-phase quality. E13.10 records the single-region / no-DR posture as an
-    explicit decision. See §4.14 + §5b.
+    explicit decision. See §4.14 + §5b. **Re-weighted by decision 16 (2026-09-09) — E13.1
+    is no longer a keystone; E13.4 + E13.11 lead.**
+16. **Budget USD 40–50/month; ephemeral operation; `free` tier only (2026-09-09).** The
+    sponsor runs Landfall on a hard $40–50/mo budget, deployed **on demand** (`azd up`)
+    and **torn down** (`azd down --purge`) between engagements, and uses it to learn
+    Azure AI Foundry, Azure Container Apps and enterprise-scale design. Grounded cost
+    (§4.15): **ephemeral ≈ $8–20/mo all-in; always-on ≈ $35–65 + tokens;
+    `DEPLOYMENT_TIER=prod` = +$350–450 — forbidden for this budget.** Consequences:
+    E13.4 (Cost-Management budget + alert, **default ON at $50**) → **P1**; E13.11
+    (one-command safe teardown / rehydrate, export-first) → **P1**; `ca-calc`
+    `minReplicas` → 0; a Log Analytics daily cap; the C39/C42 guardrail IaC folded into
+    the default `azd up`. E13.12 adds `docs/learning-path.md` for the learning goal. See
+    §4.15 + §5b.
 
 **Build order:** C18 done (E11.1–E11.3, live). C24 done. **C25 in progress** — `ca-calc`
 deployed; **next concrete step = the E11.16 async redesign** (Function 202 + `ca-calc`
