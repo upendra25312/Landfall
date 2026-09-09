@@ -11,6 +11,7 @@ were never mapped, and any row-level issues found while coercing values.
 from __future__ import annotations
 
 import csv
+import fnmatch
 import io
 import re
 from typing import Callable, NamedTuple, Optional
@@ -320,6 +321,70 @@ def _signature_score(profile: Profile, header_set: set[str]) -> float:
     return hits / len(profile.signature)
 
 
+# ---------------------------------------------------------------------------
+# per-engagement column-mapping override — raw/engagements/<c>/<p>/_mapping.json
+# (PRD E1.7). Lets an operator pin a profile and/or remap columns without a redeploy.
+# ---------------------------------------------------------------------------
+def match_mapping(mapping: dict, filename: str) -> Optional[dict]:
+    """Resolve `_mapping.json` to the override for one file, or None.
+
+    Accepts either a flat override applied to every file::
+
+        {"profile": "landfall_servers", "columns": {"vcpu": "CPU Cores"}}
+
+    or a per-file map (exact name first, then glob)::
+
+        {"files": {"servers.csv": {...}, "*.xlsx": {"profile": "rvtools_vinfo"}}}
+    """
+    if not isinstance(mapping, dict):
+        return None
+    files = mapping.get("files")
+    if isinstance(files, dict):
+        base = str(filename or "").rsplit("/", 1)[-1]
+        if base in files and isinstance(files[base], dict):
+            return files[base]
+        for pat, ov in files.items():
+            if isinstance(ov, dict) and fnmatch.fnmatch(base.lower(), str(pat).lower()):
+                return ov
+        return None
+    ov = {k: v for k, v in mapping.items() if not str(k).startswith("$")}
+    return ov or None
+
+
+def _apply_override(profile: Optional[Profile], override: Optional[dict],
+                    name: str, headers: list[str]) -> tuple[Optional[Profile], list[str]]:
+    """Return (profile, notes) after applying a `_mapping.json` override."""
+    notes: list[str] = []
+    if not override:
+        return profile, notes
+
+    forced = override.get("profile")
+    if forced:
+        if forced in _BY_NAME:
+            profile = _BY_NAME[forced]
+            notes.append(f"profile pinned to '{forced}' by _mapping.json")
+        else:
+            notes.append(f"_mapping.json names unknown profile '{forced}' — ignored")
+    if profile is None:
+        return profile, notes
+
+    cols = override.get("columns") or {}
+    if cols:
+        header_lc = {h.strip().lower() for h in headers if h}
+        patched = dict(profile.columns)
+        for target, source in cols.items():
+            src = str(source).strip().lower()
+            existing = patched.get(target)
+            if existing is not None:
+                patched[target] = existing._replace(sources=(src,) + tuple(existing.sources))
+            else:
+                patched[target] = Col((src,), _txt)
+            notes.append(f"column '{target}' <- '{source}'"
+                         + ("" if src in header_lc else " (header not present in this file)"))
+        profile = profile._replace(columns=patched)
+    return profile, notes
+
+
 def detect_profile(name: str, headers: list[str]) -> Optional[Profile]:
     header_set = {h.strip().lower() for h in headers if h}
     lname = name.lower()
@@ -357,16 +422,21 @@ class NormResult(NamedTuple):
     unmapped_headers: list[str]
     issues: list[Issue]
     row_count_in: int
+    mapping_notes: list[str] = []
 
 
-def normalize(name: str, data: bytes) -> NormResult:
+def normalize(name: str, data: bytes, overrides: Optional[dict] = None) -> NormResult:
     headers, raw_rows = read_table(name, data)
     profile = detect_profile(name, headers)
+    profile, notes = _apply_override(profile, overrides, name, headers)
     if profile is None:
+        msg = ("unrecognised file — no source profile matched its headers"
+               if not overrides else
+               "unrecognised file — no source profile matched, and _mapping.json did not pin one")
         return NormResult(
             None, [], None, headers,
-            [Issue("error", name, "unrecognised file — no source profile matched its headers")],
-            len(raw_rows),
+            [Issue("error", name, msg)],
+            len(raw_rows), notes,
         )
 
     unmapped = {h.strip() for h in headers if h}
@@ -398,7 +468,8 @@ def normalize(name: str, data: bytes) -> NormResult:
     # synthesise a stable id where the schema needs one but the source has none
     _fill_ids(profile.table, out, name)
 
-    return NormResult(profile.table, out, profile.name, sorted(unmapped), issues, len(raw_rows))
+    return NormResult(profile.table, out, profile.name, sorted(unmapped), issues,
+                      len(raw_rows), notes)
 
 
 def _slug(s: str) -> str:

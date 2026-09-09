@@ -184,7 +184,15 @@
         <p class="detail">Upload the client's exports — RVTools workbook, CMDB extract, application portfolio, dependency list — to the <code>raw/inventory/</code> path of the storage account. Each file triggers the ingestion pipeline, which detects the format (RVTools vInfo, generic CMDB, or Landfall-native CSV), maps the columns to <code>scripts/schema.sql</code>, normalises units (MiB→GiB, OS strings), and loads Azure SQL. Re-uploading a corrected file replaces only its rows.</p>
         <pre><code>az storage blob upload-batch --account-name &lt;acct&gt; --auth-mode login \
   -d raw/inventory -s ./client-inventory</code></pre>
-        <p class="detail">If a column is mis-detected, adjust the profile in <code>src/api/ingest/core.py</code> or (per engagement) supply overrides — see <code>prd/tracker.md</code> item E1.7.</p>
+        <p class="detail">If a column is mis-detected or a file's format isn't recognised, drop a <code>_mapping.json</code> at the engagement root (<code>raw/engagements/&lt;customer&gt;/&lt;project&gt;/_mapping.json</code>) and re-run — no redeploy (E1.7). It pins a profile and/or remaps columns, either flat or per-file:</p>
+        <pre><code>{
+  "files": {
+    "client_hosts.xlsx": { "profile": "rvtools_vinfo" },
+    "servers.csv": { "profile": "landfall_servers",
+                     "columns": { "vcpu": "CPU Cores", "ram_gb": "Memory (GB)" } }
+  }
+}</code></pre>
+        <p class="detail">The <code>.dq.json</code> report's <code>mapping_applied</code> lists what the override changed. A flat <code>{ "profile": …, "columns": … }</code> (no <code>files</code> key) applies to every file.</p>
         <p class="expect">a <code>&lt;file&gt;.dq.md</code> data-quality report appears in <code>answers/_ingest/</code>; in chat, <span style="color:var(--code-accent)">"how many servers are loaded?"</span> returns the right count</p></div>
       </li>
       <li>
@@ -383,7 +391,7 @@ az rest --method post --resource https://search.azure.com \
       <tbody>
         <tr><td>Chat returns <code>503 — AGENT_ID not set</code></td><td>The deploy's post-provision step didn't finish. Ask the operator to re-run it (<code>azd hooks run postprovision</code>).</td></tr>
         <tr><td><code>query_inventory</code> answers <code>0</code> or errors</td><td>Data isn't loaded, or the Free SQL database auto-paused after an hour idle — the first query wakes it (~30–60 s); retry once.</td></tr>
-        <tr><td>A count looks wrong</td><td>Read the SQL the agent shows. Almost always a column-mapping mismatch in Phase 1 step 3 — reload with the corrected mapping.</td></tr>
+        <tr><td>A count looks wrong</td><td>Read the SQL the agent shows. Almost always a column-mapping mismatch in Phase 1 step 3 — drop a <code>_mapping.json</code> at the engagement root and re-run (E1.7).</td></tr>
         <tr><td>Document search returns nothing</td><td>Docs aren't in <code>raw/docs/</code>, or the indexer hasn't run since you uploaded. Trigger it (Phase 1 step 4) and wait for <code>success</code>.</td></tr>
         <tr><td>Batch sheet never produces an answered file</td><td>The Event Grid subscription on <code>questions/</code> is missing. Operator: <code>azd hooks run postdeploy</code>.</td></tr>
         <tr><td>First request after a quiet period is slow (~10 s)</td><td>Expected — the chat app scales to zero and the SQL database auto-pauses. It warms up on the first request.</td></tr>
@@ -406,6 +414,6 @@ az rest --method post --resource https://search.azure.com \
     </ul>
   </section>
 
-  <footer>Landfall · Operating Guide v1.1 · 2026-09-09 · Outputs are DRAFT estimates and require architect review before external use</footer>
+  <footer>Landfall · Operating Guide v1.2 · 2026-09-09 · Outputs are DRAFT estimates and require architect review before external use</footer>
 
 </div>
