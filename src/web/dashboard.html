@@ -192,6 +192,16 @@ function render(pkg){
 
   // --- landing zone
   const lz=sectionBody(pkg,"landing_zone");
+  const dc=lz.design_conformance||null;
+  const dcBlock = dc ? `
+    <div class="conf" style="margin-top:10px;border-top:1px solid var(--line);padding-top:8px">
+      <b style="font-size:12px">Design conformance</b>
+      <span class="pill" title="Scored against the Azure (AI) Landing Zone design checklist">${dc.headline||""}</span>
+      ${dc.ai_lz_applicable? `<span class="pill">AI-LZ overlay</span>`:``}
+      ${(dc.gaps&&dc.gaps.length)? `<details style="margin-top:6px"><summary style="cursor:pointer;color:var(--muted);font-size:12px">${dc.gaps.length} gap${dc.gaps.length>1?"s":""} to close</summary>
+        <ul style="margin:6px 0 0;padding-left:18px;font-size:12px;color:var(--muted)">
+        ${dc.gaps.map(g=>`<li><b>${g.id}</b> ${g.item} — ${g.recommendation}</li>`).join("")}</ul></details>`:``}
+    </div>` : ``;
   grid.append(card("Landing zone","F13", lz.note? `<p class="sub">${lz.note}</p>` : `
     <p style="margin:0 0 8px">${lz.summary||""}</p>
     <div class="kv">
@@ -201,7 +211,7 @@ function render(pkg){
       <b>Regulated scopes</b><span>${(lz.regulated_scopes&&lz.regulated_scopes.length)? lz.regulated_scopes.join(", ") : "none"}</span>
     </div>
     <div class="chips">${(lz.spokes||[]).map(s=>`<span class="chip">${s.name} ${s.address_space||""}</span>`).join("")}</div>
-    <p style="color:var(--muted);font-size:12px;margin-top:10px">${lz.dr||""}</p>`));
+    <p style="color:var(--muted);font-size:12px;margin-top:10px">${lz.dr||""}</p>${dcBlock}`));
 
   // --- Azure Pricing Calculator POE (populated async from /dashboard/landing-zone)
   const poe=card("Azure landing zone — Pricing Calculator POE",null,

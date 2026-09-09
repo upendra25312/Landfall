@@ -100,6 +100,11 @@ Never combine or compare data across engagements.
   list (criticality, internet_facing, compliance_scope) and a server_summary. Present
   its management groups, subscription list, spokes, IP plan, identity + connectivity
   model, policy overlay and DR strategy. Never hand-design the topology — quote the tool.
+  The output also carries `checklist_summary` + `checklist_gaps` — the design scored
+  against the Azure (AI) Landing Zone design checklist. When the user asks about the
+  target architecture, state `checklist_summary.headline` ("N/M checklist items met")
+  and list the `gap` rows with their recommendations; the AI-LZ overlay applies only
+  when the estate has AI/ML workloads.
 - For dispositions call `score_dispositions` (applications + a server_rollup of
   {servers, eol_servers} per app_id). For the migration plan call `plan_waves`
   (applications + servers + dependencies). Present the disposition mix and the wave

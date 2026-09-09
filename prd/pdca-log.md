@@ -5,6 +5,75 @@ Operating model: [`landfall-5x5-prd.md` §7](landfall-5x5-prd.md). Tracker:
 
 ---
 
+## Cycle 28 — `design_landing_zone` scored against the Azure (AI) Landing Zone design checklist (E11.23)
+
+**Date:** 2026-09-09 · **Owner:** Azure AI Architect + Cloud Architect ·
+**Tracker:** E11.23 (done) · **Decisions:**
+[`engagement-workspaces-prd.md`](engagement-workspaces-prd.md) §4.11 + decision 11 —
+the checklist is a *vendored design reference* the deterministic tool applies; the
+agent does not re-derive architecture.
+
+### Plan
+
+`design_landing_zone` already derives the whole topology from the portfolio (MG
+hierarchy, spokes, IP plan, policy baseline, identity, DR). The gap for a funding /
+architecture review is *attribution*: nothing said the design conforms to Microsoft's
+own guidance, and nothing surfaced what it deliberately leaves for the build phase.
+Same pattern as MEG and the two diagram skills — vendor the checklist, code the rules,
+emit a conformance section.
+
+### Do
+
+- **`docs/lz-design/{alz-checklist,ai-lz-checklist}.md`** — the Azure Landing Zone
+  design checklist (10 domains: Identity · Resource Organization · Networking ·
+  Security · Governance · Management · Monitoring · Reliability · Cost · Data) and the
+  AI-LZ overlay, distilled with source URLs + a 2026-09-09 retrieval date. A reference,
+  not a live doc.
+- **`src/api/lz/conformance.py`** (pure) — ~34 ALZ rules + a 10-item AI-LZ overlay.
+  Each rule reads the design's *structured* output (`management_groups`, `hub.components`,
+  `policy.baseline/regulated_overlay`, `dr`, `subscriptions`, `connectivity`, …) — never
+  prose — and returns `met` / `partial` / `gap` / `n/a` + evidence + a recommendation.
+  `n/a` (no regulated scope → SEC-2/3, GOV-3; no AI workloads → the whole overlay) is
+  excluded from the met/total ratio. `ai_workloads_present()` sniffs app
+  `workload_type` / name / tech-stack for AI/ML/analytics tokens.
+- **`design_landing_zone`** returns `checklist_conformance[]`, `checklist_summary`
+  (`{met, partial, gap, na, total, met_pct, headline}`), `checklist_gaps[]`,
+  `ai_lz_applicable`. Wrapped in try/except — a rule error never breaks the design.
+- **`assemble.py`** — `_body_lz` carries a `design_conformance` block (headline +
+  gap list); a new `lz_conformance` headline figure ("N met of M checklist items").
+- **`export.py`** — the LZ section body lines and the pptx LZ slide render the headline
+  + the top gaps with recommendations.
+- **`dashboard.html`** — the Landing zone card shows a `N/M checklist items met` pill,
+  an `AI-LZ overlay` pill when applicable, and a "gaps to close" `<details>` drawer.
+- **`scripts/create_agent.py`** — system-prompt line: quote `checklist_summary.headline`
+  and list `gap` rows when the user asks about the target architecture.
+- **`tests/test_lz_conformance.py`** (13) — well-formed items, met↔no-recommendation,
+  determinism, baseline meets identity/resource-org, no-DR → REL-1 gap, regulated rows
+  n/a without a scope, AI overlay only with AI workloads (AILZ-4 met from the baseline
+  managed identity), n/a excluded from the ratio, thin-design robustness, assemble +
+  all three exports surface it, checklists vendored.
+
+### Study
+
+| # | Result |
+|---|---|
+| sample estate (PCI app, no AI) | `17/30 checklist items met · 7 gaps`; gaps are the build-time items — central Log Analytics workspace, diagnostic-settings policy, Update Manager, platform alerting, budgets/cost-alerts |
+| + an ML workload | `ai_lz_applicable: true`, 10 AI-LZ rows scored (AILZ-4 met, 9 gaps — Foundry hub, PTU plan, private endpoints for AI, APIM gen-AI gateway, Content Safety, …) |
+| determinism | same input → byte-identical `checklist_conformance` |
+| deliverables | docx / pptx / xlsx all render; dashboard card shows the pill + drawer |
+| suite | **300 pytest** (+13 −0), evals **PASS**, scorecard no drift |
+
+### Act
+
+- Committed on `c28-lz-checklist-conformance`, merged to `main`, pushed. Deploy:
+  `azd deploy api` + `azd deploy web` + re-run `create_agent.py` (prompt changed).
+- **Carry:** COST-1 and the monitoring rows are advisory (`partial`/`gap` with a
+  recommendation) — they could go `met` if `conformance.evaluate` also read the
+  `compute_cost` / a monitoring config; keep design-only for now. Re-vendor the
+  checklists when CAF / AI-LZ guidance changes (they carry a retrieval date).
+
+---
+
 ## Cycle 23 — engagement access control + audit + pre-E11 migration (E11.10, E11.11)
 
 **Date:** 2026-09-09 · **Owner:** App Eng + Azure AI Architect ·

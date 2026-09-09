@@ -199,7 +199,7 @@ def design_landing_zone(
         + f". Identity: {identity.replace('_', ' ')}. Connectivity: {conn}."
     )
 
-    return {
+    design = {
         "region": region,
         "dr_region": dr_region,
         "regulated": has_regulated,
@@ -243,6 +243,20 @@ def design_landing_zone(
         ],
         "config": {"source": cfg.get("_source"), "landing_zone": lz},
     }
+
+    # E11.23 — score the design against the vendored Azure (AI) Landing Zone design
+    # checklists. Deterministic; never fails the design.
+    try:
+        from .conformance import evaluate as _conformance
+        conf = _conformance(design, applications, ss)
+        design["checklist_conformance"] = conf["items"]
+        design["checklist_summary"] = conf["summary"]
+        design["checklist_gaps"] = conf["gaps"]
+        design["ai_lz_applicable"] = conf["ai_lz_applicable"]
+    except Exception:                                  # noqa: BLE001
+        pass
+
+    return design
 
 
 _COMPLIANCE_INITIATIVE = {
