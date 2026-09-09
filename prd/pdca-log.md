@@ -5,6 +5,69 @@ Operating model: [`landfall-5x5-prd.md` §7](landfall-5x5-prd.md). Tracker:
 
 ---
 
+## Cycle 37 — `DEPLOYMENT_TIER` switch: one flag off the Free tiers (E9.3)
+
+**Date:** 2026-09-09 · **Owner:** SRE ·
+**Tracker:** E9.3 — "one switch moves off Free tiers; delta documented". The next
+Operability gap after E9.2.
+
+### Plan
+
+- Add a Bicep param that flips every Free-tier / Free-offer resource to its paid
+  equivalent, default unchanged, `free` branch byte-identical to today.
+- Document the per-resource cost delta + the in-place-conversion gotchas.
+- Do **not** run `azd provision` — its postprovision hook drops the SQL schema.
+
+### Do
+
+- **`infra/main.bicep`** — `param deploymentTier string = 'free'`
+  (`@allowed(['free','prod'])`), passed to the `resources` module.
+- **`infra/resources.bicep`** — `var isProd = deploymentTier == 'prod'`, then:
+  AI Search `sku free → basic` + `replicaCount 1 → 2` (99.9 % SLA);
+  SQL DB properties via `union({...}, isProd ? {} : {useFreeLimit, ...})` —
+  `autoPauseDelay 60 → 1440`, `minCapacity 0.5 → 1`, `maxSizeBytes 32 → 100 GB`,
+  free-limit dropped; ACR `Basic → Standard`; storage `Standard_LRS → ZRS`;
+  web Container App `scale 0→2` → `1→4` (a replica stays warm); Log Analytics
+  `retentionInDays 30 → 90`.
+- **`infra/main.parameters.json`** — `"deploymentTier": { "value":
+  "${DEPLOYMENT_TIER=free}" }`.
+- **`DEPLOY.md`** — new "Deployment tiers (`DEPLOYMENT_TIER`)" section: the
+  free-vs-prod table with a ~monthly delta per resource (**~+$300–450/mo**,
+  dominated by Search `basic` and SQL leaving the Free offer), what `prod` does
+  *not* touch (private networking / the SQL firewall = E8.5), and the
+  conversion caveat — AI Search and the SQL free-limit are a resource
+  **replace**, so a fresh `azd up` is clean but converting in place needs
+  `setup_search.py` re-run and an engagement export first.
+- **`tests/test_infra_tier.py`** (4) — param declared + threaded through
+  main→module→params; each Free-tier resource gated with the free branch
+  unchanged; DEPLOY.md documents the delta; `az bicep build` compiles and the
+  ARM carries both branches (`skipif` no `az`).
+- **`evidence/scorecard.py`** — Operability 3.5 → **3.75**; basis + evidence +
+  gap updated (E9.3 struck). **Overall 3.89 → 3.92.**
+
+### Check
+
+| gate | result |
+|---|---|
+| unit | **414 pytest** (+4), 2 skipped |
+| bicep | `az bicep build infra/main.bicep` exit 0, no warnings; ARM has the `deploymentTier` param (allowed free/prod, default free) + both SKU branches |
+| free branch | every conditional's `free` value == today's literal (LRS, `free`, `Basic`, 60, 30, minReplicas 0) — no change to the current deploy |
+| evals | 32/32 + 8/8 + 30/30; `evals/SCORECARD.md` no drift; `evidence/SCORECARD.md` regenerated |
+| scope | Bicep param-gated, `free` default → **no deploy**; `azd provision` deliberately not run |
+
+### Act
+
+- One commit on `c37-tier-prod`, merged `--no-ff` to `main` (`8e2afc4`), pushed.
+  No `azd` anything — the live env stays on `free` and is untouched.
+- E9.3 `in-review` (a live `prod` provision has not been exercised — it would be
+  a new env, not the shared one). Operability's remaining gaps: arm the E9.2 CI,
+  E9.4 observability, E9.5 export-before-teardown, a chaos drill.
+- Next by scorecard leverage: **E9.4** (answer-quality observability — traces +
+  dashboard + alerts, lifts Operability again) or **E8.5** (private endpoints,
+  lifts Security), or run the E10.4 human trials.
+
+---
+
 ## Cycle 36 — D2 "How Landfall works" walkthrough + comprehension trial kit (E10.4)
 
 **Date:** 2026-09-09 · **Owner:** Writer + PM ·
