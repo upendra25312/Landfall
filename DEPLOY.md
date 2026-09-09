@@ -364,3 +364,42 @@ free grants keep the rest at $0. Expect **$5–15/month** at 5–20 runs on the 
 A clean-machine CI run provisions a full throwaway stack: budget ~**$1–3** of
 compute/model spend per run (mostly the GP_S SQL + a few model tokens), then
 `azd down --purge` takes it to zero.
+
+### Cost guardrails (E13.4) — for a fixed monthly budget
+
+If you run Landfall on a fixed budget (see `prd/engagement-workspaces-prd.md` §4.15
+— the reference target is **$40–50/month, deployed on demand**), a default `azd up`
+now creates:
+
+| Guardrail | Default | Env var |
+|---|---|---|
+| **Cost Management budget** on the resource group + alerts at **actual 50 %, actual 80 %, forecast 100 %** — emails `ALERT_EMAIL` (if set) and always the RG **Owner**. In the **subscription billing currency** (run `scripts/spend.py` to see yours; on an INR sub set ~4200 for a $50 target) | **50, ON** (`0` opts out) | `MONTHLY_BUDGET` |
+| **Log Analytics daily ingestion cap** — a runaway-telemetry brake (`prod` uncaps) | **0.5 GB/day** (`-1` = uncapped) | `LOG_ANALYTICS_DAILY_CAP_GB` |
+| **`ca-calc` always-on replicas** — `1` keeps the POE queue worker running while the stack is up (a few $/month — the ACA free grant covers most of the idle). `0` is cheaper but a POE run may sit unprocessed (KEDA MI-auth scale-up didn't work in C25b) | **1** | `CALC_MIN_REPLICAS` |
+
+```bash
+azd env set MONTHLY_BUDGET 50               # in your BILLING currency (e.g. 4200 on an INR sub)
+azd env set ALERT_EMAIL you@example.com     # so the alert reaches you, not just the Owner role
+azd up
+```
+
+**The budget is a safety net, not the control.** What actually keeps the bill low:
+
+1. **Never `DEPLOYMENT_TIER=prod`** — it flips AI Search free→`basic` (~$75/mo) and
+   SQL off the Free offer. `free` (default) is ~$0 idle. This is the only realistic
+   way to overshoot a $40–50 budget.
+2. **`azd down --purge` between sessions** — `--purge` (not plain `azd down`) so
+   nothing lingers in soft-delete (Cognitive Services, Key Vault, Log Analytics).
+   A purged deployment costs **$0**. (Grounded: the live stack left up runs
+   ~$5–12/month, so this is a good habit rather than a hard necessity.)
+3. On a **Visual Studio subscription**, keep the **spending limit ON** — a hard $0
+   stop when the monthly credit runs out.
+
+Check month-to-date spend against the budget any time:
+
+```bash
+python scripts/spend.py                      # RG from `azd env get-values`
+python scripts/spend.py --rg rg-landfall --budget 50 --json
+```
+
+(Cost Management data lags ~8–24 h and needs the *Cost Management Reader* role.)
