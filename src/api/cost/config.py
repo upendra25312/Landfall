@@ -151,6 +151,19 @@ DEFAULTS: dict = {
             "size": 14, "eol_os": 6, "change": 10, "data_quality": 8,
         },
     },
+    "schedule": {
+        # build_schedule (E4.3) — the wave plan -> a dated schedule + critical path.
+        "throughput_servers_per_week": 12,     # migrated + soaked per wave per week
+        "wave_prep_weeks": 2,                   # runbook, spoke hardening, rehearsal
+        "wave_soak_weeks": 1,                   # steady-state watch before the wave clears
+        "min_wave_weeks": 2,                    # floor on execution regardless of size
+        "gap_weeks_between_waves": 1,           # breather between consecutive waves on a lane
+        "parallel_waves": 1,                    # wave execution windows running at once
+        "mobilisation_weeks": 3,                # before wave 1; LZ build overlaps this
+        "programme_hypercare_weeks": 4,         # after the last wave
+        "blackout_windows": [],                 # [{"name","start":"YYYY-MM-DD","end":"YYYY-MM-DD"}]
+        "default_start": None,                  # ISO date; None => next Monday from the run date
+    },
     "effort": {
         # estimate_effort (E6.2, used by assemble_estimate) — parametric person-days.
         "bands_pd": {"S": 8, "M": 14, "L": 22, "XL": 40},
@@ -173,6 +186,7 @@ DEFAULTS: dict = {
         "governance_pct": 10,
         "contingency_pct": None,               # None => derive from the data-quality confidence
         "contingency_by_confidence": {"High": 8, "Medium": 12, "Low": 20},
+        "working_days_per_month": 21,           # E6.2 resource loading — FTE = PD / this
     },
     "rates": {
         "blended_day_rate": 780,

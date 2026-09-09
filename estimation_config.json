@@ -119,6 +119,20 @@
     "regulated_scopes_last": ["PCI-DSS", "PCI", "HIPAA", "HITRUST"]
   },
 
+  "schedule": {
+    "$comment": "build_schedule (E4.3) — wave plan -> dated schedule + critical path. servers-per-wave / throughput = execution weeks (floored at min_wave_weeks); prep lead-in + soak tail; parallel_waves lanes; blackout_windows shift a wave as a block.",
+    "throughput_servers_per_week": 12,
+    "wave_prep_weeks": 2,
+    "wave_soak_weeks": 1,
+    "min_wave_weeks": 2,
+    "gap_weeks_between_waves": 1,
+    "parallel_waves": 1,
+    "mobilisation_weeks": 3,
+    "programme_hypercare_weeks": 4,
+    "blackout_windows": [],
+    "default_start": null
+  },
+
   "effort": {
     "$comment": "estimate_effort (used by assemble_estimate). contingency_pct null => derived from the data-quality confidence via contingency_by_confidence.",
     "bands_pd": { "S": 8, "M": 14, "L": 22, "XL": 40 },
@@ -137,7 +151,8 @@
     "pm_pct": 15,
     "governance_pct": 10,
     "contingency_pct": null,
-    "contingency_by_confidence": { "High": 8, "Medium": 12, "Low": 20 }
+    "contingency_by_confidence": { "High": 8, "Medium": 12, "Low": 20 },
+    "working_days_per_month": 21
   },
 
   "deliverable": {

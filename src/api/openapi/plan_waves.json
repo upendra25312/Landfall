@@ -11,7 +11,7 @@
       "post": {
         "operationId": "plan_waves",
         "summary": "Risk-ordered migration waves from the dependency graph",
-        "description": "Pass the applications, the servers (server_id, app_id, env, os_eol_date, powerstate) and the dependencies (src_id, dst_id, confidence, last_seen, flows_30d). Optionally pass dispositions[] from score_dispositions (otherwise computed internally). Returns move_groups, waves[] (each with apps, server_count, risk_score/band, risk_factors, dispositions, entry_criteria, exit_criteria, blocking_dependencies, notes), and a graph summary. Present the wave table and call out the pilot wave and any regulated wave.",
+        "description": "Pass the applications, the servers (server_id, app_id, env, os_eol_date, powerstate) and the dependencies (src_id, dst_id, confidence, last_seen, flows_30d). Optionally pass dispositions[] from score_dispositions (otherwise computed internally) and start_date (ISO). Returns move_groups, waves[] (each with apps, server_count, risk_score/band, risk_factors, dispositions, entry_criteria, exit_criteria, blocking_dependencies, notes), a graph summary, and a `schedule` (E4.3): dated waves (prep_start/exec_start/go_live/soak_end, duration_weeks from servers / throughput), programme start/end/total_weeks, and critical_path. Present the wave table, the programme end date and critical path, and call out the pilot wave and any regulated wave.",
         "requestBody": {
           "required": true,
           "content": {
@@ -48,6 +48,7 @@
                     }
                   },
                   "dispositions": { "type": "array", "nullable": true, "items": { "type": "object" } },
+                  "start_date": { "type": "string", "nullable": true, "description": "ISO date the programme starts; default = next Monday. Drives the schedule + critical path." },
                   "config": {
                     "type": "object",
                     "nullable": true,
@@ -69,6 +70,7 @@
                     "move_groups": { "type": "array", "items": { "type": "object" } },
                     "waves": { "type": "array", "items": { "type": "object" } },
                     "graph": { "type": "object" },
+                    "schedule": { "type": "object", "description": "Dated schedule + critical_path (E4.3)" },
                     "disposition_summary": { "type": "object" },
                     "assumptions": { "type": "array", "items": { "type": "string" } }
                   }

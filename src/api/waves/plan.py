@@ -55,7 +55,8 @@ class _DSU:
 
 def plan_waves(applications: list[dict], servers: list[dict],
                dependencies: list[dict], cfg: dict | None = None,
-               dispositions: list[dict] | None = None) -> dict:
+               dispositions: list[dict] | None = None,
+               start_date: str | None = None) -> dict:
     cfg = cfg or load_config()
     w = cfg["waves"]
     reg_scopes = {s.upper() for s in w.get("regulated_scopes_last", [])}
@@ -230,7 +231,7 @@ def plan_waves(applications: list[dict], servers: list[dict],
                                        "in_wave": dw, "confidence": conf})
         wv["blocking_dependencies"] = _dedupe(blocks)
 
-    return {
+    result = {
         "move_groups": move_groups,
         "waves": waves,
         "graph": {
@@ -256,11 +257,17 @@ def plan_waves(applications: list[dict], servers: list[dict],
             f"regulated scopes ({', '.join(sorted(reg_scopes))}) last.",
             "Non-production servers migrate ahead of production within each wave (5-day "
             "soak) — a scheduling note, not a separate wave.",
-            "Wave dates come from the duration model (E4.3), not this tool; blackout "
-            "windows still apply.",
+            "Wave dates + critical path come from the duration model (`schedule`), driven "
+            "by servers-per-wave ÷ throughput; blackout windows shift a wave as a block.",
         ],
         "config": {"source": cfg.get("_source"), "waves": w},
     }
+    try:
+        from .schedule import build_schedule
+        result["schedule"] = build_schedule(result, cfg, start_date)
+    except Exception:                          # noqa: BLE001 - schedule is additive
+        pass
+    return result
 
 
 # --- helpers ----------------------------------------------------------
