@@ -219,6 +219,12 @@ def assemble_estimate(inputs: dict, cfg: dict | None = None) -> dict:
         figs.add("lz_spokes", "Landing-zone spokes", spokes, "count", "landing_zone",
                  "design_landing_zone", {"zones": lz.get("zone_counts")},
                  "one per (zone x environment) + regulated + sandbox", "Medium")
+    if lz.get("checklist_summary"):
+        cs = lz["checklist_summary"]
+        figs.add("lz_conformance", "LZ design checklist items met", cs.get("met"), "count",
+                 "landing_zone", "design_landing_zone",
+                 {"partial": cs.get("partial"), "gap": cs.get("gap"), "total": cs.get("total")},
+                 f"met of {cs.get('total')} ALZ/AI-LZ checklist items ({cs.get('met_pct')}%)", "Medium")
     if wav.get("waves"):
         figs.add("wave_count", "Migration waves", len(wav["waves"]), "count", "waves",
                  "plan_waves", {"move_groups": len(wav.get("move_groups", []))},
@@ -353,6 +359,25 @@ def _body_lz(lz):
         "connectivity": lz.get("connectivity", {}).get("model"),
         "policy_overlay": lz.get("policy", {}).get("regulated_overlay"),
         "dr": lz.get("dr", {}).get("strategy"),
+        "design_conformance": _lz_conformance(lz),
+    }
+
+
+def _lz_conformance(lz):
+    """The ALZ / AI-LZ checklist conformance summary + the gap list (E11.23)."""
+    summary = lz.get("checklist_summary")
+    if not summary:
+        return None
+    return {
+        "headline": summary.get("headline"),
+        "met": summary.get("met"), "partial": summary.get("partial"),
+        "gap": summary.get("gap"), "na": summary.get("na"),
+        "total": summary.get("total"), "met_pct": summary.get("met_pct"),
+        "ai_lz_applicable": lz.get("ai_lz_applicable", False),
+        "gaps": [{"id": g.get("id"), "domain": g.get("domain"), "item": g.get("item"),
+                  "status": g.get("status"), "recommendation": g.get("recommendation")}
+                 for g in (lz.get("checklist_gaps") or [])],
+        "sources": ["Azure Landing Zone design checklist", "Azure AI Landing Zone design checklist"],
     }
 
 

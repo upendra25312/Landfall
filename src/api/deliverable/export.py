@@ -727,10 +727,18 @@ def to_pptx(package: dict) -> bytes:
     para(bf, f"Connectivity   ·   {lz.get('connectivity') or 'n/a'}", size=10,
          color=_PP["ink"], space_after=4)
     para(bf, f"DR   ·   {lz.get('region') or 'n/a'} → {lz.get('dr_region') or 'n/a'} "
-             f"(ASR for tier 1–2)", size=10, color=_PP["ink"], space_after=0)
+             f"(ASR for tier 1–2)", size=10, color=_PP["ink"], space_after=4)
+    _conf = lz.get("design_conformance") or {}
+    if _conf.get("headline"):
+        para(bf, f"Design checklist   ·   {_conf['headline']}"
+                 + ("  (+ AI-LZ overlay)" if _conf.get("ai_lz_applicable") else ""),
+             size=10, color=_PP["ink"], space_after=0)
     takeaway(s, f"{fv('lz_spokes', default='n/a')} spokes, "
                 f"{', '.join(lz.get('regulated_scopes') or []) or 'no'} regulated scope(s) "
-                f"— topology derived from the portfolio, not a template. ({ref('lz_spokes')})")
+                f"— topology derived from the portfolio, not a template"
+                + (f"; {_conf['headline']} vs the Azure (AI) Landing Zone design checklist"
+                   if _conf.get("headline") else "")
+                + f". ({ref('lz_spokes')})")
 
     # ================= SLIDE 6 — disposition (6R) =================
     by_disp = dp.get("by_disposition") or {}
@@ -919,10 +927,19 @@ def _body_lines(section: dict) -> list[str]:
                 f"{body.get('no_perf_data_servers') or 0} without performance history",
                 f"Data-quality confidence: {body.get('data_quality_confidence') or 'n/a'}"]
     if key == "landing_zone":
-        return [body.get("summary", ""),
-                f"{len(body.get('spokes', []))} spokes · identity {body.get('identity')} · "
-                f"connectivity {body.get('connectivity')}",
-                f"DR: {body.get('dr')}"]
+        out = [body.get("summary", ""),
+               f"{len(body.get('spokes', []))} spokes · identity {body.get('identity')} · "
+               f"connectivity {body.get('connectivity')}",
+               f"DR: {body.get('dr')}"]
+        conf = body.get("design_conformance")
+        if conf:
+            out.append(f"Design conformance: {conf.get('headline')} "
+                       f"(ALZ/AI-LZ design checklist"
+                       + ("; AI-LZ overlay applies" if conf.get("ai_lz_applicable") else "")
+                       + ")")
+            for g in conf.get("gaps", [])[:12]:
+                out.append(f"  [{g['status']}] {g['id']} {g['item']} — {g['recommendation']}")
+        return out
     if key == "disposition":
         bd = body.get("by_disposition") or {}
         return ["  ".join(f"{v} {k}" for k, v in bd.items()),
