@@ -5,6 +5,74 @@ Operating model: [`landfall-5x5-prd.md` §7](landfall-5x5-prd.md). Tracker:
 
 ---
 
+## Cycle 36 — D2 "How Landfall works" walkthrough + comprehension trial kit (E10.4)
+
+**Date:** 2026-09-09 · **Owner:** Writer + PM ·
+**Tracker:** D2 + E10.4 — Understandability was 2.0 (docs existed, no "how it
+works" page, no trial). The biggest single lever left to 5/5.
+
+### Plan
+
+- Write D2: the read-first orientation doc — pipeline, tools, answer contract,
+  confidence model, DRAFT boundary, worked example over the sample estate.
+- Build the trial apparatus so the two human trials (comprehension +
+  usability) are turnkey; dry-run the comprehension task set to shake it out.
+- Score the Build half honestly; the Proof half (3 people) still gates 5/5.
+
+### Do
+
+- **`docs/how-landfall-works.html`** (D2, reuses the SOP stylesheet) — 7
+  sections: what Landfall is/isn't; the 5-stage pipeline + a note on tenancy;
+  the 12 tools table; the answer contract (F-id + basis + confidence + band +
+  top-3 drivers); the confidence model (High/Medium/Low triggers **+ the
+  cost-figures-capped-at-Low-by-design rule** the dry run surfaced); the DRAFT
+  boundary (a two-column "Landfall decides / the architect owns"); a
+  step-by-step worked example over `sample-estate/` ending at the real
+  **$113,911/mo** run-rate. Linked first from `docs/index.html`.
+- **`evidence/trials/`** — `README.md` (status), `protocol.md` (Trial A
+  comprehension + Trial B usability: recruitment, setup, tasks, timing,
+  acceptance bars, what-to-log), `comprehension-answer-key.md` (3 tasks — explain
+  the pipeline / run + trace a number / interpret Low confidence — with model
+  answers + a scoring sheet), `results-template.md`, and
+  `dry-run-2026-09-09.md`.
+- **`dry-run-2026-09-09.md`** — self-administered the 3 comprehension tasks
+  against the docs. All answerable + well-posed + scorable. **Caught a real
+  bug:** the answer key said the sample cost figure is "Medium" confidence — it
+  is **Low** (`assemble.py` caps pre-discovery cost at Low). Fixed the key +
+  added a callout to the doc. Reconciled every worked-example number to
+  `evals/pipeline.py`. Explicitly **not** a trial result.
+- **`tests/test_docs.py`** (7) — the doc has every section + concept, is linked
+  from the index, its worked-example numbers still match a fresh
+  `pipeline.run()` (so a pricing change can't silently make the walkthrough
+  wrong), the trial kit is complete, and the scorecard cites it.
+- **`evidence/scorecard.py`** — Understandability 2.0 → **3.0** (Build done:
+  docs match reality + D2 walkthrough + worked example + apparatus-validated
+  task set; Proof: 3-person trial designed, ready, not run). Usability stays
+  2.0 (kit ready, not run — noted in its gap). **Overall 3.78 → 3.89.**
+
+### Check
+
+| gate | result |
+|---|---|
+| unit | **410 pytest** (+7), 2 skipped |
+| worked example | `test_docs.py::test_worked_example_numbers_match_the_pipeline` — $113,911/mo etc. reconcile to `pipeline.run()` |
+| dry run | 3/3 comprehension tasks answerable from the docs; 1 apparatus bug found + fixed |
+| evals | 32/32 + 8/8 + 30/30; `evals/SCORECARD.md` no drift; `evidence/SCORECARD.md` regenerated |
+| scope | docs (GitHub Pages) + evidence + scorecard only → **no deploy** |
+
+### Act
+
+- One commit on `c36-understandability`, merged `--no-ff` to `main`
+  (`227ea08`), pushed. No `azd deploy`.
+- D2 is `done`; E10.4 is `in-progress` (kit built, trials not run). Closing
+  Understandability needs the 3-consultant comprehension trial; Usability needs
+  the 3-pre-sales timed trial + an architect reviewer. Both are turnkey now.
+- Next by scorecard leverage: run the trials (needs people), or the remaining
+  Operability items (E9.3 `--tier prod`, E9.4 observability), or Security
+  (E8.5 private endpoints).
+
+---
+
 ## Cycle 35 — E9.2 clean-machine smoke test + dormant `azd up→down` CI
 
 **Date:** 2026-09-09 · **Owner:** SRE ·
