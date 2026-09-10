@@ -74,3 +74,43 @@ def test_assets_have_no_inline_style_attributes_either():
     # `el.style.x = ...` (a DOM property) is fine under CSP; a `style="..."` string
     # baked into innerHTML is not.
     assert 'style="' not in js
+
+
+def test_static_js_has_no_double_escape_artefacts():
+    """C41 extracted an inline `<script>` from a Python triple-quoted string into
+    chat.js — and `\\'` / `\\n` (meaning `\\'` / newline inside the Python string)
+    were pasted verbatim, so a JS single-quoted string ended early: `'...client\\''`
+    -> SyntaxError -> the whole file failed to parse -> the chat page was dead from
+    C41 to C48. `\\\\` followed by a quote or an escape letter is the fingerprint and
+    is never legitimate in the hand-written assets here."""
+    static = os.path.join(ROOT, "src", "web", "static")
+    offenders = []
+    for name in os.listdir(static):
+        if not name.endswith((".js", ".css")):
+            continue
+        src = open(os.path.join(static, name), encoding="utf-8").read()
+        for m in re.finditer(r"\\\\[\"'nrt]", src):
+            line = src[:m.start()].count("\n") + 1
+            offenders.append(f"{name}:{line}: {src[m.start()-25:m.start()+15]!r}")
+    assert not offenders, "double-escape artefacts in static assets:\n" + "\n".join(offenders)
+
+
+def test_static_js_parses_when_node_is_available():
+    """`node --check` on every static .js — a real syntax check when Node is on the
+    box (dev machines + GitHub runners have it). Skipped otherwise; the Playwright
+    harness (tests/browser/) is the browser-grade guard, E13.16 puts it in CI."""
+    import shutil
+    import subprocess
+
+    node = shutil.which("node")
+    if not node:
+        import pytest
+        pytest.skip("node not installed")
+    static = os.path.join(ROOT, "src", "web", "static")
+    bad = []
+    for name in sorted(n for n in os.listdir(static) if n.endswith(".js")):
+        r = subprocess.run([node, "--check", os.path.join(static, name)],
+                           capture_output=True, text=True)
+        if r.returncode != 0:
+            bad.append(f"{name}: {r.stderr.strip().splitlines()[-1] if r.stderr else 'failed'}")
+    assert not bad, "static JS does not parse:\n" + "\n".join(bad)

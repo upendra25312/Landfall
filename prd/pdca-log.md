@@ -5,6 +5,95 @@ Operating model: [`landfall-5x5-prd.md` §7](landfall-5x5-prd.md). Tracker:
 
 ---
 
+## Cycle 48 — Playwright browser-automation harness (E13.15) + the P0 it caught
+
+**Date:** 2026-09-10 · **Owner:** QA + Full-stack ·
+**Tracker:** E13.15. §4.17 (decision 18) made a browser check a per-cycle gate;
+it needed a real harness or it was aspirational.
+
+### Decide
+
+- **Problem:** every UI cycle since C34 was verified with `TestClient` substring
+  assertions — which check the response *body*, never that the page renders or the
+  JS runs. §4.17 says drive a real browser; nothing did.
+- **Choice:** a committed `pytest-playwright` harness under `tests/browser/`, run
+  against a local `serve.py` (the real `src/web/app.py` with an **in-memory blob
+  store** + a **canned agent** — no Azure, no model), gated on `BROWSER=1` so it
+  stays out of the normal suite until E13.16 wires headless Chromium into CI.
+  Chromium is already cached locally (calc work); only `pytest-playwright` +
+  `uvicorn` are new dev deps.
+- **Cost / security:** $0, no runtime change from the harness itself.
+
+### Plan
+
+- `tests/browser/serve.py` — offline app launcher (reusable by hand + the MCP).
+- `tests/browser/conftest.py` — `BROWSER=1` gate + a session fixture that
+  subprocesses `serve.py` on a free port and waits for `/healthz`.
+- `tests/browser/test_chat_page.py` — the 6 §4.17 journeys (automate what's cheap).
+- `tests/browser/README.md` — journeys + run + gotchas.
+- `tests/requirements-dev.txt` += `pytest-playwright`, `uvicorn`.
+
+### Do
+
+- **The harness's first run caught a live P0.** `static/chat.js:294/303/304` had
+  `client\'s` / `I\'ll` — **`\'` (a literal backslash then a `'`) inside a
+  single-quoted JS string**, so the string ended early and the rest was a syntax
+  error. `node --check`: `SyntaxError: missing ) after argument list`. C41 lifted
+  the inline `<script>` out of a Python `"""…"""` (where `\'` meant `\'` and `\n`
+  meant a newline) into `chat.js` **verbatim**, doubling every escape. **Result:
+  `<script src="/static/chat.js">` never parsed → nothing ran → the engagement
+  picker, the welcome, the prompt cards, the chat, the pipeline strip, the upload
+  panel wiring were ALL dead — from C41 (2026-09-09) through C47, across four
+  `azd deploy web` runs.** No test saw it: `test_dashboard.py` / `test_upload.py` /
+  `test_pipeline.py` assert substrings in the *served text*, and the page under
+  `TestClient` never executes JS.
+- **Fix:** `\'` → `\'` (proper escaped quote) ×3; `'\n\nReplace it?'` and
+  `/\n/g` (were `\n` literal) ×2 cosmetic. `node --check` clean.
+- **Regression guards** (`tests/test_web_csp.py` +2): `node --check` on every
+  `static/*.js` when Node is on the box (skip otherwise); a scan for the
+  `\\['"nrt]` double-escape fingerprint in the static assets.
+- **Harness:** `serve.py` `_Store` / `_BlobClient` (enough of the container + blob
+  surface for the pages under test) + `_FakeOpenAI`, seeded with two engagements
+  (`contoso-ltd/dc-exit` with inventory + DQ + estimate; `northwind/pilot` empty).
+  4 journeys automated:
+  - **(a)** `/` loads under the strict CSP, `chat.{js,css}` load, welcome + cards
+    render, **0 console/page errors**.
+  - **(b)** the engagement `<select>` is populated from `/api/engagements`; the
+    choice persists across a reload.
+  - **(d)** the pipeline strip shows 3/4 done for the seeded engagement, 0/4 for
+    the empty one, with the right "Next:" hint.
+  - **(f)** asking before analysis → a one-time, non-blocking hint **and** the
+    agent answer still arrives; the hint fires at most once per engagement.
+  - c (interactive upload) + e (prompt-card → Excel) stay MCP-driven (README).
+- **Gotchas:** `page.wait_for_function("<string>")` violates `script-src 'self'`
+  (`unsafe-eval`) — used `expect(locator)` assertions instead; `<option>` isn't
+  "visible" — waited with `state="attached"`. `tests/browser/__init__.py` was
+  needed so its `conftest.py` doesn't collide with `tests/conftest.py` in the
+  module namespace (the recurring name-collision bug class: `sec_probe`,
+  `telemetry`, `spend` — now `tests.browser.conftest`).
+
+### Check
+
+| gate | result |
+|---|---|
+| browser harness | `BROWSER=1 pytest tests/browser` — **4 passed**, 0 console/page errors; screenshot captured |
+| `chat.js` | `node --check` clean |
+| collection | 474 tests collected, no errors (the `__init__.py` fix) |
+| full suite | **468 passed, 6 skipped** (`pytest tests/ -q`) — +2 vs C47 (the CSP guards); 4 skipped = the browser specs |
+| evals | `evals/runner.py` exit 0 (unchanged — no eval touched) |
+| scope | **`src/web/static/chat.js` changed → `azd deploy web` REQUIRED** (the live chat page is broken until then); everything else is tests/deps/docs |
+
+### Act
+
+- **`azd deploy web` is required** — hand-off to the operator (I can't run it). The
+  live chat page has been non-functional since C41; this deploy fixes it.
+- `c48-browser-harness` → merge `--no-ff` to `main`, push.
+- **Next:** E13.11 (safe teardown / rehydrate — the last P1 ephemeral guardrail),
+  then automate journeys c + e, then E13.16 (headless in CI).
+- Ran the `landfall-judge` checklist inline (the subagent def loads next session).
+
+---
+
 ## Cycle 47 — adversarial eval suite (E13.3) + `landfall-judge` cycle gate (E13.17)
 
 **Date:** 2026-09-10 · **Owner:** Azure AI architect + DevSecOps + Method ·
