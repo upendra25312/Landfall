@@ -1,0 +1,95 @@
+{
+  "framework": "Microsoft Azure Migration Execution Guide (MEG)",
+  "version": "2024.1",
+  "phases": [
+    {
+      "id": "strategy",
+      "name": "Strategy",
+      "description": "Define business justification, cloud motivations, financial model, and stakeholder alignment.",
+      "milestones": [
+        "Business case and ROI approved",
+        "Executive sponsorship secured",
+        "Target region and compliance scope defined"
+      ],
+      "landfall_coverage": "Financial baseline, Proof of Estimate (POE), and discovery questionnaire business motivations."
+    },
+    {
+      "id": "plan",
+      "name": "Plan",
+      "description": "Discover estate, assess data quality, right-size compute/storage, assign 6R dispositions, and sequence migration waves.",
+      "milestones": [
+        "Inventory discovery and DQ validation",
+        "Deterministic right-sizing and pricing BoM",
+        "6R disposition assignment and rationale",
+        "Dependency mapping and move-group clustering",
+        "Risk-ordered wave plan and schedule with critical path"
+      ],
+      "landfall_coverage": "Full deterministic automated coverage across inventory, cost, wave, and effort engines."
+    },
+    {
+      "id": "ready",
+      "name": "Ready",
+      "description": "Prepare Azure Landing Zone baseline, network connectivity, identity, governance, and security controls.",
+      "milestones": [
+        "Management group hierarchy and subscription topology established",
+        "Hub-spoke network and IP routing configured",
+        "Hybrid identity and RBAC baseline verified",
+        "Security baseline (Key Vault, Defender, policies) active"
+      ],
+      "landfall_coverage": "Deterministic Cloud Adoption Framework (CAF) Azure Landing Zone design, diagram, and checklist conformance scoring."
+    },
+    {
+      "id": "adopt",
+      "name": "Adopt",
+      "description": "Execute workload migration, server replication, data synchronization, business testing, and cutover.",
+      "milestones": [
+        "Replication appliance deployed",
+        "Pilot wave executed and verified",
+        "Business acceptance testing completed",
+        "Production cutover and rollback windows executed"
+      ],
+      "landfall_coverage": "Execution-readiness checklist and runbook guidance. Note: Landfall produces execution-readiness deliverables; it does not execute live migration."
+    },
+    {
+      "id": "govern",
+      "name": "Govern",
+      "description": "Enforce corporate policies, cost management, budget alerts, and compliance auditing.",
+      "milestones": [
+        "Azure Policy baseline assigned and compliant",
+        "Cost Management budgets and threshold alerts active",
+        "Resource tagging and naming standards enforced"
+      ],
+      "landfall_coverage": "Cost guardrails, budget alerts, policy overlay in landing zone design, and assumptions register."
+    },
+    {
+      "id": "manage",
+      "name": "Manage",
+      "description": "Maintain operational baselines, disaster recovery, monitoring, and workload optimization.",
+      "milestones": [
+        "Centralized Log Analytics workspace and alerts operational",
+        "Backup and DR replication policies active",
+        "Post-migration right-sizing and reservation coverage verified"
+      ],
+      "landfall_coverage": "Run-rate extras (monitoring, backup, support) and landing-zone DR topology design."
+    }
+  ],
+  "stage_mappings": {
+    "validate": "plan",
+    "ingest": "plan",
+    "inventory": "plan",
+    "data_quality": "plan",
+    "rightsize": "plan",
+    "compute_cost": "plan",
+    "storage_cost": "plan",
+    "run_rate_extras": "plan",
+    "dispositions": "plan",
+    "waves": "plan",
+    "schedule": "plan",
+    "landing_zone": "ready",
+    "diagram": "ready",
+    "assemble": "strategy",
+    "effort": "plan",
+    "publish": "strategy",
+    "calculator_poe": "strategy"
+  }
+}

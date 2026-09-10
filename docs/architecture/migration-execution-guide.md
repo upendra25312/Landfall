@@ -1,0 +1,130 @@
+# Microsoft Azure Migration Execution Guide (MEG) Architecture
+
+**Epic Reference:** E15.2 (brief E15B.1–E15B.10)  
+**Status:** Implemented & Verified (Cycle 61)  
+**Author:** Migration Architect & Lead Systems Engineer  
+
+---
+
+## 1. Overview & Positioning
+
+Landfall aligns its migration assessment methodology with the official **Microsoft Azure Migration Execution Guide (MEG)**:
+```text
+https://github.com/Azure/migration
+```
+
+### Purpose & Positioning:
+- **Reference Methodology**: Landfall uses MEG as an authoritative framework for migration lifecycle phases, readiness checklists, and risk classification.
+- **Wording Standard**: Assessment deliverables explicitly state:
+  > **"Aligned with the Microsoft Azure Migration Execution Guide reference"**
+- **Non-Claims**: MEG alignment is **not** described as a formal Microsoft certification, a mandatory standard, or an automated compliance audit.
+- **Execution Boundary**: Landfall is a pre-sales and execution-readiness platform. It prepares actionable wave plans, landing zones, and readiness deliverables; it does **not** execute server cutovers or live production migrations.
+
+---
+
+## 2. Version Pinning & Controlled Updates (E15B.1 & E15B.2)
+
+To guarantee deterministic assessments and reproducible results across engagements, Landfall never downloads unverified runtime updates from external repositories.
+
+### Pinned Reference Metadata:
+- **Source Repository**: `https://github.com/Azure/migration`
+- **Pinned Commit SHA**: `09b269375dc7c48cee7541e4ca16faf02b3897ca`
+- **Artifact**: `Microsoft-Azure-Migration-Execution-Guide.xlsx` (SHA-256: `4b726f1c...`)
+- **Retrieved At**: `2026-09-10T12:00:00Z`
+- **Reference Version**: `2024.1`
+- **License**: MIT License (Copyright © Microsoft Corporation)
+
+### Controlled Update Workflow:
+```text
+Azure/migration (upstream)
+         ↓
+Review commit & MIT license
+         ↓
+Verify artifact SHA-256
+         ↓
+Parse & normalize into references/meg/*.json
+         ↓
+Run regression tests (test_meg_readiness.py)
+         ↓
+Commit updated reference to Landfall repository
+```
+
+---
+
+## 3. Normalized Reference Data Structure (E15B.4)
+
+All MEG reference data is stored locally in `references/meg/`:
+
+```text
+references/
+└── meg/
+    ├── metadata.json           # Commit SHA, artifact hash, parser version
+    ├── lifecycle.json          # 6 migration phases & Landfall stage mappings
+    ├── checklist.json          # 21 readiness criteria across 15 categories
+    ├── roles.json              # Standard migration roles & RACI/DACI defaults
+    ├── risks.json              # Risk taxonomy, rating matrix & trigger rules
+    ├── wave_guidance.json      # Heuristics for pilot sizing, affinity & soak
+    └── README.md               # Controlled update guide
+```
+
+---
+
+## 4. Migration Lifecycle Mapping (E15B.5)
+
+MEG defines 6 core lifecycle phases. Landfall maps its deterministic outputs directly to these phases:
+
+| MEG Phase | Purpose | Landfall Deliverable / Engine |
+|---|---|---|
+| **Strategy** | Business case, financial model, motivations | Sizing BoM, Azure Pricing Calculator POE (`landing_zone.xlsx`), Discovery questionnaire |
+| **Plan** | Discovery, right-sizing, dispositions, wave sequencing | Ingestion & DQ report, Compute/Storage engines, 6R Dispositions, Wave Plan & Schedule |
+| **Ready** | Landing zone, network, identity, governance | CAF Azure Landing Zone design (`design_landing_zone`), Architecture Diagram (`.drawio`), Conformance Checklist |
+| **Adopt** | Workload replication, testing, cutover | Execution-Readiness Checklist & Runbook skeleton (Partner/Client delivery phase) |
+| **Govern** | Policy enforcement, budget alerts, tagging | Azure Policy baseline, Monthly Budget Alerts (50/80/100%), Assumptions Register |
+| **Manage** | Operations, monitoring, DR replication | Run-rate extras (Log Analytics, Defender, Backup), DR paired-region topology |
+
+---
+
+## 5. 5-State Readiness Evaluation Model (E15B.6)
+
+Landfall evaluates estate evidence against 21 checklist items across 15 categories:
+
+### The 5 Canonical States:
+1. `READY`: Fully verified by deterministic estate data or completed assessment outputs.
+2. `PARTIAL`: Preliminary evidence exists, but data gaps or unverified assumptions remain.
+3. `GAP`: Required data missing, unresolved DQ defect, or open discovery requirement.
+4. `NOT_ASSESSED`: Stage or inspection has not yet been executed for this engagement.
+5. `NOT_APPLICABLE` (N/A): Requirement does not apply to this estate (e.g. AI-LZ when no AI workloads exist).
+
+### Core Rule:
+Every readiness row links directly to **concrete machine evidence** (e.g. `"250/250 servers mapped across 6 waves"`) or an **explicit missing input**. Landfall **never** generates an arbitrary maturity percentage.
+
+---
+
+## 6. Deterministic Risk Register Engine (E15B.7)
+
+Risks are derived deterministically from evidence triggers rather than generated by an LLM:
+
+| Risk Classification | Definition | Example Triggers |
+|---|---|---|
+| **Observed Risk** | Directly verified in inventory data | Legacy/EOL operating systems (`RSK-002`), Stale network dependencies (`RSK-005`), Unanswered discovery fields (`RSK-006`) |
+| **Derived Risk** | Inferred from architecture decisions | Unmonitored servers > 20% (`RSK-001`), Single-region/no-DR (`RSK-003`), Database replatforming needed (`RSK-004`) |
+| **Generic MEG Check** | Standard baseline checks from MEG | Tooling deployment readiness, CAB maintenance windows |
+| **Architect-Added Risk** | Custom risks logged by practitioner | Client-specific organizational or commercial constraints |
+
+### Probability & Impact Governance:
+- Governed strictly by configuration rules or explicit practitioner inputs.
+- An LLM is **never** permitted to guess or hallucinate risk probabilities.
+
+---
+
+## 7. RACI / DACI Governance Baseline (E15B.8)
+
+- Based on standardized functional roles: `Executive Sponsor`, `Migration Programme Manager`, `Lead Cloud Architect`, `Infrastructure / Migration Engineer`, `Security & Compliance Lead`, `Network Engineer`, `Database Administrator (DBA)`, `Application Owner / SME`, `DevOps & Operations Lead`.
+- Mappings are tagged: `DRAFT — CUSTOMER VALIDATION REQUIRED`.
+- **Zero Hallucination Rule**: Never invents or fabricates personal names.
+
+---
+
+## 8. Open-Source Attribution (E15B.3)
+
+Full MIT license notice is preserved in [THIRD_PARTY_NOTICES.md](../../THIRD_PARTY_NOTICES.md).

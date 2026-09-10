@@ -1,0 +1,13 @@
+{
+  "source_repository": "https://github.com/Azure/migration",
+  "source_commit_sha": "09b269375dc7c48cee7541e4ca16faf02b3897ca",
+  "artifact_filename": "Microsoft-Azure-Migration-Execution-Guide.xlsx",
+  "artifact_sha256": "4b726f1c79e64e578ad2eb463690d563914e6e66e84d4da5898864f131a99ef8",
+  "retrieved_at": "2026-09-10T12:00:00Z",
+  "reference_version": "2024.1",
+  "parser_version": "1.0.0",
+  "normalized_schema_version": "1.0.0",
+  "license": "MIT",
+  "copyright": "Copyright (c) Microsoft Corporation.",
+  "attribution_notice": "Aligned with the Microsoft Azure Migration Execution Guide reference (github.com/Azure/migration)."
+}
