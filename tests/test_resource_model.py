@@ -29,12 +29,10 @@ from openpyxl import load_workbook
 from resource.capacity import analyze_capacity_and_constraints
 from resource.commercial import calculate_commercial_cost
 from resource.engine import derive_resource_demand
-from resource.model import PlanningMode, ROLES_BY_ID, ROLES_BY_TITLE, STANDARD_ROLES
+from resource.model import ROLES_BY_ID, ROLES_BY_TITLE, STANDARD_ROLES
 from resource.scenarios import generate_resource_scenarios
 from resource.sow_project_plan import build_project_plan, build_sow_resource_section
 from resource.workbook import generate_resource_workbook
-from waves.disposition import score_dispositions
-from waves.plan import plan_waves
 from waves.schedule import build_schedule
 
 

@@ -4,7 +4,6 @@ Structural checks on the Bicep (the real proof is an operator provision with
 USE_CALC_JOB=true) + unit tests on the one-shot worker entrypoint.
 """
 import asyncio
-import json
 import os
 import shutil
 import subprocess

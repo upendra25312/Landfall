@@ -5,6 +5,34 @@ Operating model: [`landfall-5x5-prd.md` §7](landfall-5x5-prd.md). Tracker:
 
 ---
 
+## Cycle 64 — Epic E13 Milestone Closure & Hardening (E13.10, E13.14)
+
+### Plan
+
+Formally close Epic E13 architecture and governance milestone:
+1. Formalize Orchestrator Acceptance (`E13.14`): Author dedicated acceptance tests (`tests/test_orchestrator.py`) proving byte-identical repeatability, fixed 16-stage deterministic sequence, mid-pipeline partial output preservation, and HTTP Function route contract.
+2. Architecture Decision (`E13.10`): Record §7 Decision 20 in `prd/engagement-workspaces-prd.md` codifying the single-region (`swedencentral`) no-DR posture under the sponsor's USD 40–50/month budget ceiling.
+3. Code Quality & Lint Gate: Resolve all unused imports, variables, and lint warnings across `tests/` and `evals/` to guarantee clean `ruff check` across the entire repository.
+4. Tracker Reconciliation: Update `prd/tracker.md` to reflect completed items (`E13.5`, `E13.7`, `E13.9`, `E13.10`, and `E13.14`).
+
+### Do / Check / Act
+
+- **Orchestrator Tests:** Created `tests/test_orchestrator.py` (9 tests) covering byte-identical `latest.json` repeatability, the fixed 16-stage pipeline sequence, partial failure preservation, data-quality failure rejection, optional storage zero-costing, and the `POST /api/run_assessment` HTTP route contract (200 / 400 / 422).
+- **Architecture Posture:** Recorded §7 Decision 20 in `prd/engagement-workspaces-prd.md`, documenting single-region operation, budget alignment, and resilience through portable `.zip` exports, ADLS snapshots, and rehydration scripts (`scripts/rehydrate.ps1`).
+- **Code Hygiene & Lints:** Cleaned unused imports and variables across `tests/` (`test_assessment.py`, `test_audit.py`, `test_calc_job.py`, `test_export.py`, `test_ingest_mapping.py`, `test_landing_zone.py`, `test_lz_conformance.py`, `test_lz_render.py`, `test_pentest.py`, `test_resource_model.py`, `test_wave_schedule.py`, `tests/browser/serve.py`) and converted lambda in `evals/runner.py`.
+- **Tracker Update:** Reconciled `prd/tracker.md` to mark `E13.5`, `E13.7`, `E13.9`, `E13.10`, and `E13.14` as done.
+- **Study / Check:**
+  - `ruff check src/ tests/ evals/`: 100% clean (0 errors).
+  - `pyright src/`: 0 errors, 0 warnings.
+  - `pytest tests/test_orchestrator.py`: 9/9 passed.
+  - `pytest tests -q`: 626 passed, 18 skipped, 0 failed (100% green).
+  - `pytest tests/browser -q` (Playwright): 15/15 passed with 0 console errors under strict CSP.
+  - `evals/runner.py`: 32/32 Golden SQL, 30/30 Fault injection, 88/88 Adversarial, 8/8 Scenarios.
+  - `evidence/scorecard.py`: 4.06/5 overall score, 0 drift.
+- **Act:** Mark E13.10 and E13.14 as done. Epic E13 is now 100% complete (16/16 delivered and verified). All Phase 1 and Phase 2 architecture epics are closed. Merge feature branch into `main`.
+
+---
+
 ## Cycle 63 — Execution-Readiness Experience & 15 Assessment-First Areas (E15.4)
 
 ### Plan

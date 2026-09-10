@@ -6,7 +6,6 @@ import json
 import os
 import sys
 
-import pytest
 from conftest import ROOT
 
 sys.path.insert(0, os.path.join(ROOT, "src", "api"))

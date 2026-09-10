@@ -37,7 +37,7 @@ def test_no_regulated_app_means_no_regulated_spoke():
     assert r["regulated"] is False
     assert r["regulated_scopes_present"] == []
     assert not any(s["zone"] == "regulated" for s in r["spokes"])
-    assert f"alz-confidential" not in r["management_groups"]["alz"]["alz-landingzones"]
+    assert "alz-confidential" not in r["management_groups"]["alz"]["alz-landingzones"]
 
 
 def test_regulated_app_creates_spoke_mg_and_policy_overlay():
