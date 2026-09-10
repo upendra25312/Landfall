@@ -1,0 +1,28 @@
+
+Azure Pricing Calculator — adapter smoke (21 adapters)
+
+  [OK ] virtual-machines               
+  [OK ] managed-disks                  
+  [OK ] storage-accounts               
+  [OK ] azure-files                    
+  [OK ] azure-netapp-files             
+  [OK ] sql-managed-instance           
+  [OK ] sql-database                   
+  [OK ] azure-database-for-postgresql  
+  [OK ] azure-database-for-mysql       
+  [OK ] bandwidth                      
+  [OK ] vpn-gateway                    
+  [OK ] expressroute                   
+  [OK ] azure-firewall                 
+  [WARN] azure-bastion                  standardOutboundDataTransferFactor=1, standardOutboundDataTransfer  (unverified)
+  [OK ] ddos-protection-plan           
+  [OK ] azure-dns                      
+  [OK ] key-vault                      
+  [OK ] azure-site-recovery            
+  [OK ] azure-monitor                    (unverified)
+  [OK ] load-balancer                    (unverified)
+  [WARN] application-gateway            size=medium, processedUnits=1, instances, dataUnits  (unverified)
+
+2 unverified adapter(s) need attention (non-blocking): azure-bastion, application-gateway
+
+all verified adapters resolved their controls.

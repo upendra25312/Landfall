@@ -5,6 +5,72 @@ Operating model: [`landfall-5x5-prd.md` §7](landfall-5x5-prd.md). Tracker:
 
 ---
 
+## Cycle 53 — System validation plan, regression coverage, and fixes
+
+**Date:** 2026-09-10 · **Branch:** `cycle-53-system-validation`
+**Request:** test all project components/services/functions/features; implement
+the plan, investigate failures, and fix them through PDCA.
+
+### Plan
+
+Publish `tests/SYSTEM-TEST-PLAN.md` with a component-to-check matrix, acceptance
+criteria, execution commands, and explicit live/manual prerequisites. Build a
+repeatable validation runner that retains results and does not label omitted
+checks as passed. Inventory the web routes, Function triggers/OpenAPI tools,
+sidecars, data/estimate pipeline, infrastructure, and operational controls.
+Run existing pytest/evals/browser/evidence gates; add missing user journeys,
+route dispatch and cross-engagement negative tests. Reproduce failures before
+fixing them. Run live read-only health/auth/service checks in subscription
+`f609eb5b-df3e-4fab-9a1b-9a8fea2f157f`, `rg-landfall`, Sweden Central.
+No provision, teardown, paid tier, or changes to existing customer data.
+Deploy validated code fixes to the affected service only, then repeat live checks.
+
+### Do
+
+Implemented the 18-group system test plan, evidence runner and live probes.
+Added 25 boundary regressions, Function/tool registration and workbook-batch
+tests, runner-failure tests, two browser journeys, and browser execution in CI.
+Fixed cross-engagement artifact fallback, explicit/implicit default ACL bypass,
+calculator download dispatch, ZIP owner/ACL/path/expansion validation and partial
+failure reporting. Added bounded cold-host probe retries with attempt evidence.
+The initial boundary run had 17 product failures plus two fixture errors; both
+categories were resolved separately. An additional empty-scope test reproduced a
+200 response exposing a private default artifact before the final guard fix.
+Final review reproduced a concurrent engagement-create conflict after file writes;
+new imports now reserve ownership with conditional create before touching files.
+The final rollout exposed another probe defect: Azure listed the retiring revision
+first. Smoke now selects the newest non-retiring active revision; healthy and
+unhealthy replacement tests prevent a false failure or false pass.
+
+### Check
+
+Final pytest: **534 passed, 9 skipped, 1 dependency warning, 38.59s**. Browser:
+**7 passed** (the seven browser skips are executed separately). Evals: SQL 32/32,
+faults 30/30, adversarial 74/74 (3 existing pending categories), scenarios 8/8.
+Backtest, broken-dump and scorecard-drift gates pass. Real calculator DOM: all
+17 verified adapters pass; Bastion/Application Gateway remain unverified warnings.
+The other two unverified adapters resolve controls but are not promoted.
+
+`azd deploy web --no-prompt` exited 0; revision
+`ca-web-tmglwfatwcsa2--azd-1789029091` ready, 100% traffic. Post-deploy smoke 8/8,
+service-readiness checks 10/10 (27 registered Functions), security probes pass.
+Authenticated Foundry definition read, Search count (27 docs), SVG→PNG render pass.
+The first cold web timeout and missing local Search SDK are retained as before
+evidence; retries and the existing pinned SDK resolve them. Delegated Function
+token acquisition is blocked, so live model/SQL and signed-in web are not passed.
+LibreOffice, remote CI, scratch lifecycle/chaos and human/external reviews remain
+explicitly outstanding. [Full report](../evidence/cycles/c53/REPORT.md).
+
+### Act
+
+Tracker, both relevant PRDs, test documentation and HANDOFF-NOTES updated. Preserve
+the existing scorecards and E13 9/17 status; validation is not roadmap completion.
+Commit on `cycle-53-system-validation`, merge to `main` with `--no-ff`; no push.
+Next: authenticated production journeys and the unverified calculator adapter tail.
+No provision, SQL schema changes, new resources or paid-tier configuration.
+
+---
+
 ## Cycle 52 — FastAPI router split (E13.6)
 
 **Date:** 2026-09-10 · **Owner:** Python · **Tracker:** E13.6

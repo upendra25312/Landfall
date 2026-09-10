@@ -25,7 +25,29 @@ def test_host_up_classification(code, up):
     assert (code in smoke._HOST_UP) is up
 
 
+@pytest.mark.parametrize("latest_health, expected", [("Healthy", "PASS"), ("Unhealthy", "FAIL")])
+def test_revision_rollover_does_not_inspect_retiring_revision(monkeypatch, latest_health, expected):
+    def az(args, timeout=90):
+        if args[:2] == ["containerapp", "revision"]:
+            return 0, [
+                {"properties": {"active": True, "healthState": "Healthy", "provisioningState": "Provisioned",
+                                "runningState": "Deprovisioning", "createdTime": "2026-09-09"}},
+                {"properties": {"active": True, "healthState": latest_health, "provisioningState": "Provisioned",
+                                "runningState": "Running", "createdTime": "2026-09-10"}},
+            ], ""
+        return _healthy_az(args, timeout)
+    _stub(monkeypatch, az=az)
+    result = smoke.run_checks({"AZURE_RESOURCE_GROUP": "rg-x", "SERVICE_WEB_NAME": "web-x"})
+    assert next(c for c in result.checks if c["check"] == "web_revision")["status"] == expected
+
+
 # ------------------------------------------------------------------ Result
+
+@pytest.mark.parametrize("codes, expected", [([0, 503, 401], 401), ([503, 503, 503], 503), ([500], 500)])
+def test_scale_from_zero_probe_retains_attempts_and_stops(monkeypatch, codes, expected):
+    responses = iter(codes)
+    monkeypatch.setattr(smoke, "_http_status", lambda _: next(responses))
+    assert smoke._probe_host("https://example.invalid") == (expected, codes)
 
 def test_result_counts_and_ok():
     r = smoke.Result()

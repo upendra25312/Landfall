@@ -1,0 +1,181 @@
+{
+  "rows": [
+    {
+      "service": "virtual-machines",
+      "product": "Virtual Machines",
+      "verified": true,
+      "added": true,
+      "missing": [],
+      "error": null
+    },
+    {
+      "service": "managed-disks",
+      "product": "Managed Disks",
+      "verified": true,
+      "added": true,
+      "missing": [],
+      "error": null
+    },
+    {
+      "service": "storage-accounts",
+      "product": "Storage Accounts",
+      "verified": true,
+      "added": true,
+      "missing": [],
+      "error": null
+    },
+    {
+      "service": "azure-files",
+      "product": "Azure Files",
+      "verified": true,
+      "added": true,
+      "missing": [],
+      "error": null
+    },
+    {
+      "service": "azure-netapp-files",
+      "product": "Azure NetApp Files",
+      "verified": true,
+      "added": true,
+      "missing": [],
+      "error": null
+    },
+    {
+      "service": "sql-managed-instance",
+      "product": "Azure SQL Managed Instance",
+      "verified": true,
+      "added": true,
+      "missing": [],
+      "error": null
+    },
+    {
+      "service": "sql-database",
+      "product": "Azure SQL Database",
+      "verified": true,
+      "added": true,
+      "missing": [],
+      "error": null
+    },
+    {
+      "service": "azure-database-for-postgresql",
+      "product": "Azure Database for PostgreSQL",
+      "verified": true,
+      "added": true,
+      "missing": [],
+      "error": null
+    },
+    {
+      "service": "azure-database-for-mysql",
+      "product": "Azure Database for MySQL",
+      "verified": true,
+      "added": true,
+      "missing": [],
+      "error": null
+    },
+    {
+      "service": "bandwidth",
+      "product": "Bandwidth",
+      "verified": true,
+      "added": true,
+      "missing": [],
+      "error": null
+    },
+    {
+      "service": "vpn-gateway",
+      "product": "VPN Gateway",
+      "verified": true,
+      "added": true,
+      "missing": [],
+      "error": null
+    },
+    {
+      "service": "expressroute",
+      "product": "Azure ExpressRoute",
+      "verified": true,
+      "added": true,
+      "missing": [],
+      "error": null
+    },
+    {
+      "service": "azure-firewall",
+      "product": "Azure Firewall",
+      "verified": true,
+      "added": true,
+      "missing": [],
+      "error": null
+    },
+    {
+      "service": "azure-bastion",
+      "product": "Azure Bastion",
+      "verified": false,
+      "added": true,
+      "missing": [
+        "standardOutboundDataTransferFactor=1",
+        "standardOutboundDataTransfer"
+      ],
+      "error": null
+    },
+    {
+      "service": "ddos-protection-plan",
+      "product": "Azure DDoS Protection",
+      "verified": true,
+      "added": true,
+      "missing": [],
+      "error": null
+    },
+    {
+      "service": "azure-dns",
+      "product": "Azure DNS",
+      "verified": true,
+      "added": true,
+      "missing": [],
+      "error": null
+    },
+    {
+      "service": "key-vault",
+      "product": "Key Vault",
+      "verified": true,
+      "added": true,
+      "missing": [],
+      "error": null
+    },
+    {
+      "service": "azure-site-recovery",
+      "product": "Azure Site Recovery",
+      "verified": true,
+      "added": true,
+      "missing": [],
+      "error": null
+    },
+    {
+      "service": "azure-monitor",
+      "product": "Azure Monitor",
+      "verified": false,
+      "added": true,
+      "missing": [],
+      "error": null
+    },
+    {
+      "service": "load-balancer",
+      "product": "Load Balancer",
+      "verified": false,
+      "added": true,
+      "missing": [],
+      "error": null
+    },
+    {
+      "service": "application-gateway",
+      "product": "Application Gateway",
+      "verified": false,
+      "added": true,
+      "missing": [
+        "size=medium",
+        "processedUnits=1",
+        "instances",
+        "dataUnits"
+      ],
+      "error": null
+    }
+  ],
+  "broke": []
+}

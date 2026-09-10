@@ -33,6 +33,21 @@ jobs:
       - name: Unit tests
         run: pytest tests -q
 
+      - name: Install browser for offline user journeys
+        run: python -m playwright install --with-deps chromium
+
+      - name: Browser user journeys
+        env:
+          BROWSER: "1"
+          C53_SCREENSHOT_DIR: evidence/browser-ci/screenshots
+        run: pytest tests/browser -q --junitxml=evidence/browser-ci/results.xml
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: browser-evidence
+          path: evidence/browser-ci/
+
       - name: Install LibreOffice (workbook recalc gate — E11.12)
         run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libreoffice-calc
 

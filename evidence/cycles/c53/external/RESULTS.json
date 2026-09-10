@@ -1,0 +1,14 @@
+{
+  "observed_at": "2026-09-10T08:20:01.399073+00:00",
+  "selected_gates_passed": true,
+  "gates": [
+    {
+      "gate": "calculator",
+      "status": "PASS",
+      "exit_code": 0,
+      "seconds": 165.45,
+      "log": "calculator.log"
+    }
+  ],
+  "not_validated_by_this_run": []
+}

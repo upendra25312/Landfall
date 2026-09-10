@@ -19,18 +19,13 @@ import datetime as _dt
 import io
 import json
 import os
+import re
 import sys
 from types import SimpleNamespace
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
 _ROOT = os.path.dirname(os.path.dirname(_HERE))
 sys.path[:0] = [os.path.join(_ROOT, "src", "web"), os.path.join(_ROOT, "src", "api")]
-
-# must be set before `import app` — app.py reads these at module load
-os.environ.setdefault("STORAGE_URL", "https://offline.blob.core.windows.net")
-os.environ.setdefault("FOUNDRY_PROJECT_ENDPOINT", "https://offline/api/projects/x")
-os.environ.setdefault("AGENT_ID", "landfall-migration-estimator")
-os.environ.pop("APPLICATIONINSIGHTS_CONNECTION_STRING", None)
 
 _MT = _dt.datetime(2026, 9, 9, 12, 0, tzinfo=_dt.timezone.utc)
 
@@ -123,8 +118,27 @@ class _FakeResp:
 
 
 class _FakeResponses:
+    def __init__(self, raw=None, answers=None):
+        self.raw, self.answers = raw, answers
+
     def create(self, **kwargs):
         q = str(kwargs.get("input", "")).lower()
+        if "call run_engagement" in q and self.raw is not None:
+            from ingest.core import normalize
+            from ingest.dq import build_report
+            eid = re.search(r"\[active engagement: ([^\s.]+)", q).group(1)
+            for blob in self.raw.list_blobs(name_starts_with=f"engagements/{eid}/inventory/"):
+                if blob.name.endswith("/.keep"):
+                    continue
+                filename = blob.name.rsplit("/", 1)[-1]
+                normalized = normalize(filename, self.raw.get(blob.name))
+                report = build_report([normalized])
+                summary = {"file": filename, "table": normalized.table, "profile": normalized.profile,
+                           "rows_in": normalized.row_count_in, "rows_loaded": len(normalized.rows),
+                           "rows_rejected": 0, "status": "ok", "confidence_hint": report["confidence_hint"],
+                           "findings": report["findings"]}
+                self.answers.put(f"engagements/{eid}/_ingest/{filename.rsplit('.', 1)[0]}.dq.json",
+                                 json.dumps({"summary": summary}).encode())
         if "estimate" in q or "assessment" in q:
             body = ("Here is the full estimate for this engagement.\n\n"
                     "Answer | Basis: assemble_estimate (F1-F12) | Assumptions: house "
@@ -137,7 +151,8 @@ class _FakeResponses:
 
 
 class _FakeOpenAI:
-    responses = _FakeResponses()
+    def __init__(self, raw=None, answers=None):
+        self.responses = _FakeResponses(raw, answers)
 
     def with_options(self, **_kw):
         return self
@@ -174,6 +189,11 @@ def _seed(raw: _Store, ans: _Store, mode: str):
 
 
 def build_app(seed: str = "full"):
+    # Scope process configuration to the standalone harness, not fixture imports.
+    os.environ.setdefault("STORAGE_URL", "https://offline.blob.core.windows.net")
+    os.environ.setdefault("FOUNDRY_PROJECT_ENDPOINT", "https://offline/api/projects/x")
+    os.environ.setdefault("AGENT_ID", "landfall-migration-estimator")
+    os.environ.pop("APPLICATIONINSIGHTS_CONNECTION_STRING", None)
     import app as webapp
     import web_runtime
     import web_storage
@@ -182,7 +202,7 @@ def build_app(seed: str = "full"):
     _seed(raw, ans, seed)
     web_storage._raw_container = lambda: raw
     web_storage._estimate_container = lambda: ans
-    web_runtime._openai_client = lambda: _FakeOpenAI()
+    web_runtime._openai_client = lambda: _FakeOpenAI(raw, ans)
     web_storage._blob_state.clear()
     return webapp.app, raw, ans
 

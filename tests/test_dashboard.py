@@ -175,6 +175,11 @@ def test_publish_estimate_no_build_poe_flag_skips_the_run(monkeypatch):
 
 @pytest.fixture()
 def client(monkeypatch):
+    from browser.serve import _Store
+    import web_storage
+    raw = _Store()
+    raw.put("engagements/_default_/_default_/_engagement.json", b'{"visibility":"all"}')
+    monkeypatch.setattr(web_storage, "_raw_container", lambda: raw)
     monkeypatch.setenv("FOUNDRY_PROJECT_ENDPOINT", "https://example/api/projects/x")
     import importlib
     import app as webapp

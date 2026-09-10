@@ -244,6 +244,11 @@ def test_publish_estimate_regenerates_the_diagram(monkeypatch):
 # --------------------------------------------------------------- web serving
 
 def test_web_serves_the_drawio_and_dashboard_embeds_it(monkeypatch):
+    from browser.serve import _Store
+    import web_storage
+    raw = _Store()
+    raw.put("engagements/_default_/_default_/_engagement.json", b'{"visibility":"all"}')
+    monkeypatch.setattr(web_storage, "_raw_container", lambda: raw)
     sys.path.insert(0, os.path.join(ROOT, "src", "web"))
     monkeypatch.setenv("FOUNDRY_PROJECT_ENDPOINT", "https://x/api/projects/p")
     monkeypatch.setenv("STORAGE_URL", "https://s.blob.core.windows.net")

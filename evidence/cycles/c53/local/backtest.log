@@ -1,0 +1,5 @@
+small        spread   5.7%  PASS  (engine $16,451/mo)
+midmarket    spread   5.2%  PASS  (engine $86,648/mo)
+enterprise   spread   5.2%  PASS  (engine $249,921/mo)
+
+ALL WITHIN TOLERANCE (±15%)

@@ -1,0 +1,32 @@
+{
+  "observed_at": "2026-09-10T08:14:35.186985+00:00",
+  "selected_gates_passed": false,
+  "gates": [
+    {
+      "gate": "smoke",
+      "status": "FAIL",
+      "exit_code": 1,
+      "seconds": 49.83,
+      "log": "smoke.log"
+    },
+    {
+      "gate": "services",
+      "status": "PASS",
+      "exit_code": 0,
+      "seconds": 13.68,
+      "log": "services.log"
+    },
+    {
+      "gate": "security",
+      "status": "PASS",
+      "exit_code": 0,
+      "seconds": 28.54,
+      "log": "security.log"
+    }
+  ],
+  "not_validated_by_this_run": [
+    "Authenticated production browser and all tool data-plane calls",
+    "Scratch-environment teardown/rehydrate, clean-machine CI and induced chaos",
+    "External penetration test and human usability/comprehension trials"
+  ]
+}

@@ -1,0 +1,10 @@
+subscription: PASS
+resource_group: PASS
+container_web: PASS
+container_calc: PASS
+container_drawio: PASS
+function_registration: PASS
+search_resource: PASS
+foundry_resource: PASS
+monitoring_resource: PASS
+registry_resource: PASS

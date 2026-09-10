@@ -18,7 +18,7 @@ C44 → E13.4 (cost guardrail); C45 → red-CI fix. **Master-prompt-v2 reconcili
 C47 → E13.3 adversarial eval suite + E13.17 `landfall-judge` subagent (Security 3.75 → 4.0,
 overall 4.03 → 4.06). C48 → E13.15 Playwright harness (`tests/browser/`) — **which on its
 first run caught a fatal `\'` in `static/chat.js` that had broken the whole chat page
-since C41; fixed, needs `azd deploy web`.** C49 → E13.11 safe teardown / rehydrate
+since C41; fixed and deployed with C52.** C49 → E13.11 safe teardown / rehydrate
 (`scripts/teardown.{sh,ps1}` + `rehydrate.{sh,ps1}`, `DEPLOY_DRAWIO` dormant param,
 `smoke.py --cold`) — no deploy; operator runs the live round-trip once.
 C50 → E13.13 `ca-calc` → event-driven ACA Job (`USE_CALC_JOB` dormant param, `job.py` +
@@ -31,7 +31,7 @@ shared dependency helpers. HTTP contracts and browser rendering preserved;
 **Deployed 2026-09-10**, bundled with C48, after user follow-up authorization;
 healthy revision, 100% traffic, live smoke 8/8. E13.6 done.
 **Epic E13: 9/17 done. Next:** E13.5 (agent-run ceiling) / E13.9 (E12 tail).
-**Raised:** 2026-09-08 · **Last updated:** 2026-09-10 (C52 — FastAPI router split) · **Owner panel:** see below · **Method:** PDCA
+**Raised:** 2026-09-08 · **Last updated:** 2026-09-10 (C53 — system validation and fixes) · **Owner panel:** see below · **Method:** PDCA
 **Rolls into:** the "Landfall to 5/5" PRD as **Epic E11**. Supersedes the
 "one `azd` deployment per engagement" assumption in
 [`audits/2026-09-07-production-readiness-review.md`](../audits/2026-09-07-production-readiness-review.md)
@@ -1269,6 +1269,16 @@ inspiration.
 ---
 
 ## 6. PDCA cadence
+
+**C53 — system validation (2026-09-10):** the
+[system test plan](../tests/SYSTEM-TEST-PLAN.md) maps implemented workspaces,
+services and tools to repeatable tests. Dashboard artifact lookup is strictly
+scoped; the implicit default estate is also authorized. The calculator workbook
+uses its static route before generic download dispatch. ZIP import requires an
+authenticated owner, preserves existing ACLs, binds new ownership to the caller,
+rejects unsafe/duplicate/oversized archives before writes, and reports storage
+failure or skipped SQL backups explicitly. Browser journeys run in CI. See
+[C53 evidence and outstanding validation](../evidence/cycles/c53/REPORT.md).
 
 | Cycle | Scope | Exit |
 |---|---|---|

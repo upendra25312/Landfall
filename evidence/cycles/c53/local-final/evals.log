@@ -1,0 +1,21 @@
+Golden text-to-SQL (E7.1):
+  32/32 (100%)
+
+Fault injection (E7.3):
+  30/30
+
+Adversarial guardrails (E13.3):
+  74/74 (3 pending)
+
+Full-estimate scenarios + output guard (E7.2/E7.4):
+  ok   SC1 Full estate, house defaults
+  ok   SC2 Production servers only
+  ok   SC3 3-year reserved instances at 100% coverage
+  ok   SC4 Dev/test pricing on non-production
+  ok   SC5 Aggressive disposition appetite
+  ok   SC6 Low data-quality confidence
+  ok   SC7 No Azure Hybrid Benefit
+  ok   SC8 Small 10-server slice
+  8/8
+
+Wrote evals/SCORECARD.md

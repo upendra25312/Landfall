@@ -1,0 +1,13 @@
+  ok    config               all deploy outputs present
+  ok    resources            20 resources, all expected types present
+  ok    function_registered  kind='functionapp,linux'
+  ok    function_host        GET /api/engagements -> 401; attempts=[401] (EasyAuth enforcing)
+  FAIL  web_revision         health=Healthy prov=Provisioned running=Deprovisioning
+  ok    web_up               GET /healthz -> 401; attempts=[401] (EasyAuth enforcing)
+  ok    sql_database         status='Paused'
+  ok    blob_containers      ['answers', 'azure-webjobs-hosts', 'azure-webjobs-secrets', 'deploymentpackage', 'landfall-applease', 'questions', 'raw', 'work']
+
+  7 passed, 1 failed, 0 skipped
+  wrote E:\Landfall\evidence\cycles\c53\live-final\smoke.json
+
+  SMOKE FAILED: web_revision

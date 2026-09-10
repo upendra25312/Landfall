@@ -12,6 +12,12 @@ asset surfaces here as a console/page error.
 
 ## Run
 
+C53 adds create → upload → analysis → chat/reload and empty-engagement →
+questionnaire journeys in `test_system_journeys.py`. The fixture uses real CSV
+normalization but in-memory storage and canned agent responses; it does not
+claim a live Azure tool or model round-trip. CI runs this suite and uploads its
+JUnit report/screenshots. See [the system plan](../SYSTEM-TEST-PLAN.md).
+
 ```bash
 BROWSER=1 ./.venv2/Scripts/python.exe -m pytest tests/browser -q
 ```

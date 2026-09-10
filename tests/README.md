@@ -1,6 +1,11 @@
 # tests/
 
-Unit tests for Landfall — pure logic that runs without Azure (127 cases):
+Start with the [system test plan](SYSTEM-TEST-PLAN.md) for the complete component
+matrix, acceptance criteria, automated runner, and live/manual prerequisites.
+Run `scripts/validate_system.py --output evidence/cycles/<cycle>/local` with the
+project Python to retain local regression, eval and browser evidence.
+
+Unit tests for Landfall — pure logic that runs without Azure:
 the ingestion pipeline (`src/api/ingest/`), the cost engine (`src/api/cost/` —
 right-sizer, `estimate_compute_cost`, `estimate_storage_cost`,
 `estimate_run_rate_extras`) with injected price/rate books, the landing-zone

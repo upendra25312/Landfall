@@ -95,7 +95,7 @@ def app_client(monkeypatch):
     raw_store = {
         "engagements/contoso-ltd/dc-exit/_engagement.json": {
             "data": json.dumps({"engagement": "contoso-ltd/dc-exit", "customer": "Contoso Ltd",
-                                "project": "DC Exit", "visibility": "all"}).encode(),
+                                "project": "DC Exit", "visibility": "all", "created_by": "bob"}).encode(),
             "metadata": {}, "mtime": _dt.datetime(2026, 9, 8, tzinfo=_dt.timezone.utc)},
     }
     ans_store = {}
@@ -114,7 +114,7 @@ def app_client(monkeypatch):
                 _OAI._last = kw
                 return _Resp(f"resp_{seq['n']}", f"answer {seq['n']}")
     monkeypatch.setattr(web_runtime, "_openai_client", lambda: _OAI())
-    return webapp, TestClient(webapp.app), raw_store, ans_store, _OAI
+    return webapp, TestClient(webapp.app, headers={"x-ms-client-principal-name": "bob"}), raw_store, ans_store, _OAI
 
 
 def test_chat_persists_per_engagement_and_chains(app_client):
