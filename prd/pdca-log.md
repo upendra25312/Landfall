@@ -5,6 +5,37 @@ Operating model: [`landfall-5x5-prd.md` §7](landfall-5x5-prd.md). Tracker:
 
 ---
 
+## Cycle 61 — Microsoft Migration Execution Guide (MEG) Reference Pin & Readiness Model (E15.2)
+
+### Plan
+
+Deliver Epic E15.2 (brief E15B.1–E15B.10): align Landfall with the official Microsoft
+Azure Migration Execution Guide (`https://github.com/Azure/migration`). Pin upstream reference
+at commit `09b269375dc7c48cee7541e4ca16faf02b3897ca` under MIT license. Normalize concepts into
+local pinned artifacts in `references/meg/` (`metadata.json`, `lifecycle.json`, `checklist.json`,
+`roles.json`, `risks.json`, `wave_guidance.json`). Implement the deterministic 5-state readiness
+model (`READY`, `PARTIAL`, `GAP`, `NOT_ASSESSED`, `NOT_APPLICABLE`) linked directly to evidence
+without arbitrary maturity percentages. Implement deterministic risk register engine with
+evidence triggers (unmonitored servers, legacy OS, single region, DB replatform, stale dependencies)
+and config-governed ratings (no LLM guesses). Generate baseline RACI/DACI governance matrix
+labeled `DRAFT — CUSTOMER VALIDATION REQUIRED` with functional roles and zero personal names.
+Create `THIRD_PARTY_NOTICES.md` and architecture documentation in `docs/architecture/migration-execution-guide.md`.
+
+### Do / Check / Act
+
+Pinned commit `09b269375dc7c48cee7541e4ca16faf02b3897ca` and created `THIRD_PARTY_NOTICES.md` with
+formal Microsoft MIT attribution. Created normalized JSON artifacts in `references/meg/`.
+Implemented `src/api/meg/` package: `loader.py` (cached reference loader), `readiness.py` (5-state
+readiness evaluation engine over 21 criteria in 15 categories), `risks.py` (evidence-triggered risk
+register), and `governance.py` (RACI/DACI matrix). Authored `docs/architecture/migration-execution-guide.md`.
+Added unit tests in `tests/test_meg_readiness.py` (13 tests passing).
+**Study / Check:** `ruff check src/` passes (0 errors); `pyright src/` passes (0 errors);
+`evals/runner.py` passes all 32 golden SQL, 30 faults, 88/88 adversarial, 8 scenarios;
+`pytest tests -q` fully green (596 passed, 14 skipped, 0 failed).
+E15.2 delivered and verified.
+
+---
+
 ## Cycle 60 — Microsoft Learn MCP Integration & Knowledge Governance (E15.1)
 
 ### Plan

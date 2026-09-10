@@ -1,0 +1,198 @@
+{
+  "framework": "Microsoft Azure Migration Execution Guide (MEG)",
+  "version": "2024.1",
+  "status_definitions": {
+    "READY": "Verified by deterministic estate evidence or completed assessment outputs.",
+    "PARTIAL": "Preliminary evidence exists, but gaps or unverified assumptions remain.",
+    "GAP": "Missing required data, open discovery question, or unmitigated architecture issue.",
+    "NOT_ASSESSED": "Milestone or inspection has not yet been executed for this engagement.",
+    "NOT_APPLICABLE": "Criteria does not apply to this engagement's scope or technical architecture."
+  },
+  "categories": [
+    "discovery",
+    "business_readiness",
+    "landing_zone",
+    "security",
+    "networking",
+    "identity",
+    "applications",
+    "data",
+    "tooling",
+    "operations",
+    "governance",
+    "project_management",
+    "change_management",
+    "resource_readiness",
+    "cutover_readiness"
+  ],
+  "items": [
+    {
+      "id": "MEG-DISC-01",
+      "category": "discovery",
+      "title": "Server and Application Inventory Ingested",
+      "description": "Comprehensive discovery of servers, applications, and storage volumes loaded into SQL.",
+      "eval_key": "inventory_loaded",
+      "guidance": "Complete estate inventory is required before right-sizing or wave planning can proceed."
+    },
+    {
+      "id": "MEG-DISC-02",
+      "category": "discovery",
+      "title": "Performance Telemetry Coverage",
+      "description": "At least 30 days of CPU and memory utilization metrics available for right-sizing.",
+      "eval_key": "perf_coverage",
+      "guidance": "Estates with < 70% monitored servers require conservative sizing and contingency uplift."
+    },
+    {
+      "id": "MEG-DISC-03",
+      "category": "discovery",
+      "title": "Application Dependency Mapping",
+      "description": "Network traffic flow telemetry and inter-server dependencies identified.",
+      "eval_key": "dependency_mapped",
+      "guidance": "Observed dependency connections define move-groups to eliminate cross-wave latency."
+    },
+    {
+      "id": "MEG-BIZ-01",
+      "category": "business_readiness",
+      "title": "Business Drivers & Target Region Agreed",
+      "description": "Target Azure primary region and DR paired region approved by stakeholders.",
+      "eval_key": "target_region_agreed",
+      "guidance": "Region selection dictates pricing, service availability, and compliance boundaries."
+    },
+    {
+      "id": "MEG-BIZ-02",
+      "category": "business_readiness",
+      "title": "Financial Cost Baseline & Proof of Estimate",
+      "description": "Independent monthly Azure run-rate and one-time migration services cost modeled.",
+      "eval_key": "cost_modeled",
+      "guidance": "All run-rate figures must carry stable calculation appendix formulas and drivers."
+    },
+    {
+      "id": "MEG-LZ-01",
+      "category": "landing_zone",
+      "title": "Management Group & Subscription Architecture",
+      "description": "CAF management group hierarchy designed with isolated platform and landing-zone subscriptions.",
+      "eval_key": "lz_management_groups",
+      "guidance": "Follow the Azure Landing Zone conceptual architecture with delegated administration."
+    },
+    {
+      "id": "MEG-LZ-02",
+      "category": "landing_zone",
+      "title": "Landing Zone Architecture Checklist Conformance",
+      "description": "Azure Landing Zone design checklist evaluated with documented gap mitigations.",
+      "eval_key": "lz_conformance",
+      "guidance": "Achieve >= 80% conformance against standard ALZ checklist before wave execution."
+    },
+    {
+      "id": "MEG-SEC-01",
+      "category": "security",
+      "title": "Role-Based Access Control (RBAC) & Privileged Access",
+      "description": "Least-privilege access model and Entra ID role assignments configured.",
+      "eval_key": "security_rbac",
+      "guidance": "No persistent standing admin permissions; enforce PIM on production subscriptions."
+    },
+    {
+      "id": "MEG-SEC-02",
+      "category": "security",
+      "title": "Key Vault & Secrets Management",
+      "description": "Dedicated Azure Key Vault per environment with RBAC and private endpoint controls.",
+      "eval_key": "security_keyvault",
+      "guidance": "Never store credentials or keys in application code, configuration files, or prompts."
+    },
+    {
+      "id": "MEG-NET-01",
+      "category": "networking",
+      "title": "Hub-Spoke Network Topology & IP Address Plan",
+      "description": "Non-overlapping RFC 1918 CIDR blocks and VNet peering between hub and workload spokes.",
+      "eval_key": "network_hub_spoke",
+      "guidance": "Reserve address space for hybrid connectivity gateways, firewalls, and future spokes."
+    },
+    {
+      "id": "MEG-NET-02",
+      "category": "networking",
+      "title": "Hybrid Connectivity & Ingress/Egress Controls",
+      "description": "ExpressRoute or VPN gateway specified with central Azure Firewall or NVA routing.",
+      "eval_key": "network_hybrid",
+      "guidance": "Validate latency and bandwidth requirements between on-premises and target Azure region."
+    },
+    {
+      "id": "MEG-ID-01",
+      "category": "identity",
+      "title": "Microsoft Entra ID Hybrid Identity Integration",
+      "description": "Directory synchronization and authentication posture established for migrated workloads.",
+      "eval_key": "identity_entra",
+      "guidance": "Verify domain controller placement and Kerberos/LDAP availability in identity spoke."
+    },
+    {
+      "id": "MEG-APP-01",
+      "category": "applications",
+      "title": "6R Disposition Assignment & OS Lifecycle Assessment",
+      "description": "Every application assigned Rehost/Replatform/Repurchase/Retire/Retain/Refactor with rationale.",
+      "eval_key": "app_dispositions",
+      "guidance": "End-of-life operating systems flagged for upgrade, replatform, or Extended Security Updates."
+    },
+    {
+      "id": "MEG-DATA-01",
+      "category": "data",
+      "title": "Database Replatform & Storage Target Architecture",
+      "description": "Database engines mapped to Azure SQL (MI/VM/Hyperscale) or PostgreSQL/MySQL Flexible Server.",
+      "eval_key": "data_db_targets",
+      "guidance": "Assess RPO, RTO, and transactional volume to select appropriate database replication tier."
+    },
+    {
+      "id": "MEG-TOOL-01",
+      "category": "tooling",
+      "title": "Migration Appliance & Replication Tooling Readiness",
+      "description": "Azure Migrate or Azure Site Recovery tooling validated against source hypervisors.",
+      "eval_key": "tooling_readiness",
+      "guidance": "Test replication appliance communication and network port prerequisites (443, 9443)."
+    },
+    {
+      "id": "MEG-OPS-01",
+      "category": "operations",
+      "title": "Monitoring, Log Analytics & Alert Routing",
+      "description": "Centralized Log Analytics workspace, diagnostic settings, and metric alerts defined.",
+      "eval_key": "ops_monitoring",
+      "guidance": "Enforce 30-day retention baseline and connect Action Groups for incident response."
+    },
+    {
+      "id": "MEG-GOV-01",
+      "category": "governance",
+      "title": "Azure Policy Baseline & Cost Budget Alerts",
+      "description": "Azure Policy initiatives assigned to management groups with 50/80/100% budget alerts.",
+      "eval_key": "gov_policy_budget",
+      "guidance": "Enforce allowed regions, required tags, and deny unapproved SKUs or public endpoints."
+    },
+    {
+      "id": "MEG-PM-01",
+      "category": "project_management",
+      "title": "Risk-Ordered Wave Plan & Critical Path Schedule",
+      "description": "Wave sequencing with pilot wave first, regulated last, and critical path timeline.",
+      "eval_key": "pm_wave_schedule",
+      "guidance": "Schedule must bound prep, execution, and soak durations per wave based on throughput."
+    },
+    {
+      "id": "MEG-CHG-01",
+      "category": "change_management",
+      "title": "Change Advisory Board (CAB) & Cutover Window Schedule",
+      "description": "Agreed maintenance windows and change control approvals for workload cutover.",
+      "eval_key": "change_control",
+      "guidance": "Document business-approved outage allowances and communication plan."
+    },
+    {
+      "id": "MEG-RES-01",
+      "category": "resource_readiness",
+      "title": "Migration Roles Assigned & Resource Loading Modeled",
+      "description": "Functional migration roles mapped via RACI/DACI and month-by-month FTE loading calculated.",
+      "eval_key": "resource_loading",
+      "guidance": "Confirm partner and customer staffing capacity matches peak FTE demand."
+    },
+    {
+      "id": "MEG-CUT-01",
+      "category": "cutover_readiness",
+      "title": "Go/No-Go Decision Criteria & Rollback Plan",
+      "description": "Explicit cutover success criteria, validation checklists, and technical rollback triggers.",
+      "eval_key": "cutover_rollback",
+      "guidance": "A migration must never execute without an approved, tested rollback procedure."
+    }
+  ]
+}

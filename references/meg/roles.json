@@ -1,0 +1,115 @@
+{
+  "notice": "DRAFT — CUSTOMER VALIDATION REQUIRED",
+  "methodology": "RACI / DACI",
+  "standard_roles": [
+    {
+      "id": "sponsor",
+      "title": "Executive Sponsor",
+      "description": "Accountable for business outcomes, budget allocation, and executive escalation.",
+      "category": "leadership"
+    },
+    {
+      "id": "prog_manager",
+      "title": "Migration Programme Manager",
+      "description": "Drives project execution, timeline, critical path, cross-functional coordination, and reporting.",
+      "category": "management"
+    },
+    {
+      "id": "lead_architect",
+      "title": "Lead Cloud Architect",
+      "description": "Owns target Azure Landing Zone design, 6R disposition decisions, and technical governance.",
+      "category": "architecture"
+    },
+    {
+      "id": "migration_engineer",
+      "title": "Infrastructure / Migration Engineer",
+      "description": "Performs server replication, testing, cutover execution, and post-migration validation.",
+      "category": "engineering"
+    },
+    {
+      "id": "security_lead",
+      "title": "Security & Compliance Lead",
+      "description": "Validates identity, RBAC, encryption, Key Vault, and compliance controls per spoke.",
+      "category": "security"
+    },
+    {
+      "id": "network_engineer",
+      "title": "Network Engineer",
+      "description": "Manages ExpressRoute/VPN, hub-spoke routing, IP allocation, DNS, and firewall rules.",
+      "category": "networking"
+    },
+    {
+      "id": "dba_lead",
+      "title": "Database Administrator (DBA)",
+      "description": "Oversees database replatforming, data synchronization, backup, and cutover integrity.",
+      "category": "data"
+    },
+    {
+      "id": "app_owner",
+      "title": "Application Owner / SME",
+      "description": "Signs off on application disposition, testing criteria, cutover window, and business acceptance.",
+      "category": "business"
+    },
+    {
+      "id": "devops_ops_lead",
+      "title": "DevOps & Operations Lead",
+      "description": "Integrates CI/CD, monitoring, Log Analytics, backup policies, and support handoff.",
+      "category": "operations"
+    }
+  ],
+  "default_raci": {
+    "strategy": {
+      "sponsor": "A",
+      "prog_manager": "R",
+      "lead_architect": "C",
+      "security_lead": "C",
+      "app_owner": "C"
+    },
+    "plan_discovery": {
+      "prog_manager": "A",
+      "lead_architect": "R",
+      "migration_engineer": "R",
+      "app_owner": "C",
+      "dba_lead": "C"
+    },
+    "ready_landing_zone": {
+      "lead_architect": "A",
+      "network_engineer": "R",
+      "security_lead": "R",
+      "devops_ops_lead": "C"
+    },
+    "adopt_cutover": {
+      "prog_manager": "A",
+      "migration_engineer": "R",
+      "app_owner": "R",
+      "dba_lead": "R",
+      "lead_architect": "C"
+    },
+    "govern_manage": {
+      "lead_architect": "A",
+      "devops_ops_lead": "R",
+      "security_lead": "C",
+      "prog_manager": "I"
+    }
+  },
+  "default_daci": {
+    "disposition_decision": {
+      "driver": "Lead Cloud Architect",
+      "approver": "Application Owner / SME",
+      "contributors": ["Migration Programme Manager", "Database Administrator (DBA)"],
+      "informed": ["Executive Sponsor"]
+    },
+    "landing_zone_approval": {
+      "driver": "Lead Cloud Architect",
+      "approver": "Security & Compliance Lead",
+      "contributors": ["Network Engineer", "DevOps & Operations Lead"],
+      "informed": ["Migration Programme Manager", "Executive Sponsor"]
+    },
+    "cutover_signoff": {
+      "driver": "Migration Programme Manager",
+      "approver": "Application Owner / SME",
+      "contributors": ["Infrastructure / Migration Engineer", "Database Administrator (DBA)"],
+      "informed": ["Lead Cloud Architect", "Executive Sponsor"]
+    }
+  }
+}

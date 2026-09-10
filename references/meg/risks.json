@@ -1,0 +1,96 @@
+{
+  "framework": "Microsoft Azure Migration Execution Guide (MEG)",
+  "version": "2024.1",
+  "classifications": [
+    "Observed Risk",
+    "Derived Risk",
+    "Generic MEG Check",
+    "Architect-Added Risk"
+  ],
+  "levels": ["Low", "Medium", "High"],
+  "rating_matrix": {
+    "High:High": "Critical",
+    "High:Medium": "High",
+    "Medium:High": "High",
+    "Medium:Medium": "Medium",
+    "High:Low": "Medium",
+    "Low:High": "Medium",
+    "Medium:Low": "Low",
+    "Low:Medium": "Low",
+    "Low:Low": "Low"
+  },
+  "rules": [
+    {
+      "rule_id": "RISK-RULE-PERF-GAP",
+      "risk_id": "RSK-001",
+      "category": "Discovery & Sizing",
+      "title": "Unmonitored Servers Right-Sizing Headroom Risk",
+      "classification": "Derived Risk",
+      "trigger": "perf_unmonitored_pct > 20",
+      "probability": "High",
+      "impact": "Medium",
+      "mitigation": "Apply conservative right-sizing headroom band (20%) and conduct targeted workload profiling prior to cutover.",
+      "owner_role": "Lead Cloud Architect"
+    },
+    {
+      "rule_id": "RISK-RULE-EOL-OS",
+      "risk_id": "RSK-002",
+      "category": "Platform & Security",
+      "title": "Legacy / End-of-Life Operating System Risk",
+      "classification": "Observed Risk",
+      "trigger": "eol_servers_count > 0",
+      "probability": "High",
+      "impact": "High",
+      "mitigation": "Enroll legacy Windows Server/SQL Server in Extended Security Updates (ESU) on Azure, or prioritize in-place upgrade.",
+      "owner_role": "Application Owner / SME"
+    },
+    {
+      "rule_id": "RISK-RULE-SINGLE-REGION",
+      "risk_id": "RSK-003",
+      "category": "Resilience & DR",
+      "title": "Single Region Deployment Without Active DR",
+      "classification": "Derived Risk",
+      "trigger": "dr_configured == false",
+      "probability": "Low",
+      "impact": "High",
+      "mitigation": "Implement Azure Site Recovery (ASR) paired-region replication for tier-1 business-critical applications.",
+      "owner_role": "Lead Cloud Architect"
+    },
+    {
+      "rule_id": "RISK-RULE-DB-REPLATFORM",
+      "risk_id": "RSK-004",
+      "category": "Data & Database",
+      "title": "Database Replatforming Cutover Complexity",
+      "classification": "Derived Risk",
+      "trigger": "replatform_db_count > 0",
+      "probability": "Medium",
+      "impact": "High",
+      "mitigation": "Perform pre-migration schema assessment with Azure Data Studio / DMA and conduct dry-run cutover.",
+      "owner_role": "Database Administrator (DBA)"
+    },
+    {
+      "rule_id": "RISK-RULE-DEPENDENCY-GAPS",
+      "risk_id": "RSK-005",
+      "category": "Wave Planning",
+      "title": "Cross-Wave Affinity & Latency Risk",
+      "classification": "Observed Risk",
+      "trigger": "stale_dependencies_count > 0",
+      "probability": "Medium",
+      "impact": "Medium",
+      "mitigation": "Revalidate stale dependencies with packet-level inspection and group tightly coupled servers into identical wave.",
+      "owner_role": "Migration Programme Manager"
+    },
+    {
+      "rule_id": "RISK-RULE-DISCOVERY-GAPS",
+      "risk_id": "RSK-006",
+      "category": "Governance",
+      "title": "Unanswered Discovery Questionnaire Requirements",
+      "classification": "Observed Risk",
+      "trigger": "unanswered_discovery_count > 0",
+      "probability": "High",
+      "impact": "Medium",
+      "mitigation": "Issue discovery questionnaire to business stakeholders to confirm RPO, RTO, and compliance scope.",
+      "owner_role": "Migration Programme Manager"
+    }
+  ]
+}

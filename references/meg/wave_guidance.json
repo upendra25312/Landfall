@@ -1,0 +1,30 @@
+{
+  "framework": "Microsoft Azure Migration Execution Guide (MEG)",
+  "version": "2024.1",
+  "guidance": {
+    "pilot_wave": {
+      "purpose": "Validate migration tooling, network routing, landing zone, and operational monitoring on low-risk workloads.",
+      "criteria": [
+        "Non-production or internal IT workloads only",
+        "No customer-facing transactions",
+        "Minimal external upstream dependencies",
+        "Recommended size: 5–15 servers"
+      ],
+      "soak_period_days": 14
+    },
+    "affinity_grouping": {
+      "purpose": "Cluster servers with high network flow volume into identical waves to eliminate cross-environment latency.",
+      "threshold_flows_per_day": 100,
+      "stale_edge_age_days": 30
+    },
+    "regulated_workloads": {
+      "purpose": "Isolate PCI-DSS, HIPAA, or sovereign data into dedicated landing-zone spokes with mandatory security sign-off.",
+      "sequencing": "Execute in later waves after platform governance and security monitoring are proven stable."
+    },
+    "soak_and_cutover": {
+      "standard_soak_days": 7,
+      "extended_soak_days": 14,
+      "rollback_window_hours": 4
+    }
+  }
+}
