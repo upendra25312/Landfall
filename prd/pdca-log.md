@@ -5,6 +5,51 @@ Operating model: [`landfall-5x5-prd.md` §7](landfall-5x5-prd.md). Tracker:
 
 ---
 
+## Cycle 62 — Deterministic Resource-Demand & Capacity Planning Model (E15.3)
+
+### Plan
+
+Deliver Epic E15.3 (brief E15C.1–E15C.17): evolve Landfall's coarse effort estimation into an
+enterprise-grade, deterministic Resource-Demand, Capacity, and Commercial Planning system.
+Enforce the mandatory separation between Resource Demand (authoritative deterministic derivation
+by Landfall) and Resource Capacity (supplied strictly via explicit user/client input). Guarantee zero
+hallucination: the LLM must never allocate FTE, guess availability percentages, or invent personal names/rates.
+Support Planning Modes (MODE 1: Role-Based default; MODE 2: Named Resource optional).
+Map effort across 10 functional roles aligned with MEG taxonomy (`Migration Programme Manager`, `Lead Cloud Architect`,
+`Infrastructure / Migration Engineer`, `Network Engineer`, `Security & Compliance Lead`, `Database Administrator (DBA)`,
+`Application Owner / SME`, `Test Lead`, `DevOps & Operations Lead`, `FinOps Analyst`, `Change Manager`).
+Derive demand deterministically across workstreams, phases, waves, and calendar/relative months.
+Support calendars (working days/month, hours/day, dated schedules, relative Month 1..N).
+Implement three resource scenarios (Conservative, Expected, Accelerated) deriving deltas from explicit mathematical assumptions.
+Implement resource-constraint feedback: flag `RESOURCE-CONSTRAINED SCHEDULE` when candidate demand exceeds known capacity,
+identifying bottleneck months, roles, and affected waves without silently mutating candidate waves.
+Calculate commercial services costs across delivery models (Onshore, Nearshore, Offshore, Partner, Customer) using config rates.
+Generate SOW-ready resource narrative and a 12-column project plan aligned with MEG lifecycle phases.
+Build an original 15-sheet openpyxl workbook generator (`resource_plan.xlsx`) with live Excel formulas and fullCalcOnLoad.
+Author architecture documentation in `docs/architecture/resource-planning-model.md` with complete worked example.
+
+### Do / Check / Act
+
+Implemented `src/api/resource/` package:
+- `model.py`: Domain models, PlanningMode, DeliveryModel, standard functional roles catalogue, and RequirementRow dataclass.
+- `engine.py`: Deterministic demand derivation mathematically reconciling to `estimate_effort` person-days.
+- `scenarios.py`: Conservative, Expected, and Accelerated scenario generator.
+- `capacity.py`: Capacity vs. demand analysis, constraint warning flags, capacity heatmap, and skill gap detection.
+- `commercial.py`: Commercial services costing across delivery models and roles with monthly run-rate.
+- `sow_project_plan.py`: SOW resource section narrative and 12-column project plan.
+- `workbook.py`: 15-sheet openpyxl workbook generator (`resource_plan.xlsx`) with native Excel formulas and fullCalcOnLoad.
+- `__init__.py`: Package public API exports.
+Authored `docs/architecture/resource-planning-model.md` with derivation math, formula tables, and 250-server worked example.
+Created comprehensive test suite in `tests/test_resource_model.py` (11 tests).
+**Study / Check:** `ruff check src/` passes (0 errors); `pyright src/` passes (0 errors, 0 warnings);
+`pytest tests/test_resource_model.py` passes (11/11 in 0.35s);
+`pytest tests -q` fully green (607 passed, 14 skipped, 0 failed);
+`evals/runner.py` passes all 32 golden SQL, 30 faults, 88/88 adversarial, 8 scenarios;
+`evidence/scorecard.py` confirms 4.06/5 overall with zero regressions.
+E15.3 delivered, verified, and closed.
+
+---
+
 ## Cycle 61 — Microsoft Migration Execution Guide (MEG) Reference Pin & Readiness Model (E15.2)
 
 ### Plan
