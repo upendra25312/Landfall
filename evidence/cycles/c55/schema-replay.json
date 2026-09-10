@@ -1,0 +1,46 @@
+{
+  "status": "PASS",
+  "before": {
+    "applications": {
+      "global_rows": 31,
+      "default_rows": 31,
+      "default_sha256": "803e02b485456465580d725393d4dbfcdebda09ced4f648a9617666361424cae"
+    },
+    "servers": {
+      "global_rows": 292,
+      "default_rows": 250,
+      "default_sha256": "d3874d0743e958917141b4460f0a473928fbb521e48a436e326af358ed1bd375"
+    },
+    "dependencies": {
+      "global_rows": 461,
+      "default_rows": 461,
+      "default_sha256": "bf02b34481fcc33b0ee7f245a6a2674ac3fd719ae9fac63f99194f48f578fd6b"
+    },
+    "performance": {
+      "global_rows": 5190,
+      "default_rows": 5190,
+      "default_sha256": "7d3b12e7857cf6f45cf44c91d00272349f203585608c1f059b984d2b86736ed6"
+    },
+    "storage": {
+      "global_rows": 566,
+      "default_rows": 566,
+      "default_sha256": "5a3f1aee5f23584d534117f232f53b7621fb10a164ffef8c1eb9e3be25b99aa2"
+    },
+    "ingest_log": {
+      "global_rows": 6,
+      "default_rows": 0,
+      "default_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  },
+  "passes": [
+    {
+      "batches": 108,
+      "preserved": true
+    },
+    {
+      "batches": 108,
+      "preserved": true
+    }
+  ],
+  "scope": "Global row counts and full default-estate row hashes; no infrastructure provisioning"
+}

@@ -5,6 +5,31 @@ Operating model: [`landfall-5x5-prd.md` §7](landfall-5x5-prd.md). Tracker:
 
 ---
 
+## Cycle 55 — Preserve inventory during schema updates
+
+### Plan
+
+Replace destructive schema recreation with guarded creation and additive column
+migrations. Preserve existing primary keys and RLS objects; reject incompatible
+legacy schemas rather than guessing a destructive conversion. Validate the entire
+script before executing any batch, reject destructive SQL, and roll back failures.
+Test safety offline; do not provision the populated resource group. Reconcile C54
+publication and validation statuses with the successful main CI run.
+
+### Do / Check / Act
+
+Implemented guarded creation/additive columns, preflight destructive-SQL rejection,
+transactional rollback and a concurrency lock. Added schema safety tests and a
+live replay runner. **553 passed, 9 skipped**; evals 32/32 SQL, 30/30 faults,
+74/74 adversarial (three existing pending), 8/8 scenarios. Live Azure SQL replayed
+twice with all global row counts and default-estate hashes unchanged:
+[`schema-replay.json`](../evidence/cycles/c55/schema-replay.json). First connection
+returned database-unavailable during resume; retry passed. No Azure provisioning.
+C54 publication and adapter/recalc statuses reconciled. Human reviews still need
+actual participants; sponsor requests Google/Microsoft/GitHub sign-in support.
+Fresh deployment remains deferred. Existing schema types/keys are not rewritten;
+incompatible legacy required columns fail for an explicit migration.
+
 ## Cycle 54 — Complete the validation tail
 
 **Date:** 2026-09-10 · **Branch:** `cycle-54-validation-tail`

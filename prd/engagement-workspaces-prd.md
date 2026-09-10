@@ -1,5 +1,11 @@
 # Landfall — Engagement Workspaces (multi-client, dashboard-driven)
 
+**C55 amendment (2026-09-10):** E13.1 schema preservation implemented and replayed
+twice live without inventory count/default-estate hash changes. Additive nullable
+columns only; incompatible required columns fail rather than remapping customer
+data. [Runbook](../docs/schema-migrations.md). Provisioning remains a separately
+reviewed infrastructure operation; fresh lifecycle testing remains deferred.
+
 **Status:** IN PROGRESS (C18/C24/C25/C25b/C26 done & live — POE pipeline, upload panel,
 per-engagement conversation memory + export/import deployed; **C25b** rebuilt the
 calculator adapters from the live DOM + weekly smoke — full 55-line POE run verified live,

@@ -9,12 +9,19 @@ Companion to [`prd/landfall-5x5-prd.md`](landfall-5x5-prd.md). Delivery log:
 
 ## Progress
 
+**C55 safe schema:** destructive recreation replaced by guarded additive updates,
+preflight rejection and transactional rollback. 553 tests pass; live replay twice
+preserved global inventory row counts and default-estate hashes. E13.1's schema
+safety is delivered; general infrastructure provisioning still requires hook/IaC
+review. See [migration runbook](../docs/schema-migrations.md).
+
 **C54 validation tail (2026-09-10):** real LibreOffice recalculation, the four
 calculator adapter exports/variants, live Foundry→Function→SQL scoped counts and
 blob/Event Grid ingestion are verified. **21/21 adapters pass; the live calculator
 queue produced a four-service Excel export.** Fixed V2 gateway controls and live
 Foundry result extraction for chat Excel export; web and calc deployed. Public CI
-publication needs approval after automatic-review rejection. See [C54 results](../evidence/cycles/c54/REPORT.md)
+publication was authorized and completed: main `77226b3`, GitHub evals and Pages
+passed ([CI](https://github.com/upendra25312/Landfall/actions/runs/34460813565)). See [C54 results](../evidence/cycles/c54/REPORT.md)
 for release execution and the remaining human/auth/scratch-environment prerequisites.
 
 **C53 system validation (2026-09-10):** the [test plan](../tests/SYSTEM-TEST-PLAN.md)
@@ -30,8 +37,9 @@ E13 remains 9/17 done.
 | C53 follow-up | State | Acceptance / prerequisite |
 |---|---|---|
 | Production browser + tool/data pipeline | pending | Two Entra principals, isolated engagement: upload/Event Grid/SQL → agent tools → publish/download → calculator queue. Preserve customer data. |
-| Calculator adapter tail | backlog (E11.17/E11.19) | Bastion and Application Gateway missing controls; Monitor and Load Balancer resolve controls but remain unverified. Verify actual values/export before promoting any adapter. |
-| Office recalculation, scratch lifecycle, remote CI | pending | LibreOffice CI execution; authorized scratch environment/OIDC for teardown/rehydrate and chaos. Never provision this populated RG. |
+| Calculator adapter tail | done C54 | All 21 verified adapters passed live smoke, including actual export/quantity checks for the four adapter tails. |
+| Office recalculation and remote CI | done C54 | Six real LibreOffice tests passed; GitHub evals and Pages passed after authorized publication. |
+| Scratch lifecycle | deferred | Fresh installation, teardown/restore and induced chaos deferred by sponsor; no destructive testing on the populated RG. |
 | External security and human evidence | pending (E8/E10) | Independent pentest and usability/comprehension/architect/FinOps review. |
 
 | Phase | Items | Done | In review | In progress | Backlog |
@@ -200,7 +208,7 @@ From the post-C42 full-panel review ([`engagement-workspaces-prd.md` §4.14 + §
 
 | ID | Item | Pri | Status | Owner | Cycle | Acceptance |
 |---|---|---|---|---|---|---|
-| E13.1 | **Idempotent `schema.sql` → safe `azd provision`** — every object `CREATE … IF NOT EXISTS` / guarded `ALTER … ADD`; RLS policy re-asserted not recreated; `apply_sql.py` refuses `DROP TABLE`/`TRUNCATE`. Ships dormant (no deploy); sponsor runs the first safe provision (also lands the C39 workbook+alert + C42 web signals) | P0 | backlog | Cloud Arch + Data Eng | — | Re-applying `schema.sql` to a populated DB loses 0 rows; `apply_sql.py` raises on `DROP TABLE`; `tests/test_schema_idempotent.py` proves no destructive DDL; DEPLOY.md says provision is safe. |
+| E13.1 | Additive schema migrations with destructive-SQL rejection and atomic rollback | P0 | done | Cloud Arch + Data Eng | 55 | Live replay twice preserved all table counts and default-estate hashes. Existing required-column/type/key conversions need explicit migrations. General provisioning still requires infrastructure/hook review. See docs/schema-migrations.md. |
 | E13.2 | **Guided pipeline state** (= E12.8) — `GET …/pipeline` + status strip + non-blocking pre-analysis hint | P1 | done | App Eng | 43 | See E12.8. _Done C43 — `azd deploy web`._ |
 | E13.3 | **Model review + adversarial-prompt eval** (= brief E14.10 / E15A.5) — `evals/adversarial.py` as a CI gate; model review vs a current-gen model | **P1** | **adversarial done (C47); model review deferred** | AI Architect + Foundry | 47 | _`evals/adversarial.py` — 74 cases / 6 categories (sql-guard, engagement-isolation, path-traversal, upload-content, output-guard, system-prompt), wired + gated in `evals/runner.py` + the SCORECARD; `tests/test_evals.py` +2. Pending (SCORECARD-listed, not gated): mcp-injection, data-egress, live-jailbreak → E15.1. **Security 3.75 → 4.0, overall 4.03 → 4.06.** Model-review half needs a live deploy + token cost → sponsor-run cycle._ |
 | E13.4 | **Cost guardrail** (§4.15) — `Microsoft.Consumption/budgets` at `monthlyBudget` **default 50, ON** + actual-50/80 + forecast-100 alerts (to `alertEmail` **and RG Owner**); Log Analytics `dailyQuotaGb` cap (0.5, `prod` uncaps); `ca-calc` `minReplicas` → `calcMinReplicas` knob (default 1); `scripts/spend.py` MTD check | **P1** | done | FinOps | 44 | _Done — `infra/{main,resources}.bicep` + `main.parameters.json`; `costBudget` gated `monthlyBudget > 0`; `scripts/spend.py`; `tests/test_cost_guardrail.py` (8, incl `az bicep build`); `DEPLOY.md` "Cost guardrails". **Ships on the next `azd up`** (no `azd provision` — drops SQL)._ |

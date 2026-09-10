@@ -67,6 +67,7 @@ def _is_only_comments(sql: str) -> bool:
 def _run_batches(cur, script: str) -> int:
     """Execute a T-SQL script split on lines that are just GO. Comment-only
     batches are skipped (some drivers reject an empty statement)."""
+    validate_schema(script)
     done = 0
     parts = re.split(r"(?im)^\s*GO\s*$", script)
     for sql in (p.strip() for p in parts):
@@ -76,7 +77,40 @@ def _run_batches(cur, script: str) -> int:
     return done
 
 
+def validate_schema(script: str) -> None:
+    """Fail before executing any batch. This accepts trusted repository SQL only.
+
+    Inspect strings too so dynamic SQL cannot hide destructive statements. Remove
+    comments as whitespace so DROP/**/TABLE cannot bypass the check.
+    """
+    clean = _LINE_COMMENT.sub(' ', _BLOCK_COMMENT.sub(' ', script))
+    if re.search(r'\b(DROP|TRUNCATE|DELETE|MERGE|UPDATE)\b', clean, re.I):
+        raise ValueError('Schema migration contains destructive SQL')
+    if re.search(r'\bSTATE\s*=\s*OFF\b', clean, re.I):
+        raise ValueError('Schema migration must not disable row-level security')
+
+
+def apply_schema(conn, script: str) -> int:
+    """Apply all batches atomically; serialize concurrent provision hooks."""
+    validate_schema(script)
+    try:
+        cur = conn.cursor()
+        cur.execute("SET XACT_ABORT ON; IF @@TRANCOUNT = 0 BEGIN TRANSACTION;")
+        cur.execute("""DECLARE @result INT;
+EXEC @result = sys.sp_getapplock @Resource=N'landfall-schema',
+    @LockMode='Exclusive', @LockOwner='Transaction', @LockTimeout=30000;
+IF @result < 0 THROW 51002, 'Could not lock schema migration', 1;""")
+        n = _run_batches(cur, script)
+        conn.commit()
+        return n
+    except Exception:
+        conn.rollback()
+        raise
+
+
 def main() -> int:
+    script = SCHEMA.read_text(encoding="utf-8")
+    validate_schema(script)
     try:
         conn = _connect()
     except Exception as exc:                       # noqa: BLE001
@@ -85,8 +119,7 @@ def main() -> int:
 
     try:
         cur = conn.cursor()
-        n = _run_batches(cur, SCHEMA.read_text(encoding="utf-8"))
-        conn.commit()
+        n = apply_schema(conn, script)
         print(f"schema.sql applied ({n} batches)")
 
         name = os.environ.get("AZURE_USER_ASSIGNED_IDENTITY_NAME")
