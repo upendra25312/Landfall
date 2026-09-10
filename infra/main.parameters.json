@@ -21,6 +21,9 @@
     "calcMinReplicas": { "value": "${CALC_MIN_REPLICAS=1}" },
     "webAuthClientId": { "value": "${WEB_AUTH_CLIENT_ID=}" },
     "webAuthClientSecret": { "value": "${WEB_AUTH_CLIENT_SECRET=}" },
+    "deployDrawio": { "value": "${DEPLOY_DRAWIO=false}" },
+    "drawioImageName": { "value": "${SERVICE_DRAWIO_IMAGE_NAME=}" },
+    "drawioKey": { "value": "${DRAWIO_KEY=}" },
     "deploymentTier": { "value": "${DEPLOYMENT_TIER=free}" }
   }
 }

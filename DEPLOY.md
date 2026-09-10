@@ -272,6 +272,46 @@ re-ingests on import). Needs a SQL reader login for `--sql` (the deploy identity
 or an `az login` user with `db_datareader`); `STORAGE_URL` + `AZURE_SQL_*` come
 from `azd env get-values`.
 
+### Run a session / tear down after (E13.11) — one command each way
+
+For the **$40–50/month ephemeral operating model** (§ Cost guardrails below):
+deploy when an engagement needs work, tear down when it doesn't.
+
+```bash
+scripts/teardown.sh                       # export EVERY engagement (blobs + SQL) -> _closeout/<UTC>/,
+                                          # checksum it, THEN `azd down --force --purge`.
+                                          # Refuses to tear down if the export fails / is incomplete.
+
+scripts/rehydrate.sh _closeout/<UTC>/     # `azd up` (full stack) -> re-version the agent ->
+                                          # smoke (+ cold-start timing) -> print how to re-import.
+```
+
+(`teardown.ps1` / `rehydrate.ps1` are the PowerShell equivalents.)
+
+**Set the stack-completeness switches once** — they persist in `.azure/<env>/` across
+a teardown, so a rehydrated stack comes back *whole*:
+
+```bash
+azd env set DEPLOY_DRAWIO true                      # ca-drawio SVG->PNG (the .png embed in .pptx/.docx)
+azd env set WEB_AUTH_CLIENT_ID <entra-app-id>       # ca-web Easy Auth (see "Manual follow-ups" #1)
+azd env set --secret WEB_AUTH_CLIENT_SECRET         # paste the secret
+```
+
+Without `DEPLOY_DRAWIO=true` a fresh `azd up` is byte-identical to today (no
+`ca-drawio`; the landing-zone diagram still ships as `.drawio` + `.svg`). Without
+`WEB_AUTH_CLIENT_ID` the rehydrated web app has **no auth** — set it.
+
+`rehydrate.sh` **refuses to run if the resource group still exists** — `azd up` on a
+live deployment re-runs `postprovision`, which drops the SQL schema. For a code
+update use `azd deploy api|web|calc|drawio`, never `rehydrate`.
+
+Engagement re-import is a dashboard action (the import API is behind Easy Auth):
+open the web URL → **↑ import** → pick each `*.landfall.zip` from the backup dir.
+
+Cold-start budget: `azd up` from nothing is ~8–12 min; the first request to the
+scale-to-zero web/`ca-drawio` containers then adds a few seconds. `smoke.py --cold`
+records the wall-clock and fails past `--cold-budget` (default 120 s).
+
 ---
 
 ## Post-deploy smoke test (E9.2)
@@ -284,6 +324,7 @@ the blob containers are there. Stdlib only; `az` must be logged in.
 python scripts/smoke.py                    # uses `azd env get-values`, then os.environ
 python scripts/smoke.py --json smoke.json  # + structured result
 python scripts/smoke.py --deep             # + agent-resolves, + live query_inventory (needs SMOKE_API_TOKEN)
+python scripts/smoke.py --cold             # + time the first hit to each front door (E13.11 cold start)
 ```
 
 Exit code is non-zero on the first hard failure. A captured run against
