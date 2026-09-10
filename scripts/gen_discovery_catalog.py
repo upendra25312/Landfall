@@ -67,7 +67,9 @@ def build_catalog(src: str) -> list[dict]:
 
 
 def render(cat: list[dict], src_html: str) -> tuple[str, str]:
-    return json.dumps(cat, ensure_ascii=False, indent=1) + "\n", src_html
+    page = re.sub(r'<style>.*?</style>', '<link rel="stylesheet" href="/static/questionnaire.css">', src_html, flags=re.S)
+    page = re.sub(r'<link[^>]+href="https://fonts.googleapis.com[^>]+>\s*', '', page)
+    return json.dumps(cat, ensure_ascii=False, indent=1) + "\n", page
 
 
 def main(check: bool = False) -> int:
@@ -77,13 +79,17 @@ def main(check: bool = False) -> int:
         print(f"ERROR: only parsed {len(cat)} questions — the HTML format changed", file=sys.stderr)
         return 2
     js, htm = render(cat, src)
+    css = re.search(r'<style>(.*?)</style>', src, re.S).group(1)
+    css_path = OUT_HTML.parent / 'static' / 'questionnaire.css'
     if check:
         ok = (OUT_JSON.read_text(encoding="utf-8") == js
-              and OUT_HTML.read_text(encoding="utf-8") == htm)
+              and OUT_HTML.read_text(encoding="utf-8") == htm
+              and css_path.read_text(encoding='utf-8') == css)
         print("in sync" if ok else "DRIFT — run scripts/gen_discovery_catalog.py")
         return 0 if ok else 1
     OUT_JSON.write_text(js, encoding="utf-8")
     OUT_HTML.write_text(htm, encoding="utf-8")
+    css_path.write_text(css, encoding='utf-8')
     print(f"wrote {len(cat)} questions -> {OUT_JSON.relative_to(ROOT)} + {OUT_HTML.relative_to(ROOT)}")
     return 0
 

@@ -10,6 +10,8 @@ import telemetry as _obs
 import time as _time
 import web_access
 import web_runtime
+import web_storage
+import json
 from agent_limits import load_limits
 from agent_run import run_response
 
@@ -87,7 +89,25 @@ async def chat(req: Request):
         }
         if prev_id:
             kwargs["previous_response_id"] = prev_id
-        resp = await run_response(web_runtime._openai_client(), kwargs, limits)
+        last_progress = [None]
+
+        def progress(response):
+            if not engagement:
+                return
+            tools = [getattr(i, 'name', '') for i in getattr(response, 'output', [])
+                     if getattr(i, 'type', '') in ('openapi_call', 'mcp_call')]
+            value = {'status': response.status, 'tool': tools[-1] if tools else None}
+            if value == last_progress[0]:
+                return
+            last_progress[0] = value
+            try:
+                web_storage._estimate_container().upload_blob(
+                    f'engagements/{engagement}/_agent_progress.json',
+                    json.dumps({**value, 'updated_at': web_runtime._now()}).encode(), overwrite=True)
+            except Exception:
+                web_runtime.log.warning('Could not persist agent progress')
+
+        resp = await run_response(web_runtime._openai_client(), kwargs, limits, progress)
         text = (resp.output_text or "").strip()
         if not text:
             _obs.event("web_chat", engagement=_eh, status="empty_agent_response",
@@ -154,6 +174,18 @@ def engagement_chat_get(customer: str, project: str, request: Request):
     return JSONResponse({"engagement": eid, "turns": c.get("turns", []),
                          "current_response_id": c.get("current_response_id"),
                          "archived": c.get("archived", [])})
+
+
+@router.get('/api/engagements/{customer}/{project}/progress')
+def engagement_progress(customer: str, project: str, request: Request):
+    eng = web_access._engagement(customer, project, request)
+    if not eng:
+        return JSONResponse({'error': 'unknown engagement'}, status_code=404)
+    try:
+        return json.loads(web_storage._estimate_container().download_blob(
+            f'engagements/{eng[0]}/_agent_progress.json').readall())
+    except Exception:
+        return {'status': 'waiting', 'tool': None}
 
 
 @router.post("/api/engagements/{customer}/{project}/chat/new")

@@ -25,6 +25,7 @@ from types import SimpleNamespace
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
 _ROOT = os.path.dirname(os.path.dirname(_HERE))
+os.environ['LANDFALL_LOCAL_AUTH'] = '1'
 sys.path[:0] = [os.path.join(_ROOT, "src", "web"), os.path.join(_ROOT, "src", "api")]
 
 _MT = _dt.datetime(2026, 9, 9, 12, 0, tzinfo=_dt.timezone.utc)

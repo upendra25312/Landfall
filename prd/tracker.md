@@ -9,6 +9,13 @@ Companion to [`prd/landfall-5x5-prd.md`](landfall-5x5-prd.md). Delivery log:
 
 ## Progress
 
+**C57 security/UI (local validation complete):** strict CSP, sanitized dashboard,
+identity/visibility, upload classification and progress updates implemented.
+568 tests and 11 browser tests pass. Web release and direct-upload activation
+remain pending. Sponsor cancelled Google/GitHub login: **Entra ID only**; no
+social OAuth registrations created. Production isolation checks still require
+two Entra users. [C57 evidence](../evidence/cycles/c57/REPORT.md).
+
 **C56 assessment runtime:** fixed full-assessment tool and recorded stages,
 idempotent baseline publication, chat limits and usage telemetry implemented.
 560 regression tests pass; release/live verification pending. E13.14/E13.5 are

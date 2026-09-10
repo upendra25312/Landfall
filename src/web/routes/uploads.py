@@ -12,8 +12,41 @@ import uploads as _up
 import web_access
 import web_runtime
 import web_storage
+import asyncio
+import os
 
 router = APIRouter()
+
+
+@router.post('/api/engagements/{customer}/{project}/upload-ticket')
+async def upload_ticket(customer: str, project: str, request: Request):
+    if os.environ.get('DIRECT_UPLOADS_ENABLED') != '1':
+        return JSONResponse({'error': 'Direct uploads are not configured'}, status_code=503)
+    eng = web_access._engagement(customer, project, request)
+    if not eng:
+        return JSONResponse({'error': 'unknown engagement'}, status_code=404)
+    from direct_uploads import create_ticket
+    try:
+        return await asyncio.to_thread(create_ticket, eng[0], web_access._principal_name(request), await request.json())
+    except (ValueError, TypeError):
+        return JSONResponse({'error': 'Invalid upload ticket request'}, status_code=400)
+
+
+@router.post('/api/engagements/{customer}/{project}/upload-complete')
+async def upload_complete(customer: str, project: str, request: Request):
+    eng = web_access._engagement(customer, project, request)
+    if not eng:
+        return JSONResponse({'error': 'unknown engagement'}, status_code=404)
+    from direct_uploads import complete_ticket
+    try:
+        result = await asyncio.to_thread(complete_ticket, eng[0], web_access._principal_name(request),
+                                         (await request.json()).get('ticket'))
+        return JSONResponse(result, status_code=201)
+    except (ValueError, TypeError):
+        return JSONResponse({'error': 'Upload validation failed or ticket expired'}, status_code=400)
+    except Exception:
+        web_runtime.log.exception('Direct upload finalization failed')
+        return JSONResponse({'error': 'Could not complete the upload; retry from the upload panel'}, status_code=502)
 
 
 @router.get("/api/engagements/{customer}/{project}/files")
