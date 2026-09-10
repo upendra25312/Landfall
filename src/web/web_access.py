@@ -58,16 +58,16 @@ def _engagement(customer: str, project: str,
 
 
 def _guard_eid(request: Request, e: str | None):
-    """403 (as JSONResponse) if the caller can't see engagement `e`; None if OK or
-    `e` is unset/default. For the dashboard routes, which key off `?e=` not a path."""
-    eid = (e or "").strip().strip("/")
-    if not eid or eid == "_default_/_default_":
-        return None
+    """Authorize the requested or implicit default dashboard scope, failing closed."""
+    eid = (e or "").strip().strip("/") or "_default_/_default_"
+    parts = eid.split("/")
+    if len(parts) != 2 or not all(_seg(p) == p for p in parts):
+        return JSONResponse({"error": "unknown engagement"}, status_code=404)
     try:
         m = json.loads(web_storage._raw_container().download_blob(
             f"engagements/{eid}/_engagement.json").readall())
     except Exception:  # noqa: BLE001
-        return None  # unknown engagement -> let the downstream 404 handle it
+        return JSONResponse({"error": "engagement manifest unavailable"}, status_code=404)
     name, groups = _principal(request)
     if _acl.can_view(m, name, groups):
         return None

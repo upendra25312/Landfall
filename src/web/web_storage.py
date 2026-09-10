@@ -24,15 +24,15 @@ def _estimate_container():
 
 
 def _estimate_prefixes(engagement: str | None) -> list[str]:
-    """Where a published estimate might live. Prefer the engagement path; fall back to
-    the default engagement, then the pre-E11 flat `estimate/` path."""
-    out = []
+    """A named engagement reads only its own artifacts; legacy fallback is unscoped."""
     eid = (engagement or "").strip().strip("/")
-    if eid and eid != "_default_/_default_":
-        out.append(f"engagements/{eid}/estimate")
-    out.append("engagements/_default_/_default_/estimate")
-    out.append("estimate")  # legacy (cycles 1-17)
-    return out
+    if eid:
+        parts = eid.split("/")
+        import re
+        if len(parts) != 2 or not all(re.fullmatch(r"[a-z0-9_][a-z0-9_-]{0,49}", p) for p in parts):
+            return []
+        return [f"engagements/{eid}/estimate"]
+    return ["engagements/_default_/_default_/estimate", "estimate"]
 
 
 def _read_estimate_blob(name: str, engagement: str | None = None) -> bytes | None:

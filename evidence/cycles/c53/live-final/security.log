@@ -1,0 +1,18 @@
+  ok    web / unauthenticated                        HTTP 401 (want 401/403/302)
+  ok    web /dashboard unauthenticated               HTTP 401 (want 401/403/302)
+  ok    web /api/engagements unauthenticated         HTTP 401 (want 401/403/302)
+  ok    web /healthz unauthenticated                 HTTP 401 (want 401/403/302)
+  ok    web /questionnaire unauthenticated           HTTP 401 (want 401/403/302)
+  ok    function /api/engagements unauthenticated    HTTP 401 (want 401/403)
+  ok    function /api/query_inventory unauthenticated HTTP 401 (want 401/403)
+  ok    function /api/publish_estimate unauthenticated HTTP 401 (want 401/403)
+  ok    HSTS present                                 max-age=31536000; includeSubDomains
+  ok    no Server/version banner                     (none)
+  ok    app response headers (CSP / nosniff / frame) not observable behind Easy Auth (401 before the app) — asserted in tests/test_web_csp.py
+  ok    sql guard blocks injection / write / DDL payloads 11/11 rejected
+  ok    sql guard neutralises comment tricks         2/2
+  ok    sql guard allows a legitimate query          ok
+  ok    engagement slug rejects traversal            0 of 8 bad slugs escaped
+  ok    no obvious secrets committed                 git grep clean
+
+  16/16 pass

@@ -1,0 +1,50 @@
+{
+  "ok": false,
+  "counts": {
+    "PASS": 7,
+    "FAIL": 1,
+    "SKIP": 0
+  },
+  "checks": [
+    {
+      "check": "config",
+      "status": "PASS",
+      "detail": "all deploy outputs present"
+    },
+    {
+      "check": "resources",
+      "status": "PASS",
+      "detail": "20 resources, all expected types present"
+    },
+    {
+      "check": "function_registered",
+      "status": "PASS",
+      "detail": "kind='functionapp,linux'"
+    },
+    {
+      "check": "function_host",
+      "status": "PASS",
+      "detail": "GET /api/engagements -> 401 (EasyAuth enforcing)"
+    },
+    {
+      "check": "web_revision",
+      "status": "PASS",
+      "detail": "health=Healthy prov=Provisioned running=ScaledToZero"
+    },
+    {
+      "check": "web_up",
+      "status": "FAIL",
+      "detail": "GET /healthz -> 0"
+    },
+    {
+      "check": "sql_database",
+      "status": "PASS",
+      "detail": "status='Online'"
+    },
+    {
+      "check": "blob_containers",
+      "status": "PASS",
+      "detail": "['answers', 'azure-webjobs-hosts', 'azure-webjobs-secrets', 'deploymentpackage', 'landfall-applease', 'questions', 'raw', 'work']"
+    }
+  ]
+}

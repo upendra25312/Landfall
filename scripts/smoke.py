@@ -101,6 +101,17 @@ def _http_status(url: str, method: str = "GET", timeout: int = 20,
         return 0
 
 
+def _probe_host(url: str) -> tuple[int, list[int]]:
+    """Allow bounded scale-from-zero retries while retaining every observation."""
+    attempts = []
+    for _ in range(3):
+        code = _http_status(url)
+        attempts.append(code)
+        if code not in (0, 502, 503, 504):
+            break
+    return code, attempts
+
+
 def _timed_http(url: str, timeout: int = 90, **kw) -> tuple[int, float]:
     """(status, wall-clock seconds). The first hit after `azd up` / a scale-to-zero
     idle is the cold start — E9.2 / E13.11."""
@@ -176,9 +187,9 @@ def run_checks(cfg: dict, deep: bool = False, cold: bool = False,
         host = (show or {}).get("host") or f"{func}.azurewebsites.net"
         r.add("function_registered", PASS if registered else FAIL,
               f"kind={ (show or {}).get('kind')!r}" if rc == 0 else f"az failed: {err[:160]}")
-        code = _http_status(f"https://{host}/api/engagements")
+        code, attempts = _probe_host(f"https://{host}/api/engagements")
         r.add("function_host", PASS if code in _HOST_UP and code != 0 else FAIL,
-              f"GET /api/engagements -> {code}" + (" (EasyAuth enforcing)" if code in (401, 403) else ""))
+              f"GET /api/engagements -> {code}; attempts={attempts}" + (" (EasyAuth enforcing)" if code in (401, 403) else ""))
     else:
         r.add("function_registered", SKIP, "no function app name")
         r.add("function_host", SKIP, "no function app name")
@@ -189,7 +200,11 @@ def run_checks(cfg: dict, deep: bool = False, cold: bool = False,
         rc, revs, err = _az(["containerapp", "revision", "list", "-g", rg, "-n", web_name])
         active = [v for v in revs if v.get("properties", {}).get("active")] if isinstance(revs, list) else []
         if active:
-            p = active[0]["properties"]
+            # Azure may list the retiring revision first during a single-revision
+            # rollout. Inspect the newest active revision, not list order.
+            active.sort(key=lambda v: str(v.get("properties", {}).get("createdTime") or ""), reverse=True)
+            current = [v for v in active if v["properties"].get("runningState") != "Deprovisioning"]
+            p = (current or active)[0]["properties"]
             healthy = (p.get("healthState") in ("Healthy", "None")
                        and p.get("provisioningState") in ("Provisioned", "Succeeded")
                        and p.get("runningState") in ("Running", "RunningAtMaxScale", "ScaledToZero", None))
@@ -203,9 +218,9 @@ def run_checks(cfg: dict, deep: bool = False, cold: bool = False,
 
     web_uri = cfg.get("SERVICE_WEB_URI", "").rstrip("/")
     if web_uri:
-        code = _http_status(f"{web_uri}/healthz")
+        code, attempts = _probe_host(f"{web_uri}/healthz")
         r.add("web_up", PASS if code in _HOST_UP else FAIL,
-              f"GET /healthz -> {code}" + (" (EasyAuth enforcing)" if code in (401, 403) else ""))
+              f"GET /healthz -> {code}; attempts={attempts}" + (" (EasyAuth enforcing)" if code in (401, 403) else ""))
     else:
         r.add("web_up", SKIP, "no web uri")
 

@@ -9,6 +9,23 @@ Companion to [`prd/landfall-5x5-prd.md`](landfall-5x5-prd.md). Delivery log:
 
 ## Progress
 
+**C53 system validation (2026-09-10):** the [test plan](../tests/SYSTEM-TEST-PLAN.md)
+maps 18 component/feature groups to executable gates and remaining live/manual
+acceptance. Added archive/engagement isolation regressions, Function contracts,
+batch-workbook tests, browser journeys and CI execution. Fixed scoped/default
+artifact leakage, calculator download routing, unsafe/unauthorized ZIP imports,
+and availability-probe handling of scale-from-zero. Evidence and remaining checks
+are recorded in [C53 results](../evidence/cycles/c53/REPORT.md).
+This validation cycle does not close unrelated roadmap or human-evidence items;
+E13 remains 9/17 done.
+
+| C53 follow-up | State | Acceptance / prerequisite |
+|---|---|---|
+| Production browser + tool/data pipeline | pending | Two Entra principals, isolated engagement: upload/Event Grid/SQL → agent tools → publish/download → calculator queue. Preserve customer data. |
+| Calculator adapter tail | backlog (E11.17/E11.19) | Bastion and Application Gateway missing controls; Monitor and Load Balancer resolve controls but remain unverified. Verify actual values/export before promoting any adapter. |
+| Office recalculation, scratch lifecycle, remote CI | pending | LibreOffice CI execution; authorized scratch environment/OIDC for teardown/rehydrate and chaos. Never provision this populated RG. |
+| External security and human evidence | pending (E8/E10) | Independent pentest and usability/comprehension/architect/FinOps review. |
+
 | Phase | Items | Done | In review | In progress | Backlog |
 |---|---|---|---|---|---|
 | 1 — Engine | 37 | 8 | 32 | 0 | 0 |

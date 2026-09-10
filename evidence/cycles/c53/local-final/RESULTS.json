@@ -1,0 +1,94 @@
+{
+  "observed_at": "2026-09-10T08:34:46.275316+00:00",
+  "selected_gates_passed": true,
+  "gates": [
+    {
+      "gate": "unit",
+      "status": "PASS",
+      "exit_code": 0,
+      "seconds": 40.35,
+      "log": "unit.log",
+      "tests": 543,
+      "skipped": [
+        {
+          "test": "test_chat_page_loads_clean[chromium]",
+          "reason": "set BROWSER=1 to run the Playwright browser harness (E13.15)"
+        },
+        {
+          "test": "test_engagement_picker_is_populated[chromium]",
+          "reason": "set BROWSER=1 to run the Playwright browser harness (E13.15)"
+        },
+        {
+          "test": "test_pipeline_strip_reflects_state[chromium]",
+          "reason": "set BROWSER=1 to run the Playwright browser harness (E13.15)"
+        },
+        {
+          "test": "test_pre_analysis_chat_gets_a_nonblocking_hint[chromium]",
+          "reason": "set BROWSER=1 to run the Playwright browser harness (E13.15)"
+        },
+        {
+          "test": "test_chat_reload_and_excel_export[chromium]",
+          "reason": "set BROWSER=1 to run the Playwright browser harness (E13.15)"
+        },
+        {
+          "test": "test_create_upload_analyse_and_prompt_card[chromium]",
+          "reason": "set BROWSER=1 to run the Playwright browser harness (E13.15)"
+        },
+        {
+          "test": "test_empty_engagement_does_not_display_another_estate_as_published[chromium]",
+          "reason": "set BROWSER=1 to run the Playwright browser harness (E13.15)"
+        },
+        {
+          "test": "test_all_verified_adapters_resolve",
+          "reason": "set CALC_SMOKE=1 (and `playwright install chromium`) to run the live smoke"
+        },
+        {
+          "test": "test_libreoffice_recalc_has_no_errors",
+          "reason": "set RECALC=1 and install LibreOffice to run the recalc gate"
+        }
+      ]
+    },
+    {
+      "gate": "evals",
+      "status": "PASS",
+      "exit_code": 0,
+      "seconds": 2.04,
+      "log": "evals.log"
+    },
+    {
+      "gate": "backtest",
+      "status": "PASS",
+      "exit_code": 0,
+      "seconds": 0.18,
+      "log": "backtest.log"
+    },
+    {
+      "gate": "broken-dumps",
+      "status": "PASS",
+      "exit_code": 0,
+      "seconds": 0.13,
+      "log": "broken-dumps.log"
+    },
+    {
+      "gate": "browser",
+      "status": "PASS",
+      "exit_code": 0,
+      "seconds": 12.04,
+      "log": "browser.log",
+      "tests": 7,
+      "skipped": []
+    },
+    {
+      "gate": "evidence-drift",
+      "status": "PASS",
+      "exit_code": 0,
+      "seconds": 0.04,
+      "log": "evidence-drift.log"
+    }
+  ],
+  "not_validated_by_this_run": [
+    "LibreOffice recalculation: soffice not installed (CI has this gate)",
+    "Live Azure checks: run --live",
+    "Real calculator DOM checks: run --external"
+  ]
+}

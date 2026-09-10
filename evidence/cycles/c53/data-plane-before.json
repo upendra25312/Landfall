@@ -1,0 +1,30 @@
+{
+  "observed_at": "2026-09-10T08:20:44.403934+00:00",
+  "checks": [
+    {
+      "check": "foundry_agent_read",
+      "status": "PASS",
+      "detail": "Configured agent definition retrieved; no inference performed"
+    },
+    {
+      "check": "search_index_read",
+      "status": "FAIL",
+      "detail": "ModuleNotFoundError",
+      "http_status": null
+    },
+    {
+      "check": "drawio_render",
+      "status": "PASS",
+      "detail": {
+        "operation": "authenticated SVG to PNG",
+        "bytes": 104
+      }
+    }
+  ],
+  "ok": false,
+  "not_validated": [
+    "Signed-in web journeys",
+    "Live SQL/tool and model round-trip",
+    "Calculator queue job"
+  ]
+}

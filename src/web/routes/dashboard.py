@@ -29,22 +29,6 @@ def dashboard_data(request: Request, e: str | None = None, snapshot: str | None 
     return JSONResponse(json.loads(blob))
 
 
-@router.get("/dashboard/download/{fmt}")
-def dashboard_download(fmt: str, request: Request, e: str | None = None,
-                       snapshot: str | None = None):
-    if (g := web_access._guard_eid(request, e)):
-        return g
-    fmt = fmt.lower().lstrip(".")
-    if fmt not in web_runtime._EXPORT_MIME:
-        return JSONResponse({"error": "format must be xlsx | docx | pptx"}, status_code=400)
-    blob = web_storage._snapshot_blob(f"latest.{fmt}", e, snapshot)
-    if blob is None:
-        return JSONResponse({"error": f"no {fmt} export published"}, status_code=404)
-    name = (e or "landfall-estimate").replace("/", "-")
-    return Response(blob, media_type=web_runtime._EXPORT_MIME[fmt], headers={
-        "Content-Disposition": f'attachment; filename="{name}.{fmt}"'})
-
-
 @router.get("/dashboard/landing-zone")
 def landing_zone_data(request: Request, e: str | None = None):
     """The Azure Pricing Calculator POE summary (landing_zone.json) for an engagement."""
@@ -67,6 +51,22 @@ def landing_zone_xlsx(request: Request, e: str | None = None):
     name = (e or "landfall").replace("/", "-") + "-landing-zone-POE"
     return Response(blob, media_type=web_runtime._EXPORT_MIME["xlsx"], headers={
         "Content-Disposition": f'attachment; filename="{name}.xlsx"'})
+
+
+@router.get("/dashboard/download/{fmt}")
+def dashboard_download(fmt: str, request: Request, e: str | None = None,
+                       snapshot: str | None = None):
+    if (g := web_access._guard_eid(request, e)):
+        return g
+    fmt = fmt.lower().lstrip(".")
+    if fmt not in web_runtime._EXPORT_MIME:
+        return JSONResponse({"error": "format must be xlsx | docx | pptx"}, status_code=400)
+    blob = web_storage._snapshot_blob(f"latest.{fmt}", e, snapshot)
+    if blob is None:
+        return JSONResponse({"error": f"no {fmt} export published"}, status_code=404)
+    name = (e or "landfall-estimate").replace("/", "-")
+    return Response(blob, media_type=web_runtime._EXPORT_MIME[fmt], headers={
+        "Content-Disposition": f'attachment; filename="{name}.{fmt}"'})
 
 
 @router.get("/dashboard/landing-zone-diagram")

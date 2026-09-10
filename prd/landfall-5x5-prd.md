@@ -284,6 +284,15 @@ Priorities carry over from the audit (P0 = before any real engagement, P1 = befo
 
 ## 6. Release plan
 
+C53 (2026-09-10) adds the cross-component release validation contract in
+[`tests/SYSTEM-TEST-PLAN.md`](../tests/SYSTEM-TEST-PLAN.md): executable local,
+browser, external-calculator and live-service gates with retained evidence.
+Named engagements must never fall back to another estate's artifacts; implicit
+default reads must enforce its manifest ACL. Imported archives must pass complete
+preflight and owner authorization before file writes, with explicit failure or
+not-restored reporting. Passing resource/auth probes does not close authenticated
+user-journey, human review, or scratch-environment acceptance.
+
 | Phase | Epics | Exit |
 |---|---|---|
 | **Phase 1 — Engine** (~10–12 wk) | E1, E2, E3, E4, E5 (incl. E5.4 exports + E5.5 dashboard web app), E6, E7 (build), E8.1–8.4, E9.1 | A pre-sales lead produces a full data-driven package for a reference estate with architect oversight — as Excel / Word / PPT and an interactive dashboard; eval suite gates agent changes. Score ~3.5–4. |
