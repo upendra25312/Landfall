@@ -1,0 +1,113 @@
+{
+  "observed_at": "2026-09-10T10:34:48.600220+00:00",
+  "checks": [
+    {
+      "engagement": "_default_/_default_",
+      "status": "completed",
+      "text": "Answer: The server count is 250.\n\nBasis: The query executed was `SELECT COUNT(*) AS server_count FROM dbo.servers` against the engagement `_default_/_default_`. The result returned one row showing 250 servers. Evidence provided by the SQL output.",
+      "output": [
+        {
+          "id": "fc_0ef3f607a2103d4e006aa287be414c819085807f5ea712079b",
+          "content": null,
+          "role": null,
+          "status": "completed",
+          "type": "openapi_call",
+          "phase": null,
+          "agent_reference": {
+            "type": "agent_reference",
+            "name": "landfall-migration-estimator",
+            "version": "16"
+          },
+          "response_id": "resp_0ef3f607a2103d4e006aa287bcca088190a9c6c6d8ca778263",
+          "call_id": "call_8108141cfcd1405189517096d4ce7cf5",
+          "name": "query_inventory_query_inventory",
+          "arguments": "{\"question\":\"how many servers?\",\"engagement\":\"_default_/_default_\"}"
+        },
+        {
+          "id": "fco_0ef3f607a2103d4e006aa287c024788190b19725e44dd59d84",
+          "content": null,
+          "role": null,
+          "status": "completed",
+          "type": "openapi_call_output",
+          "phase": null,
+          "agent_reference": {
+            "type": "agent_reference",
+            "name": "landfall-migration-estimator",
+            "version": "16"
+          },
+          "response_id": "resp_0ef3f607a2103d4e006aa287bcca088190a9c6c6d8ca778263",
+          "call_id": "call_8108141cfcd1405189517096d4ce7cf5",
+          "name": "query_inventory_query_inventory",
+          "output": "{\n        \"response\": \"{\\n  \\\"sql\\\": \\\"SELECT COUNT(*) AS server_count FROM dbo.servers\\\",\\n  \\\"columns\\\": [\\n    \\\"server_count\\\"\\n  ],\\n  \\\"rows\\\": [\\n    [\\n      250\\n    ]\\n  ],\\n  \\\"row_count\\\": 1,\\n  \\\"truncated\\\": false\\n}\"\n      }"
+        }
+      ],
+      "verified_count": 250,
+      "usage": {
+        "input_tokens": 6778,
+        "input_tokens_details": {
+          "cache_write_tokens": 0,
+          "cached_tokens": 6656
+        },
+        "output_tokens": 88,
+        "output_tokens_details": {
+          "reasoning_tokens": 0
+        },
+        "total_tokens": 6866
+      }
+    },
+    {
+      "engagement": "validation-c54/empty",
+      "status": "completed",
+      "text": "Answer | **0 servers identified in the inventory**\nBasis | SQL query: `SELECT COUNT(*) AS server_count FROM dbo.servers` which returned a count of 0 servers.\nConfidence | High, based on inventory query evidencing no rows.",
+      "output": [
+        {
+          "id": "fc_0a774144226de349006aa287c56cbc8190a7bd97c441c16748",
+          "content": null,
+          "role": null,
+          "status": "completed",
+          "type": "openapi_call",
+          "phase": null,
+          "agent_reference": {
+            "type": "agent_reference",
+            "name": "landfall-migration-estimator",
+            "version": "16"
+          },
+          "response_id": "resp_0a774144226de349006aa287c38aa0819084d9f7e2b70ddc1a",
+          "call_id": "call_bc967ab212784802b4f489047e297626",
+          "name": "query_inventory_query_inventory",
+          "arguments": "{\"question\":\"count the servers\",\"engagement\":\"validation-c54/empty\"}"
+        },
+        {
+          "id": "fco_0a774144226de349006aa287c6d6508190837cb7b533ee9b57",
+          "content": null,
+          "role": null,
+          "status": "completed",
+          "type": "openapi_call_output",
+          "phase": null,
+          "agent_reference": {
+            "type": "agent_reference",
+            "name": "landfall-migration-estimator",
+            "version": "16"
+          },
+          "response_id": "resp_0a774144226de349006aa287c38aa0819084d9f7e2b70ddc1a",
+          "call_id": "call_bc967ab212784802b4f489047e297626",
+          "name": "query_inventory_query_inventory",
+          "output": "{\n        \"response\": \"{\\n  \\\"sql\\\": \\\"SELECT COUNT(*) AS server_count FROM dbo.servers\\\",\\n  \\\"columns\\\": [\\n    \\\"server_count\\\"\\n  ],\\n  \\\"rows\\\": [\\n    [\\n      0\\n    ]\\n  ],\\n  \\\"row_count\\\": 1,\\n  \\\"truncated\\\": false\\n}\"\n      }"
+        }
+      ],
+      "verified_count": 0,
+      "usage": {
+        "input_tokens": 6775,
+        "input_tokens_details": {
+          "cache_write_tokens": 0,
+          "cached_tokens": 6656
+        },
+        "output_tokens": 81,
+        "output_tokens_details": {
+          "reasoning_tokens": 0
+        },
+        "total_tokens": 6856
+      }
+    }
+  ]
+}

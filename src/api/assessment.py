@@ -9,6 +9,7 @@ import uuid
 import azure.functions as func
 
 from cost.config import load_config
+from cost.storage_cost import estimate_storage_cost
 from deliverable.assemble import assemble_estimate
 from engagement import normalize_engagement
 from lz.design import design_landing_zone
@@ -76,7 +77,14 @@ def run_assessment(engagement, backend, *, config=None, generated_on=None, run_i
         common = {'engagement': eid, 'config': cfg}
         stage('rightsize', lambda: backend.tool('rightsize', {**common, 'servers': servers}))
         compute = stage('compute_cost', lambda: backend.tool('compute_cost', {**common, 'servers': servers}))
-        storage = stage('storage_cost', lambda: backend.tool('storage_cost', {**common, 'storage': data['storage']}))
+        # A storage export is optional. Record a real zero-valued storage result
+        # so downstream totals retain one stable schema instead of failing the
+        # whole assessment merely because no separate storage rows were supplied.
+        storage = stage('storage_cost', lambda: (
+            backend.tool('storage_cost', {**common, 'storage': data['storage']})
+            if data['storage'] else estimate_storage_cost([], cfg=cfg,
+                                                          price_date=compute.get('price_date'))
+        ))
 
         def extras():
             if compute.get('missing_prices') or storage.get('not_costed'):
@@ -123,7 +131,9 @@ class AzureBackend:
     def validate(self, eid):
         from ingest.functions import _blob
         manifest = json.loads(_blob().get_blob_client('raw', f'engagements/{eid}/_engagement.json').download_blob().readall())
-        return {'exists': bool(manifest)}
+        if not manifest:
+            raise ValueError('Engagement manifest is empty')
+        return {'exists': True}
 
     def ingest(self, eid):
         from ingest.functions import run_engagement

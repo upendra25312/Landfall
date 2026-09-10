@@ -1,0 +1,118 @@
+{
+  "engagement": "validation-c58/full-20260910104523",
+  "retained_test_data": true,
+  "status": "PASS",
+  "agent_status": "completed",
+  "tool_output": [
+    {
+      "id": "fc_0d7d2595e8e15e67006aa28a4ac40081908f22d0fbf5793538",
+      "content": null,
+      "role": null,
+      "status": "completed",
+      "type": "openapi_call",
+      "phase": null,
+      "agent_reference": {
+        "type": "agent_reference",
+        "name": "landfall-migration-estimator",
+        "version": "16"
+      },
+      "response_id": "resp_0d7d2595e8e15e67006aa28a4802d8819094a5878c5286179c",
+      "call_id": "call_d37662b0bfe5489798a960151bf2a824",
+      "name": "run_assessment_run_assessment",
+      "arguments": "{\"engagement\":\"validation-c58/full-20260910104523\"}"
+    },
+    {
+      "id": "fco_0d7d2595e8e15e67006aa28a52f2688190986512bd22b55ea1",
+      "content": null,
+      "role": null,
+      "status": "completed",
+      "type": "openapi_call_output",
+      "phase": null,
+      "agent_reference": {
+        "type": "agent_reference",
+        "name": "landfall-migration-estimator",
+        "version": "16"
+      },
+      "response_id": "resp_0d7d2595e8e15e67006aa28a4802d8819094a5878c5286179c",
+      "call_id": "call_d37662b0bfe5489798a960151bf2a824",
+      "name": "run_assessment_run_assessment",
+      "output": "{\n        \"response\": \"{\\n  \\\"engagement\\\": \\\"validation-c58/full-20260910104523\\\",\\n  \\\"run_id\\\": \\\"7959b85c559b4b3eaf43662b323aaa6c\\\",\\n  \\\"status\\\": \\\"completed\\\",\\n  \\\"stages\\\": [\\n    {\\n      \\\"name\\\": \\\"validate\\\",\\n      \\\"status\\\": \\\"completed\\\"\\n    },\\n    {\\n      \\\"name\\\": \\\"ingest\\\",\\n      \\\"status\\\": \\\"completed\\\"\\n    },\\n    {\\n      \\\"name\\\": \\\"inventory\\\",\\n      \\\"status\\\": \\\"completed\\\"\\n    },\\n    {\\n      \\\"name\\\": \\\"data_quality\\\",\\n      \\\"status\\\": \\\"completed\\\"\\n    },\\n    {\\n      \\\"name\\\": \\\"rightsize\\\",\\n      \\\"status\\\": \\\"completed\\\"\\n    },\\n    {\\n      \\\"name\\\": \\\"compute_cost\\\",\\n      \\\"status\\\": \\\"completed\\\"\\n    },\\n    {\\n      \\\"name\\\": \\\"storage_cost\\\",\\n      \\\"status\\\": \\\"completed\\\"\\n    },\\n    {\\n      \\\"name\\\": \\\"run_rate_extras\\\",\\n      \\\"status\\\": \\\"completed\\\"\\n    },\\n    {\\n      \\\"name\\\": \\\"dispositions\\\",\\n      \\\"status\\\": \\\"completed\\\"\\n    },\\n    {\\n      \\\"name\\\": \\\"waves\\\",\\n      \\\"status\\\": \\\"completed\\\"\\n    },\\n    {\\n      \\\"name\\\": \\\"schedule\\\",\\n      \\\"status\\\": \\\"completed\\\"\\n    },\\n    {\\n      \\\"name\\\": \\\"landing_zone\\\",\\n      \\\"status\\\": \\\"completed\\\"\\n    },\\n    {\\n      \\\"name\\\": \\\"diagram\\\",\\n      \\\"status\\\": \\\"completed\\\"\\n    },\\n    {\\n      \\\"name\\\": \\\"assemble\\\",\\n      \\\"status\\\": \\\"completed\\\"\\n    },\\n    {\\n      \\\"name\\\": \\\"effort\\\",\\n      \\\"status\\\": \\\"completed\\\"\\n    },\\n    {\\n      \\\"name\\\": \\\"publish\\\",\\n      \\\"status\\\": \\\"completed\\\"\\n    }\\n  ],\\n  \\\"generated_on\\\": \\\"2026-09-10\\\",\\n  \\\"input_sha256\\\": \\\"d78aba7c85bbc8c6b58bd51431d6e2c8dbb6a7035066c3e342b7dc02f089f7c5\\\",\\n  \\\"dashboard_hint\\\": \\\"/e/validation-c58/full-20260910104523\\\"\\n}\"\n      }"
+    }
+  ],
+  "assessment": {
+    "status": "completed",
+    "failed_stage": null,
+    "stages": [
+      {
+        "name": "validate",
+        "status": "completed"
+      },
+      {
+        "name": "ingest",
+        "status": "completed"
+      },
+      {
+        "name": "inventory",
+        "status": "completed"
+      },
+      {
+        "name": "data_quality",
+        "status": "completed"
+      },
+      {
+        "name": "rightsize",
+        "status": "completed"
+      },
+      {
+        "name": "compute_cost",
+        "status": "completed"
+      },
+      {
+        "name": "storage_cost",
+        "status": "completed"
+      },
+      {
+        "name": "run_rate_extras",
+        "status": "completed"
+      },
+      {
+        "name": "dispositions",
+        "status": "completed"
+      },
+      {
+        "name": "waves",
+        "status": "completed"
+      },
+      {
+        "name": "schedule",
+        "status": "completed"
+      },
+      {
+        "name": "landing_zone",
+        "status": "completed"
+      },
+      {
+        "name": "diagram",
+        "status": "completed"
+      },
+      {
+        "name": "assemble",
+        "status": "completed"
+      },
+      {
+        "name": "effort",
+        "status": "completed"
+      },
+      {
+        "name": "publish",
+        "status": "completed"
+      }
+    ]
+  },
+  "published_files": [
+    "engagements/validation-c58/full-20260910104523/estimate/latest.docx",
+    "engagements/validation-c58/full-20260910104523/estimate/latest.json",
+    "engagements/validation-c58/full-20260910104523/estimate/latest.pptx",
+    "engagements/validation-c58/full-20260910104523/estimate/latest.xlsx"
+  ]
+}

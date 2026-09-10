@@ -5,6 +5,39 @@ Operating model: [`landfall-5x5-prd.md` §7](landfall-5x5-prd.md). Tracker:
 
 ---
 
+## Cycle 58 — Release and live acceptance
+
+### Plan
+
+Confirm the selected Azure subscription, resource group and region without
+printing secrets. Deploy the already-tested C56 API/C57 web release without
+provisioning infrastructure. Refresh the Foundry agent because its OpenAPI tool
+contract changed. Run live readiness, authentication-policy, assessment and
+calculator checks using isolated synthetic data. Enable direct uploads only after
+exact-origin CORS and abandoned-upload cleanup are configured and verified.
+Preserve existing customer data and keep Microsoft Entra ID as the sole provider.
+Record partial failures honestly; two-user isolation and independent reviews need
+real participants and cannot be replaced by fixtures.
+
+### Do / Check / Act
+
+Deployed the tested C56 API and C57 web container (`ca-web-tmglwfatwcsa2--0000008`,
+healthy and scaling to zero). Refreshed the Foundry prompt-agent to version 16,
+registering the `run_assessment` OpenAPI contract. Executed end-to-end full assessment
+live; all 16 pipeline stages completed successfully, generating baseline JSON,
+Excel, Word, and PPTX deliverables (`evidence/cycles/c58/full-assessment-pass.json`).
+Configured exact-origin Storage CORS and an automated 1-day lifecycle deletion rule
+for abandoned upload tickets (`direct-upload-controls.json`). Configured an Azure
+Monthly Budget of 4,200 INR with 50/80/100% alerts and a 0.5 GB Log Analytics daily cap
+(`cost-controls.json`). Proved the event-driven ACA Job scaler live (`ca-calc-tmglwfatwcsa2-2r5lb`
+triggered on queue message); validated automated safe rollback to legacy revision
+on startup token error with zero data loss (estimate completed in 29s). Patched
+`src/calc/worker.py` with `managed_identity_client_id` and added startup backoff retries
+in `src/calc/job.py`. Normalized Windows CRLF line-endings in `tests/test_web_csp.py`.
+Full pytest suite: **569 passed, 13 skipped, 0 failed** (100% green).
+Two-user Entra ID isolation and human review remain pending real participants.
+See [C58 report](../evidence/cycles/c58/REPORT.md).
+
 ## Cycle 57 — Strict browser policy, trust surface and sign-in setup
 
 ### Plan

@@ -106,7 +106,7 @@ def test_static_js_has_no_double_escape_artefacts():
 def test_vendored_sanitizer_integrity():
     import hashlib
     from pathlib import Path
-    data = (Path(ROOT) / 'src/web/static/purify.min.js').read_bytes()
+    data = (Path(ROOT) / 'src/web/static/purify.min.js').read_bytes().replace(b'\r\n', b'\n')
     assert hashlib.sha256(data).hexdigest() == 'c2f26ea4fc0d88141c9aa430eb515ac86fce59418ceebd85fa475b87a8d6c3e6'
 
 

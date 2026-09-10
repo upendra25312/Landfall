@@ -1,0 +1,15 @@
+{
+  "observed_at": "2026-09-10T10:54:42.309536+00:00",
+  "subscription": "f609eb5b-df3e-4fab-9a1b-9a8fea2f157f",
+  "resource_group": "rg-landfall",
+  "billing_currency": "INR",
+  "budget_amount": 4200.0,
+  "time_grain": "Monthly",
+  "notifications": [
+    "actual_50",
+    "actual_80",
+    "forecast_100"
+  ],
+  "log_analytics_daily_quota_gb": 0.5,
+  "ok": true
+}

@@ -1,0 +1,7 @@
+{
+  "engagement": "validation-c58/full-20260910103636",
+  "retained_test_data": true,
+  "status": "FAIL",
+  "error": "BadRequestError",
+  "detail": "Error code: 400 - {'error': {'message': '{\\n  \"error\": \"Validation Error\",\\n  \"message\": \"(\\'HTTP error 422: Unprocessable Entity\\', \\'http_client_error\\', {\\'curl\\': \\'curl -X POST \\\\\\\\\\'https://func-tmglwfatwcsa2.azurewebsites.net/api/run_assessment\\\\\\\\\\' -H \\\\\\\\\\'Content-Type: REDACTED\\\\\\\\\\' -H \\\\\\\\\\'Accept: REDACTED\\\\\\\\\\' -H \\\\\\\\\\'Authorization: REDACTED\\\\\\\\\\' -d \\\\\\\\\\'{\\\\\"engagement\\\\\": \\\\\"validation-c58/full-20260910103636\\\\\"}\\\\\\\\\\' \\'})\",\\n  \"func_call_name\": \"run_assessment\",\\n  \"spec_id\": \"run_assessment\",\\n  \"type\": \"ValidationError\",\\n  \"debug_info\": {\\n    \"error_type\": \"validation_error\",\\n    \"tool_name\": \"python_openapi_tool_run_assessment\",\\n    \"curl_command\": \"curl -X POST \\'https://func-tmglwfatwcsa2.azurewebsites.net/api/run_assessment\\' -H \\'Content-Type: REDACTED\\' -H"
+}

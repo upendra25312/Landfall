@@ -1,0 +1,66 @@
+{
+  "observed_at": "2026-09-10T10:33:45.324852+00:00",
+  "checks": [
+    {
+      "engagement": "_default_/_default_",
+      "status": "FAIL",
+      "error": "BadRequestError",
+      "http_status": 400,
+      "detail": "Error code: 400 - {'error': {'message': '{\\n  \"error\": \"Validation Error\",\\n  \"message\": \"(\\'HTTP error 502: Bad Gateway\\', \\'http_client_error\\', {\\'curl\\': \\'curl -X POST \\\\\\\\\\'https://func-tmglwfatwcsa2.azurewebsites.net/api/query_inventory\\\\\\\\\\' -H \\\\\\\\\\'Content-Type: REDACTED\\\\\\\\\\' -H \\\\\\\\\\'Accept: REDACTED\\\\\\\\\\' -H \\\\\\\\\\'Authorization: REDACTED\\\\\\\\\\' -d \\\\\\\\\\'{\\\\\"question\\\\\": \\\\\"count servers\\\\\", \\\\\"engagement\\\\\": \\\\\"_default_/_default_\\\\\"}\\\\\\\\\\' \\'})\",\\n  \"func_call_name\": \"query_inventory\",\\n  \"spec_id\": \"query_inventory\",\\n  \"type\": \"ValidationError\",\\n  \"debug_info\": {\\n    \"error_ty"
+    },
+    {
+      "engagement": "validation-c54/empty",
+      "status": "completed",
+      "text": "Answer: 0 servers were found in the engagement.\n\nBasis: Query executed \u2014 `SELECT COUNT(*) AS total_servers FROM dbo.servers`.\n\nEvidence: The query returned a total server count of 0.",
+      "output": [
+        {
+          "id": "fc_0a9638300c9c4acd006aa287758d8c8194858948bb39864821",
+          "content": null,
+          "role": null,
+          "status": "completed",
+          "type": "openapi_call",
+          "phase": null,
+          "agent_reference": {
+            "type": "agent_reference",
+            "name": "landfall-migration-estimator",
+            "version": "16"
+          },
+          "response_id": "resp_0a9638300c9c4acd006aa2876c8efc8194b9a1509e77576b23",
+          "call_id": "call_69456f713d3a4d058e6d695839677c63",
+          "name": "query_inventory_query_inventory",
+          "arguments": "{\"question\":\"count all the servers\",\"engagement\":\"validation-c54/empty\"}"
+        },
+        {
+          "id": "fco_0a9638300c9c4acd006aa28788053081949c945280b545a615",
+          "content": null,
+          "role": null,
+          "status": "completed",
+          "type": "openapi_call_output",
+          "phase": null,
+          "agent_reference": {
+            "type": "agent_reference",
+            "name": "landfall-migration-estimator",
+            "version": "16"
+          },
+          "response_id": "resp_0a9638300c9c4acd006aa2876c8efc8194b9a1509e77576b23",
+          "call_id": "call_69456f713d3a4d058e6d695839677c63",
+          "name": "query_inventory_query_inventory",
+          "output": "{\n        \"response\": \"{\\n  \\\"sql\\\": \\\"SELECT COUNT(*) AS total_servers FROM dbo.servers\\\",\\n  \\\"columns\\\": [\\n    \\\"total_servers\\\"\\n  ],\\n  \\\"rows\\\": [\\n    [\\n      0\\n    ]\\n  ],\\n  \\\"row_count\\\": 1,\\n  \\\"truncated\\\": false\\n}\"\n      }"
+        }
+      ],
+      "verified_count": 0,
+      "usage": {
+        "input_tokens": 6776,
+        "input_tokens_details": {
+          "cache_write_tokens": 0,
+          "cached_tokens": 6528
+        },
+        "output_tokens": 74,
+        "output_tokens_details": {
+          "reasoning_tokens": 0
+        },
+        "total_tokens": 6850
+      }
+    }
+  ]
+}

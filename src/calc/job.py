@@ -26,11 +26,20 @@ def main() -> int:
         logging.error("STORAGE_QUEUE_URL unset — nothing to consume")
         return 1
     from worker import run_once
+    import time
 
-    try:
-        processed = asyncio.run(run_once())
-    except Exception:  # noqa: BLE001
-        logging.exception("ca-calc job failed")
+    processed = 0
+    last_err = None
+    for attempt in range(1, 4):
+        try:
+            processed = asyncio.run(run_once())
+            break
+        except Exception as exc:  # noqa: BLE001
+            last_err = exc
+            logging.warning("ca-calc job attempt %d/3 failed: %s; retrying in 3s...", attempt, exc)
+            time.sleep(3)
+    else:
+        logging.exception("ca-calc job failed after retries: %s", last_err)
         return 1
     # exit 0 even when the queue was empty by the time we ran (a benign race with
     # KEDA) — a non-zero exit would mark the Job execution Failed and retry it.

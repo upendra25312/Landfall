@@ -1,0 +1,33 @@
+{
+  "observed_at": "2026-09-10T10:49:04.356996+00:00",
+  "subscription": "f609eb5b-df3e-4fab-9a1b-9a8fea2f157f",
+  "resource_group": "rg-landfall",
+  "storage_account": "sttmglwfatwcsa2",
+  "web_origin": "https://ca-web-tmglwfatwcsa2.lemonfield-4df18ff0.swedencentral.azurecontainerapps.io",
+  "cors_exact": true,
+  "lifecycle_rule": {
+    "definition": {
+      "actions": {
+        "baseBlob": {
+          "delete": {
+            "daysAfterModificationGreaterThan": 1.0
+          }
+        }
+      },
+      "filters": {
+        "blobTypes": [
+          "blockBlob"
+        ],
+        "prefixMatch": [
+          "raw/pending-uploads/",
+          "raw/upload-tickets/"
+        ]
+      }
+    },
+    "enabled": true,
+    "name": "landfall-abandoned-uploads",
+    "type": "Lifecycle"
+  },
+  "web_flag": true,
+  "ok": true
+}
