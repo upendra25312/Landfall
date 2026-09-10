@@ -94,3 +94,18 @@
   .dl-card .title{font-weight:600;font-size:14px;color:var(--accent)}
   .dl-card .meta{font-size:11px;color:var(--muted)}
   .drill-row[hidden]{display:none!important}
+  
+  /* Dual Cost & POE Layout (Cycle 65) */
+  .cost-dual-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;margin-top:10px}
+  .cost-panel{border:1px solid var(--line);border-radius:8px;padding:14px;background:color-mix(in srgb,var(--panel) 75%,transparent);display:flex;flex-direction:column}
+  .cost-panel-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;flex-wrap:wrap;gap:6px}
+  .cost-panel-title{font-weight:650;font-size:14px;color:var(--ink)}
+  .role-tag{font-size:10px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;padding:2px 8px;border-radius:12px;display:inline-block}
+  .role-arch{background:color-mix(in srgb,var(--c1) 15%,transparent);color:var(--c1);border:1px solid color-mix(in srgb,var(--c1) 30%,transparent)}
+  .role-ms{background:color-mix(in srgb,var(--good) 15%,transparent);color:var(--good);border:1px solid color-mix(in srgb,var(--good) 30%,transparent)}
+  .role-exec{background:color-mix(in srgb,var(--accent) 15%,transparent);color:var(--accent);border:1px solid color-mix(in srgb,var(--accent) 30%,transparent)}
+  .role-pmo{background:color-mix(in srgb,var(--c3) 15%,transparent);color:var(--c3);border:1px solid color-mix(in srgb,var(--c3) 30%,transparent)}
+  .reconcile-box{background:color-mix(in srgb,var(--accent) 5%,var(--panel));border:1px solid color-mix(in srgb,var(--accent) 25%,transparent);border-radius:8px;padding:12px 14px;margin-top:14px;font-size:12px;line-height:1.5}
+  .reconcile-box b{color:var(--accent)}
+  .dl-badge{font-size:9px;font-weight:700;letter-spacing:.03em;text-transform:uppercase;margin-bottom:2px}
+
