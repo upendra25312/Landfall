@@ -1,0 +1,199 @@
+{
+  "engagement": "validation-c54/pipeline-20260910091657",
+  "retained_test_data": true,
+  "tool_output": [
+    {
+      "id": "fc_04fce64312fd8734006aa2768463ec8193a3e2e6c084019fe2",
+      "content": null,
+      "role": null,
+      "status": "completed",
+      "type": "openapi_call",
+      "phase": null,
+      "agent_reference": {
+        "type": "agent_reference",
+        "name": "landfall-migration-estimator",
+        "version": "15"
+      },
+      "response_id": "resp_04fce64312fd8734006aa2767ffe8481939952bae04e6273a2",
+      "call_id": "call_a6bc56d0b59d47fc9752e166bb0ec5bb",
+      "name": "build_calculator_estimate_build_calculator_estimate",
+      "arguments": "{\"engagement\":\"validation-c54/pipeline-20260910091657\"}"
+    },
+    {
+      "id": "fco_04fce64312fd8734006aa2768f53d48193a60fdab52b2f01e1",
+      "content": null,
+      "role": null,
+      "status": "completed",
+      "type": "openapi_call_output",
+      "phase": null,
+      "agent_reference": {
+        "type": "agent_reference",
+        "name": "landfall-migration-estimator",
+        "version": "15"
+      },
+      "response_id": "resp_04fce64312fd8734006aa2767ffe8481939952bae04e6273a2",
+      "call_id": "call_a6bc56d0b59d47fc9752e166bb0ec5bb",
+      "name": "build_calculator_estimate_build_calculator_estimate",
+      "output": "{\n        \"response\": \"{\\n  \\\"engagement\\\": \\\"validation-c54/pipeline-20260910091657\\\",\\n  \\\"status\\\": \\\"building\\\",\\n  \\\"spec_line_count\\\": 4,\\n  \\\"internal_monthly_estimate\\\": 0.0,\\n  \\\"poll\\\": \\\"GET /api/build_calculator_estimate?engagement=validation-c54/pipeline-20260910091657\\\",\\n  \\\"dashboard_hint\\\": \\\"the calculator run takes a few minutes \\u2014 open the dashboard for validation-c54/pipeline-20260910091657 and watch the 'Azure landing zone \\u2014 Pricing Calculator POE' card; it will show the monthly total and a Download Excel (POE) button when ready\\\"\\n}\"\n      }"
+    }
+  ],
+  "calculator": {
+    "status": "ready",
+    "engagement": "validation-c54/pipeline-20260910091657",
+    "estimate_name": "Validation C54 \u2014 Pipeline validation \u2014 Azure Landing Zone (POE)",
+    "region": "swedencentral",
+    "currency": "USD",
+    "monthly_total": 389.67,
+    "annual": 4676.04,
+    "upfront_total": 0.0,
+    "support_monthly": 0.0,
+    "line_items": [
+      {
+        "category": "Networking",
+        "service_type": "Azure Bastion",
+        "custom_name": "",
+        "region": "Sweden Central",
+        "description": "Standard Tier, 730 Hours, 0 Additional Scale Units, 5 GB Outbound Data Transfer",
+        "monthly": 211.7,
+        "upfront": 0.0
+      },
+      {
+        "category": "DevOps",
+        "service_type": "Azure Monitor",
+        "custom_name": "",
+        "region": "Sweden Central",
+        "description": "Log analytics: Log Data Ingestion: 0 GB Daily Auxiliary Logs without processing, 0 GB Daily Auxiliary Logs with processing, 0 GB Daily Basic logs, 1 GB Daily Analytics logs ingested, 3 months of Interactive Retention, 0 months of Retention, 0 GB data restored for 0 days, 0 queries per day with 0 GB data scanned per query, 0 GB of Log Data Exported per day, Platform Log Data Processed per day: 0 GB with Destination to Storage or Event Hub and 0 GB with Destination to Marketplace Partners, 0 Search job Queries per day with 0 GB data scanned per query; 0 SCOM MI Endpoints; Metrics: Using default collection estimation method 0 API calls, (with a cluster of 0 linux nodes, 0 Windows nodes, 0 containers, and 0 pods), 0 Average daily Dashboards users, 7 Dashboards, 50000 Data samples queried per dashboard, 25 promql alerting rules, 25 promql recording rules, 0 metrics datapoints exported; Application Insights: 0 GB Daily Analytics logs ingested, 3 months Data retention, 0 Standard Web Tests, 5 Minutes Execution frequency, Executing for 730 hours; 0 resources monitored X 1 metric time-series monitored per resource, 5 Minutes Log Signal frequency with 0 log signals monitored and 1 time series per signal, 0 Additional events (in thousands), 0 Additional emails (in 100 thousands), 0 Additional push notifications (in 100 thousands), 0 Additional web hooks (in millions)",
+        "monthly": 82.55,
+        "upfront": 0.0
+      },
+      {
+        "category": "Security",
+        "service_type": "Key Vault",
+        "custom_name": "",
+        "region": "Sweden Central",
+        "description": "Vault: 20 operations, 0 advanced operations, 5 renewals, 0 protected keys, 0 advanced protected keys; Managed HSM Pools: 0 Standard B1 HSM Pool(s) x 730 Hours",
+        "monthly": 15.03,
+        "upfront": 0.0
+      },
+      {
+        "category": "Networking",
+        "service_type": "Bandwidth",
+        "custom_name": "",
+        "region": "",
+        "description": "Internet egress, 1024 GB outbound data transfer from West US routed via Microsoft Global Network",
+        "monthly": 80.39,
+        "upfront": 0.0
+      }
+    ],
+    "line_count": 4,
+    "created_at": "9/10/2026 9:21:50 AM UTC.",
+    "calculator_url": "https://azure.microsoft.com/pricing/calculator/",
+    "monthly_header": "Validation C54 \u2014 Pipeline validation \u2014 Azure Landing Zone (POE) Log in $0.00 / Estimated upfront cost $389.67 / Estimated monthly cost",
+    "reconciliation": {
+      "delta_pct": null,
+      "note": "one side missing - no comparison"
+    },
+    "applied": [
+      {
+        "service": "azure-bastion",
+        "note": "Azure Bastion (Standard) for admin access to the hub",
+        "verified_adapter": true,
+        "assumptions": [
+          "Bastion transfer controls unavailable in this region; calculator's 5 GB default retained. The requested 5 GB/month is within Microsoft's published free allowance."
+        ]
+      },
+      {
+        "service": "azure-monitor",
+        "note": "Azure Monitor / Log Analytics \u2014 ~30 GB/mo ingestion, 3-mo retention",
+        "verified_adapter": true
+      },
+      {
+        "service": "key-vault",
+        "note": "Azure Key Vault (Standard) \u2014 platform secrets / CMK",
+        "verified_adapter": true
+      },
+      {
+        "service": "bandwidth",
+        "note": "Internet egress \u2014 ~1024 GB/mo (from run-rate)",
+        "verified_adapter": true
+      }
+    ],
+    "skipped": [
+      {
+        "what": "workload compute + managed disks",
+        "why": "estimate_compute_cost output not supplied"
+      }
+    ],
+    "spec": {
+      "engagement": "validation-c54/pipeline-20260910091657",
+      "estimate_name": "Validation C54 \u2014 Pipeline validation \u2014 Azure Landing Zone (POE)",
+      "currency": "USD",
+      "licensing_program": "MCA",
+      "licensing_program_calc": "mca",
+      "region_default": "sweden-central",
+      "region_azure": "swedencentral",
+      "dr_region_default": null,
+      "generated_on": null,
+      "line_items": [
+        {
+          "service": "azure-bastion",
+          "region": "sweden-central",
+          "config": {
+            "tier": "standard",
+            "hours": 730,
+            "scale_units": 2,
+            "outbound_data_gb": 5
+          },
+          "note": "Azure Bastion (Standard) for admin access to the hub"
+        },
+        {
+          "service": "azure-monitor",
+          "region": "sweden-central",
+          "config": {
+            "log_data_ingestion_gb": 30.0,
+            "interactive_retention_months": 3,
+            "basic_logs_gb": 0
+          },
+          "note": "Azure Monitor / Log Analytics \u2014 ~30 GB/mo ingestion, 3-mo retention"
+        },
+        {
+          "service": "key-vault",
+          "region": "sweden-central",
+          "config": {
+            "vault_type": "standard",
+            "operations_10k": 20,
+            "certificate_renewals": 5
+          },
+          "note": "Azure Key Vault (Standard) \u2014 platform secrets / CMK"
+        },
+        {
+          "service": "bandwidth",
+          "region": "sweden-central",
+          "config": {
+            "internet_egress_gb": 1024.0,
+            "source_region": "sweden-central"
+          },
+          "note": "Internet egress \u2014 ~1024 GB/mo (from run-rate)"
+        }
+      ],
+      "skipped": [
+        {
+          "what": "workload compute + managed disks",
+          "why": "estimate_compute_cost output not supplied"
+        }
+      ],
+      "internal_monthly_estimate": 0.0,
+      "provenance": {
+        "design": true,
+        "compute": false,
+        "storage": false,
+        "run_rate": true,
+        "note": "quantities are Landfall figures; the Azure Pricing Calculator supplies all prices. internal_monthly_estimate is Landfall's own number, for the post-export reconciliation check."
+      }
+    },
+    "built_at": "2026-09-10T09:21:53+00:00",
+    "source": "azure-pricing-calculator",
+    "note": "Excel exported by the Azure Pricing Calculator - submit landing_zone.xlsx as the Proof of Estimate. All prices are the calculator's; quantities are Landfall figures (see spec + applied/skipped)."
+  },
+  "status": "PASS"
+}

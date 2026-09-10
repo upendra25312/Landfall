@@ -1,14 +1,14 @@
 {
-  "observed_at": "2026-09-10T09:08:31.045018+00:00",
+  "observed_at": "2026-09-10T09:14:54.696526+00:00",
   "selected_gates_passed": true,
   "gates": [
     {
       "gate": "unit",
       "status": "PASS",
       "exit_code": 0,
-      "seconds": 41.57,
+      "seconds": 41.92,
       "log": "unit.log",
-      "tests": 551,
+      "tests": 552,
       "skipped": [
         {
           "test": "test_chat_page_loads_clean[chromium]",
@@ -52,7 +52,7 @@
       "gate": "evals",
       "status": "PASS",
       "exit_code": 0,
-      "seconds": 2.13,
+      "seconds": 2.07,
       "log": "evals.log"
     },
     {
@@ -73,7 +73,7 @@
       "gate": "browser",
       "status": "PASS",
       "exit_code": 0,
-      "seconds": 10.58,
+      "seconds": 10.68,
       "log": "browser.log",
       "tests": 7,
       "skipped": []
@@ -82,7 +82,7 @@
       "gate": "recalc",
       "status": "PASS",
       "exit_code": 0,
-      "seconds": 2.29,
+      "seconds": 2.37,
       "log": "recalc.log",
       "tests": 6,
       "skipped": []

@@ -31,6 +31,11 @@ def test_exact_bastion_free_default_is_a_disclosed_assumption():
     assert notes and "5 GB" in notes[0]
 
 
+def test_explicit_zero_bastion_transfer_is_not_replaced_by_five():
+    fields = {name: value for name, value, _ in adapter_for("azure-bastion")["fields"]({"outbound_data_gb": 0})}
+    assert fields["standardOutboundDataTransfer"] == 0
+
+
 def test_wrong_region_or_gateway_control_cannot_produce_a_price():
     for missing in (["region=invalid"], ["computeUnits"]):
         with pytest.raises(ValueError):

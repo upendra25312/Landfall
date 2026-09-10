@@ -1,0 +1,39 @@
+{
+  "observed_at": "2026-09-10T09:22:31.586515+00:00",
+  "selected_gates_passed": true,
+  "gates": [
+    {
+      "gate": "smoke",
+      "status": "PASS",
+      "exit_code": 0,
+      "seconds": 24.64,
+      "log": "smoke.log"
+    },
+    {
+      "gate": "services",
+      "status": "PASS",
+      "exit_code": 0,
+      "seconds": 12.36,
+      "log": "services.log"
+    },
+    {
+      "gate": "security",
+      "status": "PASS",
+      "exit_code": 0,
+      "seconds": 34.41,
+      "log": "security.log"
+    },
+    {
+      "gate": "data-plane",
+      "status": "PASS",
+      "exit_code": 0,
+      "seconds": 9.09,
+      "log": "data-plane.log"
+    }
+  ],
+  "not_validated_by_this_run": [
+    "Authenticated production browser and all tool data-plane calls",
+    "Scratch-environment teardown/rehydrate, clean-machine CI and induced chaos",
+    "External penetration test and human usability/comprehension trials"
+  ]
+}

@@ -2,7 +2,7 @@
 
 ## Completed checks and fixes
 
-- Local regression: **542 passed, 9 skipped**; seven browser journeys and six real
+- Local regression: **543 passed, 9 skipped**; seven browser journeys and six real
   LibreOffice recalculation tests pass separately. [Results](local-final/RESULTS.json).
   Evals/backtests/broken dumps and scorecard drift remain green.
 - All four previously unverified calculator adapters were exercised against real
@@ -11,6 +11,7 @@
   [West Europe variants](calculator-variants/controls.json).
 - Application Gateway now uses V2 compute/connection/throughput capacity controls
   and separate transfer units, rather than obsolete V1 size/instance controls.
+  Explicit zero Bastion transfer is preserved instead of being replaced by 5 GB.
 - Incomplete calculator configurations now fail explicitly instead of exporting
   default prices. Missing regional selectors are distinguished from the global
   Bandwidth and DNS products, which have no regional selector.
@@ -33,10 +34,30 @@
 - Installed LibreOffice and GitHub CLI. GitHub access uses the normal Git
   credential helper in memory; credentials are not written to evidence/source.
 
-## Release checks in progress
+## Release checks
 
-The all-adapter smoke, remote GitHub workflow, web/calc deployment and live
-calculator-queue proof are being completed before closing this cycle.
+The complete **21/21 adapter smoke passes**: [results](external-final/RESULTS.json).
+Web and calculator deployments both exited 0:
+
+- Web: `ca-web-tmglwfatwcsa2--azd-1789031554`;
+  image `web-landfall:azd-deploy-1789031478`; 100% latest-revision traffic.
+- Calculator: `ca-calc-tmglwfatwcsa2--azd-1789031776`;
+  image `calc-landfall:azd-deploy-1789031709`.
+- [Final live checks](live-final/RESULTS.json): smoke 8/8, service readiness 10/10,
+  security and authenticated service operations pass. The first security run
+  experienced a connection timeout; [its failure is retained](live-first/security.json).
+- The Azure user's direct queue-send attempt was denied by existing RBAC
+  ([observation](queue/RESULTS.json)). No permissions were changed. The actual
+  application path succeeded: **Foundry → Function → queue → deployed calculator
+  worker → four-service Excel export**, using existing managed identities.
+  [Queue proof](agent-queue/RESULTS.json), [actual workbook](agent-queue/calculator.xlsx).
+  The second synthetic engagement, `validation-c54/pipeline-20260910091657`, is
+  retained with its single inventory row and calculator artifacts.
+
+Remote GitHub CI is **blocked by automatic approval review**: the attempted push
+to the public repository was rejected because it includes C52–C54 Azure/SQL and
+validation evidence without explicit public-publication approval. GitHub access
+itself works. [Concrete publication review](PUBLICATION-REVIEW.md).
 
 ## External prerequisites
 

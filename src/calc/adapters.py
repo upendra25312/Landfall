@@ -327,7 +327,7 @@ def _bastion_fields(c: dict) -> list[tuple]:
     odt = "basic" if t == "basic" else "standard"
     f += [
         (f"{odt}OutboundDataTransferFactor", "1", "select"),
-        (f"{odt}OutboundDataTransfer", _num(round(float(c.get("outbound_data_gb") or 5))), "number"),
+        (f"{odt}OutboundDataTransfer", _num(round(float(c.get("outbound_data_gb", 5)))), "number"),
     ]
     return f
 

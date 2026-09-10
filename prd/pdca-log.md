@@ -20,10 +20,47 @@ isolated environment; do not provision or induce faults in populated rg-landfall
 Independent security/human/architect/FinOps review must use actual reviewers;
 prepare executable review material and record unavailable prerequisites honestly.
 
-### Do / Check / Act
+### Do
 
-In progress. Retain evidence, fix reproduced defects, run regression, deploy only
-changed services, update tracker/PRDs/handoff, commit and merge `--no-ff`.
+Verified all four calculator tails against actual Excel/UI prices and non-default
+variants. Corrected Application Gateway V2 controls; preserved explicit zero
+Bastion transfer; incomplete controls now fail rather than export default prices.
+For missing Bastion regional transfer controls, only the exact published free
+5 GB default is accepted, with a disclosed assumption. Global Bandwidth/DNS are
+explicitly exempt from regional-selector requirements.
+
+Live Foundry/Function/SQL validation exposed the real OpenAPI response envelope
+being omitted from chat Excel tables. Added a failing regression, fixed extraction,
+and changed the browser fixture to the live envelope. Installed LibreOffice and
+GitHub CLI; added repeatable agent, browser, calculator and pipeline validations.
+
+### Check
+
+**543 pytest passed, 9 skipped; 7 browser journeys and 6 real LibreOffice tests
+passed separately.** Evals and all evidence drift gates pass. **21/21 verified
+calculator adapters pass** the live smoke. Real agent tool outputs verify
+250/default and 0/empty SQL counts. Synthetic blob/Event Grid ingestion loaded one
+row successfully. Direct user queue submission was RBAC-denied; the normal
+Foundry→Function→queue→calculator worker path produced a four-service workbook.
+Two synthetic engagements are retained and named in the report.
+
+`azd deploy web` and `azd deploy calc` exited 0. Ready revisions:
+web `ca-web-tmglwfatwcsa2--azd-1789031554`, calculator
+`ca-calc-tmglwfatwcsa2--azd-1789031776`. Post-deploy smoke 8/8, service readiness
+10/10, security and authenticated service probes pass. Initial transient failures
+are retained. No provisioning, schema changes, paid tier or access-policy changes.
+
+### Act
+
+[C54 report](../evidence/cycles/c54/REPORT.md), tracker, PRD and handoff updated.
+Commit and merge the tested cycle locally with `--no-ff`. Public GitHub push was
+**rejected by automatic approval review** because Azure/SQL validation evidence
+would be published without explicit approval. No workaround/push was performed;
+the concrete publication review is ready for the user. Remote CI is not passed.
+Interactive Entra/two-user browser checks, authorized scratch subscription/OIDC,
+and actual independent reviewers remain external prerequisites. The free Search
+slot is already occupied; budget excludes a paid replacement. Do not fabricate
+those results or mark the overall evidence bar complete.
 
 ---
 
