@@ -2,8 +2,10 @@ name: evals
 
 # PRD E7.5 — every push / PR runs the unit suite + the offline eval harness.
 # A regression in the deterministic engine, a golden-SQL mismatch, a scenario
-# drifting out of band, a tool that leaks on a bad request, or an un-sourced
-# number in the assembled deliverable fails the build. Changes to
+# drifting out of band, a tool that leaks on a bad request, an un-sourced number
+# in the assembled deliverable, or an adversarial-guardrail regression (SQL
+# injection / engagement-isolation / path-traversal / upload / output-guard /
+# agent instruction contract — E13.3) fails the build. Changes to
 # scripts/create_agent.py (the agent definition) are gated by the same run.
 
 on:
@@ -39,7 +41,7 @@ jobs:
           RECALC: "1"
         run: pytest tests/test_xlsx_recalc.py -q
 
-      - name: Eval harness (golden SQL + scenarios + fault injection)
+      - name: Eval harness (golden SQL + scenarios + fault injection + adversarial)
         run: python evals/runner.py            # writes evals/SCORECARD.md, non-zero on failure
 
       - name: Cost-method back-test (E10.1 — 3 methods within ±15% on 3 estates)

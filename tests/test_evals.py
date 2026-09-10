@@ -38,6 +38,20 @@ def test_fault_injection_every_tool_fails_cleanly():
     assert f["passed"] == f["total"], f"tools that leaked on a bad request: {failed}"
 
 
+def test_adversarial_guardrails_all_hold():
+    a = runner.run_adversarial(verbose=False)
+    assert a["total"] >= 60, "adversarial suite shrank unexpectedly (E13.3)"
+    failed = [(r["category"], r["case"], r["detail"]) for r in a["results"] if not r["ok"]]
+    assert a["passed"] == a["total"], f"guardrail regressions: {failed}"
+
+
+def test_adversarial_covers_every_category():
+    a = runner.run_adversarial(verbose=False)
+    cats = {r["category"] for r in a["results"]}
+    assert {"sql-guard", "engagement-isolation", "path-traversal",
+            "upload-content", "output-guard", "system-prompt"} <= cats
+
+
 def test_output_guard_flags_an_unsourced_number():
     from output_guard import check_message
     sourced = [119181, 833.7, 650286]
@@ -55,5 +69,6 @@ def test_output_guard_passes_a_real_package_render():
 
 def test_scorecard_renders():
     card = runner.scorecard(runner.run_golden(verbose=False), runner.run_scenarios(verbose=False),
-                            runner.run_faults(verbose=False))
+                            runner.run_faults(verbose=False), runner.run_adversarial(verbose=False))
     assert "Landfall eval scorecard" in card and "Overall" in card and "Fault injection" in card
+    assert "Adversarial guardrails" in card

@@ -9,11 +9,16 @@ reconciliation −73% → +27.9% (calc list vs internal RI/AHB); **C19** done & 
 (versioned publish + engagement-aware dashboard + ask-&-export to Excel); **C22** done
 (live-model workbook + LibreOffice recalc CI gate; E11.9 deck-container deferred); C23 + C27–C28 done ·
 **Epic E11 complete + live. Epic E12 7/12 (C34 + C41 + C42 + C43 live).** **Epic E13
-opened 2026-09-09** (§4.14 review; §4.15 cost model + ephemeral operation; §7 decision 16
-= $40–50/mo budget, `azd up`/`azd down --purge`, `free` tier only). C43 shipped E13.2
-(guided pipeline state). **Next: E13.4 (cost alert, default ON) + E13.11 (safe teardown /
-rehydrate).**) ·
-**Raised:** 2026-09-08 · **Last updated:** 2026-09-09 (§4.15 cost model / decision 16) · **Owner panel:** see below · **Method:** PDCA
+opened 2026-09-09** (§4.14 review; §4.15 cost model; §7 decision 16 = $40–50/mo budget,
+`azd up`/`azd down --purge`, `free` tier only). C43 → E13.2 (guided pipeline state);
+C44 → E13.4 (cost guardrail); C45 → red-CI fix. **Master-prompt-v2 reconciliation
+(§4.16, decision 17, 2026-09-10)** — E14 asks map to E13 (+ new E13.13/E13.14/E13.15/E13.16);
+**Epic E15 opened** (§5c — Learn MCP / MEG / resource-demand / readiness UX, roadmap).
+**Playwright browser-automation validation is now a per-cycle gate (§4.17, decision 18).**
+C47 → E13.3 adversarial eval suite (`evals/adversarial.py`, 74 cases, CI-gated) +
+E13.17 `landfall-judge` cycle-gate subagent; **Security 3.75 → 4.0, overall 4.03 → 4.06.**
+**Next: E13.11 (safe teardown / rehydrate) or E13.15 (Playwright harness).**) ·
+**Raised:** 2026-09-08 · **Last updated:** 2026-09-10 (C47 — adversarial evals + judge agent) · **Owner panel:** see below · **Method:** PDCA
 **Rolls into:** the "Landfall to 5/5" PRD as **Epic E11**. Supersedes the
 "one `azd` deployment per engagement" assumption in
 [`audits/2026-09-07-production-readiness-review.md`](../audits/2026-09-07-production-readiness-review.md)
@@ -924,6 +929,126 @@ mid-session `azd provision`.
 
 ---
 
+### 4.16 Master-implementation-prompt reconciliation (2026-09-10)
+
+The sponsor supplied a full strategic brief —
+`prd/landfall_master_implementation_prompt_revised_v2.md` (an external re-statement
+of the whole product direction, written as a from-scratch prompt; `_v2` = the first
+file **+ §5A "External Reference Sources"**, nothing else changed). It proposes new
+epics **E14** and **E15A–E15D**. This section reconciles it against the live
+repository so we do **not** fork the PRD or re-number existing work — the brief
+itself says *"If the repository uses different paths, preserve the existing
+repository structure. Do not create duplicate PRD/tracker files."*
+
+**Verdict: ~60 % of its P0/P1 asks are already done or already planned as E13.**
+Adopt the *intent*, keep *our* numbering.
+
+| Brief item | Disposition in this repo |
+|---|---|
+| **E14.1** safe SQL migrations (no `DROP`/`TRUNCATE`, checksum, guard) | = **E13.1** (planned). Brief's Flyway-style `db/migrations/V00x__*.sql` + `migrate.py` is heavier than 6 tables need — keep E13.1's idempotent guarded `schema.sql` + `apply_sql.py` `DROP`-refusal. |
+| **E14.2** `ca-calc` always-on → event-driven Container Apps **Job** (`minExecutions 0`) | **NEW → E13.13.** Genuinely additive. Dollar saving is ~nil (ACA free grant absorbs `ca-calc` idle — see §4.15) but it clears the §21 DoD ("no always-on 2-vCPU/4-GiB worker") and is the best **Container Apps Jobs** learning exercise in the codebase. Ships as dormant param-gated Bicep. |
+| **E14.3** auth fails closed (`WEB_AUTH_CLIENT_ID` missing → `azd up` fails, explicit lab override) | Folded into **E13.11** — a fresh `azd up` must already be made to reproduce web Easy Auth (param-gated off today); add the fail-closed default + lab override there. |
+| **E14.4 / E14.5** safe `azd down` (predown export-or-stop) + restore | = **E13.11** (planned). `scripts/export_all.py` already does the export half. |
+| **E14.6** ADLS = system of record, SQL = projection | Already true and documented (§4.2, §4.5a, decision 14). Add one explicit line to `docs/`. Low effort → fold into **E13.12**. |
+| **E14.7** deterministic `run_assessment(engagement)` orchestrator | **NEW → E13.14.** Today the agent chains tool calls per turn; there is no single deterministic pipeline object. A Python orchestrator (validate→ingest→DQ→rightsize→cost→6R→waves→schedule→effort→LZ→assemble→publish) with the LLM only choosing *when* to invoke it is a real Correctness/Robustness/determinism win and makes §13's "same input = same estimate" trivial to assert. |
+| **E14.8** centralized agent runtime / FinOps limits (`MAX_TOOL_CALLS_PER_TURN`, …) | Expands **E13.5** (agent-run ceiling) — widen its scope note to "centralize all `MAX_*` limits incl. `MAX_LEARN_MCP_CALLS_PER_TURN`", don't add a duplicate item. |
+| **E14.9** configurable model + model-comparison eval | Part of **E13.3** (already "run `evals/runner.py` vs a current-gen model, record the delta"). |
+| **E14.10** adversarial eval suite (cross-engagement, prompt injection, SQL escape, path traversal, malicious upload, **malicious MCP text**) fails CI | = **E13.3**'s `evals/adversarial.py` — **scope confirmed + widened** to include MCP-injection and a customer-data-egress check (see §5c E15.1). This is the **only self-contained Security lever left** (Security 3.75; external pen test needs a person) → **next cycle by leverage.** |
+| **E14.11 / E14.12** deployment + tenant profiles (lab / customer / enterprise) | Mostly documentation; `DEPLOYMENT_TIER` already gates lab vs prod. Private endpoints **descoped permanently** (decision — [[no-private-endpoints-cost]], §4.14 note) — the brief agrees (§22). Fold the lab→enterprise matrix into **E13.12**. |
+| **E14.13** split `src/web/app.py` into routers/services/repositories | = **E13.6** (planned). Brief's full `services/`+`repositories/` layering is more than a 1060-line file needs; E13.6's `APIRouter` split is the right first step. |
+| **E14.14** `ruff` + `pyright`/`mypy` in CI | = **E13.8** (planned). Earns its keep after the C45 red-CI incident. |
+| **E14.15 / E15D.2** assessment-first UX + readiness rows | = **E13.2, shipped C43** (guided pipeline state). The fuller "10 numbered areas" IA is **E15.4**. |
+| **E14.16** direct-to-blob upload SAS | = **E12.10** → carried in **E13.9**. |
+| **E14.17** trust surface ("signed in as", visibility, data-handling link) | = **E12.12** → carried in **E13.9**. |
+| **E14.18** Azure budget 50/80/100 % | = **E13.4, shipped C44** — but the param is **`MONTHLY_BUDGET` in INR**, *not* `MONTHLY_BUDGET_USD` (the sub bills INR; a `50` on an INR sub ≈ $0.60 and would fire immediately). Brief's name is not adopted. |
+| **E14.19** `ENABLE_RAG=false` default | AI Search is already the **free** SKU and off the critical path; add the explicit env flag → small item in **E13.9** or E15.1. |
+| **E14.20** diagram modes (basic / rendered / mcp) | `basic` (`.drawio`) + `rendered` (`ca-drawio` PNG) already exist (C27/C27b). `mcp` mode is experimental — E15-era, not now. |
+| **E14.21** keep `ca-deckgen` deferred | Already decision 4. No action. |
+| **E15A** Microsoft Learn MCP + governance | **NEW epic → E15.1.** Concretely buildable now — §5A pins the real endpoint `https://learn.microsoft.com/api/mcp` (public, no auth). See §5c. |
+| **E15B** MEG (`github.com/Azure/migration`) pin + normalize + readiness model | **NEW epic → E15.2.** **Licensing spike first** (read that repo's LICENSE + the workbook's own notice) before any normalization work. |
+| **E15C** resource-demand model (demand vs capacity, calendars, scenarios, 15-sheet workbook, heatmap, skill gaps) | **NEW epic → E15.3.** A whole product line — months of work; must be phased, *after* the E13 architecture block. Lock the **principles** now (§5c): never fabricate availability / rates / named people; demand is deterministic; the LLM never allocates FTE. |
+| **E15D** execution-readiness dashboard + 21-doc deliverable pack | **NEW epic → E15.4.** Product expansion, last in sequence. |
+
+**On §5A "External Reference Sources" (the only `_v2` delta):**
+
+- **Microsoft Learn MCP** `learn.microsoft.com/api/mcp` — this is Microsoft's real
+  public MCP server (streamable HTTP, no auth, free). Makes **E15.1** actionable.
+  Adopt the authority-layering rule verbatim (it matches Landfall's existing
+  3-layer model; MEG slots in as a 4th "methodology" band).
+- **MEG** `github.com/Azure/migration` — adopt the 8-step pin discipline
+  (commit SHA + artifact SHA-256 + `retrieved_at` + `normalized_schema_version`),
+  but **step 0 is a licensing spike**, output = a go/no-go note, not code.
+- **AnalysisTabs + Smartsheet template URLs** — **not carried into any committed
+  doc.** Both are proprietary, commercially-sold templates. Their guardrails in the
+  brief ("design reference only, not a runtime dep, don't redistribute") are right,
+  but I'd go further: derive Landfall's resource workbook from the *domain* (demand
+  vs capacity vs utilization vs heatmap — industry-generic, unprotectable), not
+  from their sheet layout. The two URLs stay in the sponsor's private brief only.
+- **MCP-injection + data-egress evals land in the same cycle as E13.3**, not
+  deferred to E15.1 — the moment a remote MCP is wired, the untrusted-input surface
+  exists.
+
+**What does *not* change:** the E14/E15A–D numbering is not adopted; `MONTHLY_BUDGET`
+stays INR; the estimation maths, eval thresholds and E8.5 private-endpoint descope
+are all unchanged.
+
+---
+
+### 4.17 Browser-automation validation protocol (Playwright) — added 2026-09-10
+
+**Sponsor instruction (2026-09-10):** *"include steps/instructions to test and
+validate every change using Playwright browser automation and based on these tests
+do the changes."*
+
+From here on, **every change that touches a user-visible surface** — a route, a
+page, `chat.html` / `dashboard.html` / `questionnaire.html`, `static/chat.{css,js}`,
+the CSP/headers middleware, a prompt card, the pipeline strip, an upload flow, a
+readiness view — is validated end-to-end in a real browser with the **Playwright
+MCP** (`mcp__playwright__browser_*`) before the cycle's Act step, and the test
+observations drive the implementation (test-first where practical).
+
+**This is in addition to, not instead of,** `pytest` (FastAPI `TestClient`), the
+eval harness, and `evidence/pentest/sec_probe.py`. `TestClient` proves the response
+*body*; Playwright proves the page actually *renders and works* under a real CSP,
+with real JS execution, real fetch calls, and real layout.
+
+**Per-change loop:**
+
+1. **Target.** Prefer the local app — `uvicorn src.web.app:app --port 8001` with
+   `LANDFALL_FAKE_*` / offline stubs (same fixtures the web tests use) so no Azure
+   or Easy Auth is in the way. The live site sits behind Easy Auth (401 before the
+   app) so it is a *smoke* target only, not the dev loop.
+2. **Script the check.** A committed spec under `tests/browser/` (one `.md` or
+   `.py` runner per surface) listing the exact steps: `browser_navigate` →
+   `browser_snapshot` / `browser_take_screenshot` → `browser_click` /
+   `browser_type` / `browser_file_upload` → assert on `browser_snapshot` text +
+   `browser_console_messages` (must be **zero** errors — a CSP violation shows up
+   here) + `browser_network_requests` (the expected `/api/...` calls fire, correct
+   status).
+3. **Run red → change → run green.** Capture the failing observation first, make
+   the change, re-run, attach the before/after `browser_take_screenshot` to the
+   PDCA Check step.
+4. **Regression set.** The core journeys stay as a re-runnable list in
+   `tests/browser/README.md`: (a) `/` loads, strict CSP, 0 console errors, intro
+   leads; (b) create engagement → it appears in the `<select>`; (c) upload a
+   sample inventory → manifest row flips to ✓; (d) Start analysis → DQ card + pipeline
+   strip advance; (e) ask a prompt card → answer renders as Markdown, "Download as
+   Excel" appears on a tabular answer; (f) pre-analysis chat → non-blocking hint,
+   not a block.
+
+**Acceptance-criteria wording.** Every UI-affecting E13/E15 item's "done when…"
+now ends with: *"…validated via `tests/browser/<surface>` (Playwright): page
+renders, 0 console errors, expected network calls fire; before/after screenshots in
+the PDCA log."*
+
+**CI note.** Playwright MCP runs in *this* environment interactively; it is not
+wired into `evals.yml` yet. A headless `@playwright/test` job over `tests/browser/`
+against an ephemeral `azd up` is **E13.16** (below) — until then the browser
+validation is a mandatory manual gate in each cycle's Check step, evidenced by
+screenshots.
+
+---
+
 ## 5. Work breakdown — Epic E11: Engagement Workspaces
 
 | # | Item | P | Acceptance |
@@ -1050,29 +1175,80 @@ the E9.2 clean-machine CI still run on the raw FQDN. Ingress stays
 ## 5b. Work breakdown — Epic E13: Provisioning safety, guardrails & sustain
 
 From the §4.14 review, re-weighted by the §4.15 cost model + ephemeral-operation
-constraint (2026-09-09). **E13.2 done (C43).** Under `azd up` / `azd down --purge`
-the top items are now the **FinOps + ephemeral guardrails** — E13.4 (cost alert,
-default ON) and E13.11 (safe teardown / rehydrate) — since a missed `azd down` or a
-stray `--tier prod` is what actually threatens the $40–50/mo budget. E13.1 stays
-worth doing but is no longer a keystone (the DB is recreated every session anyway).
+constraint (2026-09-09), then extended 2026-09-10 with **E13.13–E13.16** from the
+master-prompt-v2 reconciliation (§4.16). **E13.2 + E13.4 done (C43, C44).** Under
+`azd up` / `azd down --purge` the top items are the **FinOps + ephemeral
+guardrails** — E13.11 (safe teardown / rehydrate) — plus **E13.3** (adversarial
+eval), which §4.16 confirms is the only self-contained Security lever left and is
+**next by leverage**. E13.1 stays worth doing but is no longer a keystone (the DB is
+recreated every session anyway).
+
+**Every UI-affecting item below is also gated on the §4.17 Playwright
+browser-automation check** — its "done when…" implicitly ends with *"validated via
+`tests/browser/<surface>`: renders, 0 console errors, expected network calls fire;
+before/after screenshots in the PDCA log."*
 
 | # | Item | P | Status | Acceptance (done when…) |
 |---|---|---|---|---|
 | **E13.1** | **Idempotent `schema.sql` → safe `azd provision`** — rewrite every object as `CREATE … IF NOT EXISTS` / guarded `ALTER TABLE … ADD`; the RLS predicate + `SECURITY POLICY` re-asserted, never dropped-and-recreated; `scripts/apply_sql.py` gains a hard guard that refuses any statement matching `DROP TABLE`/`TRUNCATE`. Static + structural test. **No deploy** — the change ships dormant; the sponsor runs the first safe `azd provision` (which also lands the C39 workbook + failure-rate alert and the C42 web-tier signals). | P0 | backlog | `schema.sql` re-applied against a populated DB is a no-op (0 rows lost); `apply_sql.py` raises on a `DROP TABLE`; `tests/test_schema_idempotent.py` proves no destructive DDL + every object guarded; `DEPLOY.md` documents "`azd provision` is now safe". |
 | **E13.2** | **Guided pipeline state** (= E12.8, pulled forward) — `GET /api/engagements/<c>/<p>/pipeline` aggregates Inventory / Analysis / Estimate / Calculator-POE state from the existing blob + report reads; a compact status strip on the chat page (done ✓ / next / to-do chips); a one-time, **non-blocking** inline hint when the chat is used before analysis has run. All JS in `chat.js` (strict CSP holds). | P1 | backlog | The strip shows the four steps with the right state for the active engagement and refreshes after Start analysis + after a publish; asking for an estimate on an un-analysed engagement gets a hint, not a block; `azd deploy web`. |
-| **E13.3** | **Model review + adversarial-prompt eval** — run `evals/runner.py` against a current-generation model (Foundry agent version bump), record the delta; add `evals/adversarial.py` (≈10 prompt-injection / coerced-cross-engagement / tool-abuse cases) to the harness as a **gate** — a jailbreak that reaches another engagement's rows or an out-of-scope tool call fails CI. | P1 | backlog | The scorecard records the model decision with eval numbers; `evals/runner.py` runs the adversarial set; a regression that weakens injection resistance fails CI. |
+| **E13.3** | **Model review + adversarial-prompt eval** (= brief E14.10 / E15A.5) — run `evals/runner.py` against a current-generation model (Foundry agent version bump), record the delta; add `evals/adversarial.py` to the harness as a **gate** — any case producing cross-engagement disclosure, an unauthorized tool call, destructive SQL, arbitrary file access or an engagement switch fails CI. | **P1** | **adversarial suite done (C47); model review deferred** | _Done (C47) — `evals/adversarial.py`: **74 cases / 6 categories**, wired into `evals/runner.py` + gated + in the SCORECARD. `sql-guard` (18 hostile SELECTs rejected + 3 legit still pass), `engagement-isolation` (session context bound **read-only** + caller-scoped, malformed ids refused pre-DB, `query_inventory` binds RLS **before** model SQL runs, `schema.sql` policy is `STATE = ON`), `path-traversal` (13 malformed ids + crafted blob subjects + derived-prefix cleanliness), `upload-content` (macro-Office / exe / script / wrong-magic / binary-as-csv rejected, `safe_name` strips paths), `output-guard` (fabricated cost / FTE / "Microsoft recommends $X" flagged — added `FTE` to the guard), `system-prompt` (the 5 no-cross-engagement / no-invented-number / reject-without-engagement rules present). `tests/test_evals.py` +2. **Pending (listed in the SCORECARD, not gated — need E15.1 + a live agent):** `mcp-injection`, `data-egress`, `live-jailbreak`. **Security 3.75 → 4.0, overall 4.03 → 4.06.** **The model-review half** (bump the Foundry agent to a current-gen model, re-run evals, record the delta) **needs a live deploy + token cost → deferred to a sponsor-run cycle.**_ |
 | **E13.4** | **Cost guardrail on Landfall's own spend** (see §4.15) — a `Microsoft.Consumption/budgets` at `monthlyBudget` (**default 50, ON**) with 50 % / 80 % actual + 100 % forecast alerts to `alertEmail` **and always the RG Owner**; a Log Analytics `dailyQuotaGb` cap (0.5, `prod` uncaps); `ca-calc` `minReplicas` as a `calcMinReplicas` knob (default 1 — KEDA MI-auth scale-up still unproven from C25b, so 0 is documented-but-not-default); `scripts/spend.py` month-to-date check. All in the **default `azd up`** path. | **P1** | **done (C44)** | _Done — `infra/{main,resources}.bicep` + `main.parameters.json` (`MONTHLY_BUDGET=50`, `LOG_ANALYTICS_DAILY_CAP_GB=0.5`, `CALC_MIN_REPLICAS=1`); `costBudget` gated on `monthlyBudget > 0`; `scripts/spend.py` (MTD actual vs budget + burn projection + top cost by resource type); `tests/test_cost_guardrail.py` (8, incl. `az bicep build`); `DEPLOY.md` "Cost guardrails". **Ships on the next `azd up`** — no `azd provision` run (drops SQL). `ca-calc → 0` left as a documented `CALC_MIN_REPLICAS` knob; under ephemeral operation it barely matters._ |
-| **E13.5** | **Agent-run ceiling** — a wall-clock + tool-call cap on a chat turn (the chat handler already times out the Responses call at 180 s for analyze; apply a turn budget to `/api/chat` too), and a documented `previous_response_id`-chain cap (archive → new thread after N turns or M tokens, surfaced as "start a fresh thread for a clean estimate"). | P2 | backlog | A pathological turn is cut with a clear message, not an open-ended spend; the chain length is bounded + the behaviour documented. |
+| **E13.5** | **Agent-run ceiling + centralized limits** (= brief E14.8) — one config surface for `MAX_TOOL_CALLS_PER_TURN` / `MAX_AGENT_RUNTIME_SECONDS` / `MAX_TOOL_RETRIES` / `MAX_CONVERSATION_TURNS` / `MAX_OUTPUT_TOKENS` (+ `MAX_LEARN_MCP_CALLS_PER_TURN` once E15.1 lands); a wall-clock + tool-call cap on a chat turn (the chat handler already times out the Responses call at 180 s for analyze; apply a turn budget to `/api/chat` too); a documented `previous_response_id`-chain cap (archive → new thread after N turns or M tokens, surfaced as "start a fresh thread for a clean estimate"); partial deterministic results preserved on a cut. | P2 | backlog | A pathological turn is cut with a clear message, not an open-ended spend; the chain length is bounded + documented; the limits are one config module. |
 | **E13.6** | **Split `src/web/app.py`** into `APIRouter` modules (`routes/chat.py`, `routes/engagements.py`, `routes/dashboard.py`, `routes/questionnaire.py`), `app.py` wires them + the middleware. No behaviour change; the existing web tests are the safety net. | P2 | backlog | `app.py` < 150 lines; every route module < 300; full web-test suite green; `azd deploy web`. |
 | **E13.7** | **`dashboard.html` + `questionnaire.html` → external assets + strict CSP** — the E12.7 treatment for the other two pages; drop `_CSP_RELAXED` once nothing needs it. | P2 | backlog | All three pages serve the strict CSP; `_security_headers` has one policy; dashboard/questionnaire tests green. |
 | **E13.8** | **Lint + type gate in CI** — `ruff check` + `mypy`/`pyright` over `src/` in `evals.yml` (or a new `quality.yml`); fix or baseline the findings. | P3 | backlog | CI fails on a new lint/type error; the baseline is committed. |
 | **E13.9** | **Epic E12 tail** — E12.9 (tool-call milestones in the working indicator, using C42's per-tool `ms`; a "busy, retrying" message on a model 429), E12.10 (direct-to-blob upload via a ≤15-min engagement-prefixed user-delegation SAS), E12.12 (trust surface: "signed in as", visibility, `data-handling-statement.md` link). | P2 | backlog | Each sub-item's E12 acceptance met. |
 | **E13.10** | **DR / single-region — record the decision** (§7). Landfall runs in one region and is tear-down-friendly by design; the estimates it produces model DR, the tool itself does not. Write it down as an explicit sponsor decision with the rationale + the `--tier prod` note that `prod` still does not add DR. | P3 | decision | §7 has a numbered DR decision; no code. |
 | **E13.11** | **Ephemeral-deploy hardening** (§4.15) — `scripts/teardown.sh` (`export_all.py --sql` → `azd down --purge --no-prompt` → assert the RG is gone) + `scripts/rehydrate.sh` (`azd up` → re-run `create_agent.py` → optional engagement import); a cold-start timing check folded into the E9.2 smoke; `DEPLOY.md` "Deploy for a session / tear down after" runbook. | P1 | backlog | One command tears the stack down safely with the engagements exported first; one command brings it back; the runbook + timings are in `DEPLOY.md`; a missed export is impossible (teardown refuses if `export_all` fails). |
-| **E13.12** | **`docs/learning-path.md`** — map the sponsor's three learning goals to the repo: **Azure AI Foundry** (`src/api` OpenAPI tools, `scripts/create_agent.py`, the prompt-agent + Responses API pattern in `src/web/app.py::chat`, `evals/`), **Azure Container Apps** (`infra/resources.bicep` the 3 apps + managed env, `minReplicas: 0`, the `ca-calc` queue-decouple in §4.6 / decision 10, Easy Auth, managed certs in §5a), **enterprise-scale design** (RLS multi-tenancy §7.1, deterministic-tools-under-an-agent §3.1, `evidence/` scorecard + PDCA, param-gated tiers E9.3). Link it from `docs/index.html`. | P2 | backlog | `docs/learning-path.md` exists, is linked, and points at real files/sections for each goal; `tests/test_docs.py` checks the links resolve. |
+| **E13.12** | **`docs/learning-path.md`** — map the sponsor's three learning goals to the repo: **Azure AI Foundry** (`src/api` OpenAPI tools, `scripts/create_agent.py`, the prompt-agent + Responses API pattern in `src/web/app.py::chat`, `evals/`), **Azure Container Apps** (`infra/resources.bicep` the 3 apps + managed env, `minReplicas: 0`, the `ca-calc` queue-decouple in §4.6 / decision 10, Easy Auth, managed certs in §5a), **enterprise-scale design** (RLS multi-tenancy §7.1, deterministic-tools-under-an-agent §3.1, `evidence/` scorecard + PDCA, param-gated tiers E9.3). Also folds in the brief's E14.6 (ADLS = system of record, SQL = projection) one-liner + the §18 lab→customer→enterprise matrix. Link it from `docs/index.html`. | P2 | backlog | `docs/learning-path.md` exists, is linked, and points at real files/sections for each goal; `tests/test_docs.py` checks the links resolve. |
+| **E13.13** | **`ca-calc` always-on → event-driven Container Apps Job** (= brief E14.2) — replace the `minReplicas: 1` queue-poller Container App with an ACA **Job** (`triggerType: Event`, KEDA `azure-queue` scale rule via managed identity, `minExecutions: 0` / `maxExecutions: 1`, `parallelism: 1`), smallest proven Chromium CPU/RAM (benchmark before raising), MI for queue + blob (no account keys — storage has `allowSharedKeyAccess: false`), idempotent message handling, `status: ready\|failed` never fabricated. Ships as **dormant param-gated Bicep** (`useCalcJob=false`) — not provisioned; the sponsor flips it on a safe `azd provision` after E13.1. Keeps the existing container path until the Job is proven live. | P1 | backlog | A queued POE spec starts a Job execution from 0, drives the real calculator, writes `landing_zone.{xlsx,json,png}`, exits; the always-on 2-vCPU/4-GiB replica is gone; `tests/test_calc_job.py` (bicep structure + `az bicep build`); §21 DoD "no always-on worker" met; `docs/learning-path.md` gains the Jobs section. |
+| **E13.14** | **Deterministic assessment orchestrator** (= brief E14.7) — one Python operation `run_assessment(engagement)` in `src/api/` that runs validate → ingest → DQ → rightsize → compute/storage cost → run-rate → 6R → waves → schedule → effort → landing-zone → diagram → assemble → publish as a fixed sequence (POE stays async), returning a structured run record (`run_id`, per-stage status/duration, partial results on failure). The agent calls this one tool for "full assessment"; individual tools stay for drill-down. The LLM never drives the sequence. | P1 | backlog | `run_assessment` produces byte-identical `latest.json` for identical input across runs (asserted in `evals/`); a mid-pipeline failure returns the completed stages + an explicit failed stage, never a confident partial estimate; the agent's "Full estimate" card routes through it; `tests/test_orchestrator.py`. |
+| **E13.15** | **Playwright browser-automation harness** (§4.17) — `tests/browser/` with a committed spec per user-visible surface (`/`, engagements, upload, analysis, pipeline strip, prompt cards, questionnaire) run via the Playwright MCP against a local `uvicorn` app with offline stubs; `tests/browser/README.md` lists the 6 core regression journeys. Every UI cycle from C46 on runs the relevant spec red→green with before/after screenshots in the PDCA log. | P1 | backlog | Each surface has a spec; the 6 core journeys pass on a clean local run with 0 console errors + expected network calls; the protocol is referenced from every UI item's acceptance. |
+| **E13.16** | **Headless Playwright in CI** — a `@playwright/test` job over `tests/browser/` against an ephemeral `azd up` (OIDC), gated to non-doc changes; until it lands, §4.17's browser check is a manual gate evidenced by screenshots. Depends on E13.11 (a fresh `azd up` must reproduce the full stack) + E9.2 CI OIDC secrets. | P3 | backlog | A UI regression fails the CI browser job; the job skips on doc-only changes; runtime is bounded (one ephemeral deploy). |
+| **E13.17** | **`landfall-judge` cycle-gate subagent** — a Claude Code subagent (`.claude/agents/landfall-judge.md`, **not** a Foundry agent — it needs `pytest` / `git` / `az` / the filesystem, which a Foundry runtime agent has none of) that runs the end-of-cycle gates (Gate A: tests + evals + adversarial + scorecard-drift + `py311` + Playwright specs; Gate B: diff → correct `azd deploy <service>`, **never `azd provision`**, `create_agent.py` re-run when the tool contract changed, no stray always-on resource, `prod` untouched; Gate C: tracker + pdca-log + memory updated, branch not `main`, commit trailer, `--no-ff`, LF phantom-diff) and returns a GO / NO-GO verdict with a deploy plan. Read-only against code + live Azure. | **P1** | **done (C47)** | _Done — `.claude/agents/landfall-judge.md`. Invoke at the end of every cycle before commit/merge/deploy._ |
 
 **Not in scope here:** the estimation maths, the eval-harness *thresholds*, the E11.21
 sponsor-gated rail.
+
+---
+
+## 5c. Work breakdown — Epic E15: Microsoft-grounded knowledge & resource-demand planning
+
+**Roadmap epic, not started.** From the master-prompt-v2 reconciliation (§4.16) —
+the parts of the brief that are genuine *product* expansion, sequenced **after** the
+E13 architecture block per the brief's own Priority Rule (§6: "Complete E14 P0/P1
+architecture work before expanding product features"). Everything here is
+net-new; nothing is provisioned yet.
+
+**Principles locked now (enforced by evals from E13.3 onward, even before the
+features exist):**
+
+- **Customer facts** come only from engagement evidence; **customer numbers**
+  (cost / FTE / duration / sizing / wave counts / rates) come only from
+  deterministic Landfall engines. Microsoft Learn / MEG are **never** a numerical
+  authority — a customer-specific figure sourced only from them fails the output
+  guard.
+- **External MCP / reference content is untrusted data, never instructions.**
+- **Never fabricate** resource availability, consulting rates, or named people.
+  Absent capacity → `Available = NOT PROVIDED`, `Gap = UNKNOWN`. The LLM never
+  allocates FTE.
+- A "Microsoft recommends…" claim with **no source provenance** is not made.
+- Live Microsoft guidance that differs from a pinned assessment baseline is
+  **flagged**, never silently applied.
+
+| # | Item | P | Status | Acceptance (done when…) |
+|---|---|---|---|---|
+| **E15.1** | **Microsoft Learn MCP integration + governance** (= brief E15A). Register `https://learn.microsoft.com/api/mcp` as a remote MCP tool on the Foundry agent (tool *discovery* at setup + an allow-list, not hardcoded schemas); `MAX_LEARN_SEARCHES_PER_TURN` / `MAX_LEARN_FETCHES_PER_TURN` (default 2 / 1) in the E13.5 config; search-before-fetch; graceful degradation ("Microsoft guidance unavailable" — never blocks an assessment); provenance capture (`provider / title / url / retrieved_at / purpose`) on every "Microsoft recommends…" claim; UX authority labels (CUSTOMER DATA / LANDFALL CALCULATION / MICROSOFT GUIDANCE / LANDFALL RECOMMENDATION); `docs/architecture/ms-learn-mcp.md`. **Adversarial + data-egress evals ship in the same cycle** (fold into E13.3's `adversarial.py`): malicious MCP text must not switch engagement / call a tool / run SQL; customer names + inventory rows must never appear in an MCP request payload. | P1 | backlog | The agent answers a Microsoft-guidance question with a cited source; a customer-numbers question is answered from the deterministic engine, not the MCP; the MCP down → assessment still completes; the two adversarial evals gate CI; per-turn MCP call caps enforced. |
+| **E15.2** | **MEG (Azure Migration Execution Guide) pin + normalize + readiness model** (= brief E15B). **Step 0: a licensing spike** — read `github.com/Azure/migration` LICENSE + the workbook's own notice; output a go/no-go note (no code). If go: pin `source_commit_sha` + `artifact_sha256` + `retrieved_at`; a controlled offline update process (never fetch "latest" at assessment time); normalize only the concepts Landfall needs into `references/meg/*.json` + regression tests; `THIRD_PARTY_NOTICES.md`; the READY / PARTIAL / GAP / NOT-ASSESSED / N-A readiness model (no arbitrary maturity %); a risk register with classification (Observed / Derived / Generic MEG / Architect-added) where probability/impact come from config not the LLM; `docs/architecture/migration-execution-guide.md`. | P2 | backlog | The licensing note exists and says go/no-go; if go, the normalized reference is pinned by hash + regression-tested; a readiness view links every status to evidence or an explicit missing input; the risk register never shows an LLM-guessed probability. |
+| **E15.3** | **Deterministic resource-demand model** (= brief E15C). Evolve the effort engine into demand-vs-capacity: `required_fte` by role × month/wave/phase derived deterministically from scope + 6R mix + wave schedule + counts + productivity assumptions; `available_fte` **only** from user input; calendars (working days, holidays, blackout, change-freeze) with relative weeks when no start date; delivery model/location; Conservative / Expected / Accelerated scenarios (all deltas from explicit assumptions); resource-constraint *flag* (not auto-rewrite); an original Landfall openpyxl workbook (Exec summary, assumptions, role catalogue, demand, monthly FTE, capacity heatmap, wave loading, role×phase, cost, skill gaps, calc appendix, demand-vs-capacity, assumption register) — **designed from the domain, not from any third-party template**; `docs/architecture/resource-planning-model.md` with a worked example. Reconciles to the existing effort model. | P3 | backlog | Same input → identical demand model + workbook; changing waves changes demand; changing supplied capacity changes only gap/utilization/constraint, not demand; no available-FTE or rate or name is ever invented; the workbook recalc-gate passes. |
+| **E15.4** | **Execution-readiness experience** (= brief E15D). The assessment-first dashboard areas (Overview, Data & Discovery, Current Estate, Target Architecture, Cost & POE, Strategy, Waves, Timeline, Resource Plan, Capacity, Readiness, Risks, Deliverables, Microsoft Guidance, Evidence); a readiness dashboard where each row opens evidence / missing decision / owner role / recommended action; prompt-card simplification (~6 cards, detail contextual); an "Explain this recommendation" response structure (Recommendation / Customer Driver / Landfall Rule / Microsoft Guidance / Confidence / Assumptions-Gaps); ASSESSMENT BASELINE vs LIVE MICROSOFT RESEARCH (baseline reproducible from pinned config/engine/prices/MEG/evidence; differences flagged not applied); provenance metadata block on outputs; the MEG-aligned deliverable pack (generate only relevant artifacts, no filler). | P3 | backlog | The dashboard is assessment-first with the numbered areas; a readiness row drills to evidence; "why did you recommend this?" returns the six-part structure; a completed assessment is never silently rewritten by live guidance; each E15.4 UI surface has a `tests/browser/` spec (§4.17). |
+
+**Not in scope for E15:** replacing any deterministic calculation with an LLM one;
+private endpoints / Front Door / WAF / APIM in the lab (§22 + [[no-private-endpoints-cost]]);
+`ca-deckgen`; Foundry Toolboxes as a hard dependency (evaluate only, brief E15A.8);
+the AnalysisTabs / Smartsheet templates as anything more than the sponsor's private
+inspiration.
 
 ---
 
@@ -1098,6 +1274,14 @@ sponsor-gated rail.
 | **C41** | E12.7 (chat page → `src/web/chat.html` + `static/chat.{css,js}` + strict CSP + response-hardening middleware) | **Done + live (2026-09-09):** `_security_headers` — strict CSP (no `unsafe-inline`) on `/` + `/static/*`, relaxed on `/dashboard` + `/questionnaire`, `nosniff` + `X-Frame-Options: DENY` + `Referrer-Policy` everywhere; `app.py` −357 lines; `tests/test_web_csp.py`; closes pentest T9; `azd deploy web`; 441 pytest |
 | **C42** | E9.4 web-tier telemetry — `src/web/telemetry.py` (`azure-monitor-opentelemetry`, no-op without the conn string) auto-instruments FastAPI + forwards `landfall.web` logs; a `web_chat` event per `/api/chat` turn | **Done + live (2026-09-09):** container logs confirm transmission to App Insights; `tests/test_web_telemetry.py`; Operability 4.25→4.5, overall 4.03; `azd deploy web`; 448 pytest |
 | **C43** | **E13.2 (= E12.8) — guided pipeline state.** `GET …/pipeline` aggregate + a status strip (Inventory · Analysis · Estimate · POE) on the chat page + a non-blocking pre-analysis hint. All JS in `chat.js`; strict CSP holds | Pipeline endpoint returns the 4-step state; the strip renders + refreshes for the active engagement; a pre-analysis chat gets a hint not a block; `azd deploy web`; web tests green |
+| **C44** | **E13.4 — cost guardrail** (budget + alerts + LA daily cap + `CALC_MIN_REPLICAS` knob + `scripts/spend.py`), all in the default `azd up`. | Done — see §5b E13.4. `tests/test_cost_guardrail.py`; ships on next `azd up` (no provision). |
+| **C45** | Fix the red `evals` CI (Python-3.11 f-string in `scripts/export_all.py`) + `tests/test_py311_compat.py` guard. | Done — CI unblocked; no deploy. |
+| **C46** *(planned)* | **§4.16 / §4.17 reconciliation** — this doc pass (map the master-prompt-v2 brief to E13/E15, add the Playwright validation protocol, open Epic E15). Docs + tracker + memory only, no code. | PRD §4.16/§4.17/§5c + tracker Epic E15 + `pdca-log` entry; `tests/test_docs.py` green. |
+| **C47** | **E13.3 (adversarial eval suite) + E13.17 (`landfall-judge` subagent).** `evals/adversarial.py` — 74 cases / 6 categories, wired + gated in `evals/runner.py` + the SCORECARD; `FTE` added to `output_guard`. `.claude/agents/landfall-judge.md` — the end-of-cycle GO/NO-GO gate. **Security 3.75 → 4.0, overall 4.03 → 4.06.** Model-review half deferred (needs a live deploy). | Done — 466 pytest, evals exit 0 (74/74 adversarial), both SCORECARDs regenerated. No deploy (evals + evidence + agent def + docs). |
+
+From C46 on, every cycle that touches a user-visible surface adds/updates a
+`tests/browser/` Playwright spec and puts before/after screenshots in its PDCA
+Check step (§4.17).
 
 Each cycle logged in [`pdca-log.md`](pdca-log.md) (Plan / Do / Check / Act).
 
@@ -1215,6 +1399,43 @@ Each cycle logged in [`pdca-log.md`](pdca-log.md) (Plan / Do / Check / Act).
     (one-command safe teardown / rehydrate — needed because a fresh `azd up` does not
     yet reproduce `ca-drawio` or web Easy Auth). E13.12 adds `docs/learning-path.md`. See
     §4.15 + §5b.
+17. **Master-implementation-prompt v2 reconciliation (2026-09-10).** The sponsor's
+    strategic brief (`prd/landfall_master_implementation_prompt_revised_v2.md`) is
+    adopted **in intent, not in numbering**: its E14 P0/P1 asks map onto existing E13
+    work (§4.16) — ~60 % already done or planned — with three genuinely-new items
+    added as **E13.13** (`ca-calc` → event-driven ACA Job), **E13.14** (deterministic
+    `run_assessment()` orchestrator) and **E13.15/E13.16** (Playwright harness, then in
+    CI). Its product-expansion parts open **Epic E15** (§5c): E15.1 Microsoft Learn MCP
+    (`learn.microsoft.com/api/mcp`) + governance, E15.2 MEG pin/normalize (licensing
+    spike first), E15.3 resource-demand model, E15.4 execution-readiness UX — all
+    sequenced *after* the E13 architecture block, per the brief's own priority rule.
+    **Not adopted:** the E14/E15A–D numbering; `MONTHLY_BUDGET_USD` (stays INR); the
+    AnalysisTabs / Smartsheet template URLs in any committed doc (proprietary — kept to
+    the sponsor's private brief). The authority-layering rule (customer facts →
+    evidence; customer numbers → deterministic engines; MS guidance → Learn MCP;
+    methodology → pinned MEG) is adopted verbatim and enforced by the E13.3 evals.
+18. **Every user-visible change is validated with Playwright browser automation
+    (2026-09-10).** Sponsor instruction: test and validate every change in a real
+    browser and let the tests drive the implementation. §4.17 is the protocol —
+    committed `tests/browser/` specs per surface, run via the Playwright MCP against a
+    local `uvicorn` app with offline stubs, red→green with before/after screenshots in
+    the PDCA Check step; 0 console errors (a CSP violation shows here) and the expected
+    `/api/*` calls firing are pass conditions. This is additive to `pytest` + evals +
+    `sec_probe.py`, not a replacement. Headless CI is E13.16 (depends on E13.11 +
+    OIDC). See §4.17 + §5b E13.15.
+19. **The `landfall-judge` cycle gate is a Claude Code subagent, not a Foundry
+    agent; Foundry Toolboxes stay deferred (2026-09-10).** The sponsor asked for a
+    "judge" that checks progress + quality and coordinates a correct deploy. It is
+    built as `.claude/agents/landfall-judge.md` (E13.17) — a *development-time*
+    reviewer that runs `pytest` / `evals/runner.py` / `az bicep build` / `git`, reads
+    the tracker + pdca-log + memory, and returns GO/NO-GO with a deploy plan. It is
+    **not** a Foundry agent: Foundry prompt agents only call HTTP/MCP tools and reason
+    — no filesystem, no shell, no git — and the Foundry agent is the *customer-facing
+    product runtime* (the migration estimator), which must not carry dev-orchestration
+    logic. **Foundry Toolboxes** (grouping tools for the runtime agent) are only
+    relevant to E15.1 (Microsoft Learn MCP), and the brief itself (E15A.8) says
+    evaluate — do not adopt — for the first MCP integration; wire the raw MCP tool
+    first. So: no Toolboxes yet.
 
 **Build order:** C18 done (E11.1–E11.3, live). C24 done. **C25 in progress** — `ca-calc`
 deployed; **next concrete step = the E11.16 async redesign** (Function 202 + `ca-calc`

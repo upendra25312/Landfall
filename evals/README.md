@@ -8,10 +8,10 @@ Offline. No Azure, no live model. Run it:
 ```
 
 Exit code 0 iff the golden-SQL exact-match rate ≥ 95% **and** every full-estimate
-scenario passes **and** every fault-injection case passes. `tests/test_evals.py`
-wraps the same functions so `pytest` catches regressions, and
-`.github/workflows/evals.yml` runs the whole thing on every push / PR (a stale
-`SCORECARD.md` fails the build).
+scenario passes **and** every fault-injection case passes **and** every adversarial
+guardrail case passes (E13.3). `tests/test_evals.py` wraps the same functions so
+`pytest` catches regressions, and `.github/workflows/evals.yml` runs the whole
+thing on every push / PR (a stale `SCORECARD.md` fails the build).
 
 ## E7.1 — golden text-to-SQL (`golden_sql.json`)
 
