@@ -2,9 +2,12 @@
 
 2026-09-10 · E13.6 · branch `cycle-52-web-routers` · baseline `main` at `6f3ef46`.
 
-**NEEDS azd deploy web** by the operator, bundled with the pending C48 chat.js
-syntax fix. No `azd` command was run. Live acceptance remains pending; E13.6 is
-`in-review`, with code complete. Epic E13: 8 done, 1 in review, 8 backlog.
+**DEPLOYED 2026-09-10 after the user's follow-up authorization.**
+`azd deploy web --no-prompt` exited 0, including the C48 chat.js syntax fix.
+Revision `ca-web-tmglwfatwcsa2--azd-1789026943` is healthy and receives 100% of
+traffic. Live smoke: 8 passed, 0 failed, 0 skipped; evidence in
+`evidence/cycles/c52/smoke-live.json`. E13.6 is done; Epic E13: 9 done, 8 backlog.
+No provisioning or SQL schema changes were performed.
 
 ## Implementation
 
@@ -43,8 +46,10 @@ storage to remain offline. The final full suite passed before commit/merge.
 
 ## Operator / next cycle
 
-Deploy the web service once, then check authenticated chat, engagement switching,
-upload/analysis, persisted chat after reload, and Excel/dashboard downloads.
+The web service is deployed. The public endpoint returns 401 (EasyAuth enforcing);
+signed-in browser journeys were not exercised against production. Local browser
+checks passed before deployment. A signed-in user can check chat, engagement
+switching, upload/analysis, persisted chat, and Excel/dashboard downloads.
 Do not provision the populated environment. E13.5 (centralized limits) and E13.9
 (E12 tail) remain candidates for C53. No changes were made to external Claude
 memory; fold this handoff into it after reviewing the cycle log.

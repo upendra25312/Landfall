@@ -96,6 +96,26 @@ chat persistence, and exports. No provision or agent recreation is required.
 
 ---
 
+### C52 deployment follow-up — 2026-09-10
+
+After the implementation/merge report, the user authorized deployment ("do it"),
+superseding the earlier operator-only restriction for this action.
+`azd deploy web --no-prompt` exited 0; no provision, schema, or tier change.
+Deployed image: `crtmglwfatwcsa2.azurecr.io/landfall/web-landfall:azd-deploy-1789026849`.
+Ready revision: `ca-web-tmglwfatwcsa2--azd-1789026943`; healthy, running, 100% traffic.
+This also delivers the pending C48 chat.js fix.
+
+The first smoke attempt timed out on the scaled-to-zero web endpoint (7/8).
+A subsequent direct probe returned 401 in 1.88s; the repeated full smoke passed
+**8/8, exit 0**, with EasyAuth enforcing on web and Function endpoints, SQL paused,
+and expected resources/blob containers present. Evidence:
+[`smoke-live.json`](../evidence/cycles/c52/smoke-live.json).
+Signed-in production browser journeys were not exercised; the five local browser
+checks remain the functional browser evidence. E13.6 is now done, Epic E13 9/17.
+Deployment evidence is recorded on `cycle-52-deploy-evidence` and merged `--no-ff`.
+
+---
+
 ## Cycle 51 — `docs/learning-path.md` (E13.12)
 
 **Date:** 2026-09-10 · **Owner:** Writer + Architect · **Tracker:** E13.12
