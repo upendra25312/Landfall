@@ -8,7 +8,7 @@ from conftest import ROOT
 
 sys.path.insert(0, os.path.join(ROOT, "evals"))
 
-from deliverable.export import export, to_xlsx, to_docx, to_pptx
+from deliverable.export import export, to_xlsx
 import pipeline as P
 
 

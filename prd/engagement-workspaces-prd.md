@@ -1503,6 +1503,19 @@ Each cycle logged in [`pdca-log.md`](pdca-log.md) (Plan / Do / Check / Act).
     relevant to E15.1 (Microsoft Learn MCP), and the brief itself (E15A.8) says
     evaluate — do not adopt — for the first MCP integration; wire the raw MCP tool
     first. So: no Toolboxes yet.
+20. **Single-region, no active multi-region disaster recovery posture (2026-09-10).**
+    Landfall operates strictly as a single-region deployment (primary: `swedencentral`)
+    under the sponsor's USD 40–50/month budget envelope (§7 decision 16). Cross-region
+    failover, geo-redundant storage (GRS/GZRS), and active-passive secondary deployments
+    are deliberately avoided because their idle overhead exceeds the budget envelope and
+    conflicts with the ephemeral, on-demand lifecycle (`azd up` / `azd down --purge`).
+    Business continuity and DR for customer engagements rely on:
+    - Portable engagement exports/imports (`.zip`) across environments (E11.26).
+    - Immutable ADLS storage snapshots (`history/<ts>/`) per publication.
+    - Automated safe teardown and rehydration runbooks (`scripts/teardown.ps1`, `scripts/rehydrate.ps1`).
+    - Additive-only schema migrations preserving state on redeploy (E13.1).
+    Client estates themselves can model target multi-region architectures through
+    `design_landing_zone`, but the Landfall estimating toolchain itself remains single-region.
 
 **Build order:** C18 done (E11.1–E11.3, live). C24 done. **C25 in progress** — `ca-calc`
 deployed; **next concrete step = the E11.16 async redesign** (Function 202 + `ca-calc`

@@ -29,7 +29,7 @@ def test_no_mapping_is_none():
 
 def test_override_pins_a_profile_for_an_ambiguous_file():
     data = fixture_bytes("rvtools_vinfo.csv")
-    plain = normalize("mystery.csv", data)
+    _ = normalize("mystery.csv", data)
     pinned = normalize("mystery.csv", data, {"profile": "rvtools_vinfo"})
     assert pinned.table == "servers" and pinned.profile == "rvtools_vinfo"
     assert any("pinned" in n for n in pinned.mapping_notes)

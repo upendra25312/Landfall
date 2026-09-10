@@ -43,7 +43,6 @@ def test_bigger_wave_takes_longer():
         [{"server_id": f"s{i}", "app_id": "a"} for i in range(50)]
         + [{"server_id": f"t{i}", "app_id": "b"} for i in range(5)],
         [], cfg, start_date="2026-01-05")
-    by_wave = {w["wave"]: w for w in plan["schedule"]["waves"]}
     big = max(plan["schedule"]["waves"], key=lambda w: w["servers"])
     small = min(plan["schedule"]["waves"], key=lambda w: w["servers"])
     assert big["exec_weeks"] > small["exec_weeks"]

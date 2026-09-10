@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import csv
-import io
 import os
 
 from cost.skus import DISK_TIERS, SKUS

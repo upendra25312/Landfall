@@ -4,7 +4,7 @@ import json
 import sys
 from pathlib import Path
 
-from assessment import run_assessment, invoke
+from assessment import run_assessment
 from cost.config import load_config
 from cost.compute_cost import estimate_compute_cost
 from cost.storage_cost import estimate_storage_cost
