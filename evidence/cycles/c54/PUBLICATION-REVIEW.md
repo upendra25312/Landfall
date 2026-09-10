@@ -1,5 +1,9 @@
 # Public GitHub publication approval
 
+**Resolved:** the user explicitly authorized publication; main `77226b3` was
+pushed and [GitHub CI passed](https://github.com/upendra25312/Landfall/actions/runs/34460813565).
+The proposal/rejection below records the earlier state, not a current blocker.
+
 **Destination:** public repository `https://github.com/upendra25312/Landfall`.
 **Proposed action:** push branch `cycle-54-validation-tail` so its `evals` workflow
 can run. It includes the still-local C52 and C53 history as well as C54.

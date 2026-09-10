@@ -1,5 +1,14 @@
 # Landfall — Cycle 54 handoff
 
+## Cycle 55 — safe schema (2026-09-10)
+
+Branch `cycle-55-safe-schema`: guarded additive SQL, destructive statement
+preflight, atomic rollback and application lock. 553 tests pass, evals green;
+live replay twice preserved all global row counts and default-estate hashes
+(`evidence/cycles/c55/schema-replay.json`). No provisioning. C54 publication
+resolved: main 77226b3 and CI passed. Remaining broad work continues in C56+;
+fresh deployment deferred, real participants needed for human reviews.
+
 2026-09-10 · branch `cycle-54-validation-tail` · baseline main `ad167a0`.
 User requested completion of the C53 pending checks. Current evidence:
 [C54 report](evidence/cycles/c54/REPORT.md).

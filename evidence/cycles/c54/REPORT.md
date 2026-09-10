@@ -54,10 +54,11 @@ Web and calculator deployments both exited 0:
   The second synthetic engagement, `validation-c54/pipeline-20260910091657`, is
   retained with its single inventory row and calculator artifacts.
 
-Remote GitHub CI is **blocked by automatic approval review**: the attempted push
-to the public repository was rejected because it includes C52–C54 Azure/SQL and
-validation evidence without explicit public-publication approval. GitHub access
-itself works. [Concrete publication review](PUBLICATION-REVIEW.md).
+Remote GitHub CI **passed after explicit user authorization**: main `77226b3`
+was published and [evals passed](https://github.com/upendra25312/Landfall/actions/runs/34460813565).
+Pages also passed. The initial automatic-review rejection is retained in the
+[publication review](PUBLICATION-REVIEW.md); it was resolved by the user's explicit
+instruction to push this repository's changes.
 
 ## External prerequisites
 
