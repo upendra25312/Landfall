@@ -30,12 +30,14 @@ def dashboard_data(request: Request, e: str | None = None, snapshot: str | None 
 
 
 @router.get("/dashboard/landing-zone")
-def landing_zone_data(request: Request, e: str | None = None):
+def landing_zone_data(request: Request, e: str | None = None, optional: bool = False):
     """The Azure Pricing Calculator POE summary (landing_zone.json) for an engagement."""
     if (g := web_access._guard_eid(request, e)):
         return g
     blob = web_storage._read_estimate_blob("landing_zone.json", e)
     if blob is None:
+        if optional:
+            return Response(status_code=204)
         return JSONResponse({"error": "no Pricing Calculator estimate built yet"}, status_code=404)
     return JSONResponse(json.loads(blob))
 
@@ -71,7 +73,7 @@ def dashboard_download(fmt: str, request: Request, e: str | None = None,
 
 @router.get("/dashboard/landing-zone-diagram")
 def landing_zone_diagram(request: Request, e: str | None = None,
-                         fmt: str = "svg", download: int = 0):
+                         fmt: str = "svg", download: int = 0, optional: bool = False):
     """The engagement's target landing-zone diagram (E11.22). `fmt=svg` (default) is
     the self-contained SVG the dashboard renders inline; `fmt=drawio` is the editable
     source; `?download=1` sends it as a file."""
@@ -89,6 +91,8 @@ def landing_zone_diagram(request: Request, e: str | None = None,
         mime, ext = ("image/svg+xml", "svg") if (blob and blob.lstrip().startswith(b"<svg")) \
             else ("application/xml", "drawio")
     if blob is None:
+        if optional:
+            return Response(status_code=204)
         return JSONResponse({"error": "no landing-zone diagram built yet"}, status_code=404)
     if download:
         name = (e or "landfall").replace("/", "-") + "-landing-zone"

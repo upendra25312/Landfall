@@ -10,6 +10,10 @@
  <button class=link id=impeng title="Restore an engagement from a .landfall.zip">&uarr; import</button>
  <input type=file id=impfile accept=".zip" hidden>
  <span class=sp></span>
+ <span id=identity aria-live=polite></span>
+ <span id=visibility></span>
+ <a href="/data-handling">Data handling</a>
+ <a id=signout href="/.auth/logout" hidden>Sign out</a>
  <button class=link id=newchat title="Archive this conversation and start a fresh one">+ New chat</button>
  <a href="/dashboard" id=dashlink>Assessment dashboard &rarr;</a>
 </header>
@@ -30,9 +34,12 @@
  <div class=utabs>
   <span class=lbl>Files for <b id=upeng></b></span>
   <span class=grow></span>
+  <details><summary>Classify manually</summary>
+  <p>Files are normally classified automatically. Override only when the detected type is wrong.</p>
   <label><input type=radio name=ukind value=auto checked> auto</label>
   <label><input type=radio name=ukind value=inventory> data</label>
   <label><input type=radio name=ukind value=docs> docs</label>
+  </details>
  </div>
  <label class=uz id=uz>
   <input type=file id=ufile multiple hidden>

@@ -206,7 +206,8 @@ def test_dashboard_page_serves_the_html(client):
     r = c.get("/dashboard")
     assert r.status_code == 200
     assert "Migration Assessment" in r.text
-    assert "/dashboard/data" in r.text
+    assert '/static/dashboard.js' in r.text
+    assert "/dashboard/data" in c.get('/static/dashboard.js').text
     for fmt in ("xlsx", "docx", "pptx"):
         assert f"/dashboard/download/{fmt}" in r.text
 

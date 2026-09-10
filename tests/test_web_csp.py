@@ -90,6 +90,10 @@ def test_static_js_has_no_double_escape_artefacts():
     static = os.path.join(ROOT, "src", "web", "static")
     offenders = []
     for name in os.listdir(static):
+        if name == 'purify.min.js':
+            # Vendored sanitizer uses intentional RegExp string escapes. Its
+            # exact release bytes are checked separately below.
+            continue
         if not name.endswith((".js", ".css")):
             continue
         src = open(os.path.join(static, name), encoding="utf-8").read()
@@ -97,6 +101,13 @@ def test_static_js_has_no_double_escape_artefacts():
             line = src[:m.start()].count("\n") + 1
             offenders.append(f"{name}:{line}: {src[m.start()-25:m.start()+15]!r}")
     assert not offenders, "double-escape artefacts in static assets:\n" + "\n".join(offenders)
+
+
+def test_vendored_sanitizer_integrity():
+    import hashlib
+    from pathlib import Path
+    data = (Path(ROOT) / 'src/web/static/purify.min.js').read_bytes()
+    assert hashlib.sha256(data).hexdigest() == 'c2f26ea4fc0d88141c9aa430eb515ac86fce59418ceebd85fa475b87a8d6c3e6'
 
 
 def test_static_js_parses_when_node_is_available():

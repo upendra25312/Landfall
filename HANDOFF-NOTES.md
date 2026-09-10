@@ -1,5 +1,16 @@
 # Landfall — Cycle 54 handoff
 
+## Cycle 57 — security/UI and Entra-only decision
+
+Current branch `cycle-57-security-ui`; implementation and local validation complete:
+568 pytest passed, 13 skipped; 11 browser tests passed; evals green. C57 web changes
+are not deployed yet; optional direct uploads need scoped CORS/lifecycle activation.
+User cancelled Google/GitHub login. No registrations created; interactive setup
+stopped and temporary helper removed. Keep Entra only. Two real Entra users and
+independent human reviewers remain prerequisites for their respective acceptance.
+C56 API deployment succeeded; web release and Foundry agent refresh/live checks
+remain pending. Broader operational and E15 roadmap work remains outstanding.
+
 ## Cycle 56 — assessment runtime
 
 Branch `cycle-56-assessment-runtime`: new assessment tool, stages/partial outputs,

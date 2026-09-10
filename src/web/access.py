@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import base64
 import json
+import os
 
 VISIBILITY_ALL = "all"
 VISIBILITY_OWNER = "owner"
@@ -51,6 +52,11 @@ def principal(headers) -> tuple[str | None, list[str]]:
                     claims.setdefault(typ, val)
             name = doc.get("userDetails") or next(
                 (claims[c] for c in _NAME_CLAIMS if c in claims), None)
+            provider = doc.get('auth_typ') or doc.get('identityProvider')
+            if provider and provider != 'aad':
+                # Sponsor decision: Microsoft Entra only. Do not accidentally
+                # accept another provider if platform configuration drifts.
+                return None, []
         except Exception:  # noqa: BLE001
             name, groups = None, []
     if not name:
@@ -63,7 +69,7 @@ def can_view(manifest: dict, viewer: str | None, groups=()) -> bool:
     if not isinstance(manifest, dict):
         return False
     if viewer in (None, "", "unknown", "anonymous"):
-        return True
+        return os.environ.get('LANDFALL_LOCAL_AUTH') == '1'
     vis = normalize_visibility(manifest.get("visibility"))
     if vis == VISIBILITY_ALL:
         return True

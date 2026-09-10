@@ -4,7 +4,7 @@ import logging
 import time
 
 
-async def run_response(client, kwargs, limits):
+async def run_response(client, kwargs, limits, progress=None):
     response = None
     started = time.monotonic()
     try:
@@ -13,9 +13,13 @@ async def run_response(client, kwargs, limits):
                                                background=True,
                                                max_tool_calls=limits.tool_calls,
                                                max_output_tokens=limits.output_tokens)
+            if progress:
+                await asyncio.to_thread(progress, response)
             while response.status in ('queued', 'in_progress'):
                 await asyncio.sleep(1)
                 response = await asyncio.to_thread(client.responses.retrieve, response.id)
+                if progress:
+                    await asyncio.to_thread(progress, response)
             return response
     except TimeoutError:
         if response is not None and response.status in ('queued', 'in_progress'):

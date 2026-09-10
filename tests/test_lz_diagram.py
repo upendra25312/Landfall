@@ -282,5 +282,5 @@ def test_web_serves_the_drawio_and_dashboard_embeds_it(monkeypatch):
     r2 = c.get("/dashboard/landing-zone-diagram?fmt=drawio&download=1")
     assert r2.text.startswith("<mxfile") and r2.headers["content-disposition"].endswith('.drawio"')
 
-    html = (web_runtime._HERE / "dashboard.html").read_text(encoding="utf-8")
+    html = (web_runtime._HERE / 'static' / 'dashboard.js').read_text(encoding="utf-8")
     assert "landing-zone-diagram" in html and "renderLZDiagram" in html

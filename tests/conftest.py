@@ -2,6 +2,9 @@
 import os
 import sys
 
+# Offline fixtures intentionally omit EasyAuth headers. Production never sets this.
+os.environ['LANDFALL_LOCAL_AUTH'] = '1'
+
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 API = os.path.join(ROOT, "src", "api")
 for p in (API, os.path.dirname(__file__)):

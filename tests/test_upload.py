@@ -334,7 +334,8 @@ def test_dashboard_data_reads_a_snapshot(client, monkeypatch):
 def test_dashboard_has_version_picker(client):
     _w, c, _s = client
     html = c.get("/dashboard").text
-    assert "verSel" in html and "loadVersions" in html and "snapshot" in html
+    js = c.get('/static/dashboard.js').text
+    assert "verSel" in html and "loadVersions" in js and "snapshot" in js
 
 
 # --- C21 / E11.14: ask & export to Excel ---------------------------------

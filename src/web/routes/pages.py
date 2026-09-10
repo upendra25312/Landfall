@@ -3,14 +3,28 @@
 Extracted in C52; HTTP contracts and behavior are preserved.
 """
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse, JSONResponse, Response
 import json
 import os
 import web_runtime
 import web_storage
+import web_access
 
 router = APIRouter()
+
+
+@router.get('/api/me')
+def identity(request: Request):
+    name, _ = web_access._principal(request)
+    return {'signed_in': bool(name), 'name': name,
+            'direct_uploads': os.environ.get('DIRECT_UPLOADS_ENABLED') == '1',
+            'sign_out': '/.auth/logout', 'data_handling': '/data-handling'}
+
+
+@router.get('/data-handling', response_class=HTMLResponse)
+def data_handling():
+    return '<!doctype html><html><head><title>Landfall data handling</title></head><body><h1>Data handling</h1><p>Inventory, documents, conversations and assessment outputs are stored in this deployment\'s Azure services. Engagement access is controlled by ownership and sharing settings. Microsoft guidance is supporting research; customer quantities come from the assessment tools.</p><p>Exports contain customer data. Share them only with authorized recipients. Estimates are drafts requiring architect and FinOps review. Contact the deployment owner for retention or deletion requests.</p><a href="/">Return to Landfall</a></body></html>'
 
 
 @router.get("/healthz")

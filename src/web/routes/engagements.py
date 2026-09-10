@@ -37,7 +37,7 @@ def engagements_list(request: Request):
             out.append({k: m.get(k) for k in
                         ("engagement", "customer", "project", "target_region", "dr_region",
                          "currency", "licensing_program", "status", "created_by", "created_at",
-                         "target_region_calculator_supported")})
+                         "target_region_calculator_supported", "visibility")})
     except Exception as exc:  # noqa: BLE001
         web_runtime.log.warning("engagements_list failed: %s", exc)
         return JSONResponse({"engagements": [], "error": str(exc)})

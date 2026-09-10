@@ -1,5 +1,13 @@
 # Landfall — Engagement Workspaces (multi-client, dashboard-driven)
 
+**C57 amendment:** authentication remains Microsoft Entra ID only following the
+sponsor's cancellation of Google/GitHub registration. Explicit other-provider
+principals are rejected. Identity and engagement visibility appear in the UI.
+Strict CSP now covers dashboard and questionnaire; dashboard HTML is sanitized.
+Direct uploads remain opt-in pending storage CORS/lifecycle setup and live checks.
+Local validation: 568 tests and 11 browser journeys passed; production acceptance
+with two Entra users is still required.
+
 **C56 amendment:** full assessments call `run_assessment`; the fixed stage
 sequence, partial-failure semantics, deterministic baseline and chat bounds are
 specified in [assessment-runtime.md](../docs/assessment-runtime.md). Agent tool

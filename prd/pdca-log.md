@@ -5,6 +5,33 @@ Operating model: [`landfall-5x5-prd.md` §7](landfall-5x5-prd.md). Tracker:
 
 ---
 
+## Cycle 57 — Strict browser policy, trust surface and sign-in setup
+
+### Plan
+
+Extract dashboard/questionnaire assets; remove inline styles/scripts and enforce
+one strict CSP. Add signed-in identity, engagement visibility and data-handling
+links. Improve upload classification and progress messages. Validate populated
+dashboard/questionnaire paths with Playwright and JavaScript syntax checks.
+Initially prepare Google/GitHub registration as requested. Sponsor subsequently
+cancelled that scope: keep Microsoft Entra ID only. No registrations were created;
+the interactive setup session was stopped and its temporary helper removed.
+
+### Do / Check / Act
+
+Implemented strict CSP across all pages, local dashboard/questionnaire assets,
+vendored and pinned DOMPurify, signed-in identity/visibility, progress polling,
+manual upload classification and an optional bounded direct-upload path.
+Explicit non-Entra providers are rejected; anonymous engagement access requires
+the explicit local-test switch. Added identity, upload and browser regressions.
+**568 pytest passed, 13 skipped; 11 browser tests passed**. Evals passed:
+32 SQL, 30 faults, 74 adversarial (three existing pending), 8 scenarios.
+Browser checks exposed stale generated questionnaire font assets and optional
+dashboard 404 diagnostics; corrected generation and optional-resource handling.
+Web deployment, direct-upload storage CORS/lifecycle activation and signed-in
+two-Entra-user production acceptance remain outstanding. Local fixture journeys
+do not establish production identity isolation. See the C57 evidence report.
+
 ## Cycle 56 — Deterministic assessment and bounded agent runtime
 
 ### Plan

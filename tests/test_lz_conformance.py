@@ -147,7 +147,7 @@ def test_assemble_and_export_surface_conformance():
 
 
 def test_dashboard_renders_the_conformance_block():
-    html = open(os.path.join(ROOT, "src", "web", "dashboard.html"), encoding="utf-8").read()
+    html = open(os.path.join(ROOT, "src", "web", "static", "dashboard.js"), encoding="utf-8").read()
     assert "design_conformance" in html and "Design conformance" in html
 
 

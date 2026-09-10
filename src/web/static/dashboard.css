@@ -1,0 +1,66 @@
+
+  :root{
+    --accent:#0a6ed1; --accent-ink:#fff;
+    --bg:#f3f4f6; --panel:#ffffff; --ink:#1b1f24; --muted:#5b6673; --line:#e3e6ea;
+    --good:#107c41; --warn:#9a6700; --bad:#b3261e; --draft:#8a3b00;
+    --c1:#0a6ed1; --c2:#33b1c9; --c3:#7a5cff; --c4:#e08600; --c5:#8a8f98;
+  }
+  @media (prefers-color-scheme:dark){
+    :root:not([data-theme=light]){
+      --bg:#0c1116; --panel:#161c23; --ink:#e6edf3; --muted:#8b98a5; --line:#26303b;
+      --good:#3fb950; --warn:#d29922; --bad:#f85149; --draft:#e3934d;
+    }
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font:14px/1.55 "Segoe UI",system-ui,-apple-system,Roboto,Helvetica,Arial,sans-serif}
+  a{color:var(--accent)}
+  .wrap{max-width:1200px;margin:0 auto;padding:0 20px 64px}
+  header{background:var(--panel);border-bottom:1px solid var(--line)}
+  .hrow{max-width:1200px;margin:0 auto;padding:16px 20px;display:flex;align-items:center;
+    gap:16px;flex-wrap:wrap}
+  .brand{font-weight:600;font-size:16px;display:flex;align-items:center;gap:10px}
+  .brand .dot{width:10px;height:10px;border-radius:3px;background:var(--accent)}
+  .badge{font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;
+    padding:3px 8px;border-radius:4px;background:color-mix(in srgb,var(--draft) 16%,transparent);
+    color:var(--draft);border:1px solid color-mix(in srgb,var(--draft) 30%,transparent)}
+  .pill{font-size:12px;padding:3px 9px;border-radius:999px;border:1px solid var(--line);color:var(--muted)}
+  .spacer{flex:1}
+  .dl{display:flex;gap:8px}
+  .dl a{font-size:13px;font-weight:600;text-decoration:none;padding:7px 12px;border-radius:6px;
+    border:1px solid var(--line);color:var(--ink);background:var(--panel)}
+  .dl a:hover{border-color:var(--accent);color:var(--accent)}
+  h1{font-size:20px;margin:26px 0 4px}
+  .sub{color:var(--muted);margin:0 0 20px}
+  .tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px;margin:18px 0 8px}
+  .tile{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px 16px}
+  .tile .k{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.03em}
+  .tile .v{font-size:22px;font-weight:650;margin-top:6px;font-variant-numeric:tabular-nums}
+  .tile .r{font-size:11px;color:var(--muted);margin-top:4px}
+  .grid{display:grid;grid-template-columns:repeat(12,1fr);gap:16px;margin-top:16px}
+  .card{grid-column:span 6;background:var(--panel);border:1px solid var(--line);border-radius:12px;
+    padding:16px 18px}
+  .card.wide{grid-column:span 12}
+  .card h2{font-size:14px;margin:0 0 12px;display:flex;align-items:center;gap:8px}
+  .card h2 .ref{font-size:10px;color:var(--muted);font-weight:500}
+  @media (max-width:860px){.card{grid-column:span 12}}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th,td{text-align:left;padding:7px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+  th{color:var(--muted);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.03em}
+  td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
+  .kv{display:grid;grid-template-columns:auto 1fr;gap:4px 14px;font-size:13px}
+  .kv b{color:var(--muted);font-weight:500}
+  .bar{height:10px;border-radius:3px;background:color-mix(in srgb,var(--accent) 22%,transparent);overflow:hidden}
+  .bar > i{display:block;height:100%;background:var(--accent);border-radius:3px}
+  .risk-low > i{background:var(--good)} .risk-medium > i{background:var(--warn)} .risk-high > i{background:var(--bad)}
+  .chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+  .chip{font-size:12px;padding:2px 8px;border-radius:6px;border:1px solid var(--line);color:var(--muted)}
+  details{margin-top:8px} summary{cursor:pointer;color:var(--accent);font-size:13px}
+  .legend{display:flex;flex-wrap:wrap;gap:10px;font-size:12px;color:var(--muted);margin-top:10px}
+  .legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;vertical-align:middle}
+  .empty{background:var(--panel);border:1px dashed var(--line);border-radius:12px;padding:40px;text-align:center;color:var(--muted)}
+  .spin{display:inline-block;border:3px solid color-mix(in srgb,var(--accent) 30%,transparent);border-top-color:var(--accent);border-radius:50%;animation:spin 0.8s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  @media (prefers-reduced-motion:reduce){.spin{animation:none}}
+  .foot{color:var(--muted);font-size:12px;margin-top:24px;border-top:1px solid var(--line);padding-top:14px}
+  code{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:12px}

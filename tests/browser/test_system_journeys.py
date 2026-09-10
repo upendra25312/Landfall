@@ -64,3 +64,33 @@ def test_throttled_agent_keeps_conversation_and_shows_recovery(page, base_url, c
     # The injected HTTP failure produces one browser network diagnostic; there
     # must still be no script exception, CSP failure or unrelated network error.
     assert console_errors == ['error: Failed to load resource: the server responded with a status of 429 (Too Many Requests)']
+
+
+def test_large_upload_uses_ticket_storage_and_validation(page, base_url, console_errors):
+    import json
+    _goto(page, base_url)
+    _select(page, 'contoso-ltd/dc-exit')
+    page.evaluate('window._directUploads=true')
+    seen = []
+
+    def ticket(route):
+        seen.append(('ticket', route.request.post_data_json['size']))
+        route.fulfill(status=200, content_type='application/json', body=json.dumps({
+            'ticket': 'a'*32, 'url': base_url + '/direct-staging'}))
+
+    def put(route):
+        seen.append(('put', route.request.method))
+        route.fulfill(status=201)
+
+    def complete(route):
+        seen.append(('complete', route.request.post_data_json['ticket']))
+        route.fulfill(status=201, content_type='application/json', body=json.dumps({'name': 'large.csv'}))
+
+    page.route('**/upload-ticket', ticket)
+    page.route('**/direct-staging', put)
+    page.route('**/upload-complete', complete)
+    page.locator('#ufile').set_input_files({'name': 'large.csv', 'mimeType': 'text/csv',
+                                         'buffer': b'a' * (8*1024*1024)})
+    expect(page.locator('#toast')).to_contain_text('large.csv uploaded and checked')
+    assert seen == [('ticket', 8*1024*1024), ('put', 'PUT'), ('complete', 'a'*32)]
+    assert console_errors == []

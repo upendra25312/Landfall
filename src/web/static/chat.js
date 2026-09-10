@@ -28,7 +28,21 @@ function working(){
  d.innerHTML='<div class="working"><span class="spin"></span><span>The estimator is working<span class="dots"></span> <span class="el"></span></span></div>';
  log.appendChild(d);d.scrollIntoView({block:'end'});
  const t0=Date.now();const el=d.querySelector('.el');
- d._timer=setInterval(()=>{el.textContent='('+Math.round((Date.now()-t0)/1000)+'s)';},1000);
+ let stage='';
+ d._timer=setInterval(async()=>{
+  const elapsed=Math.round((Date.now()-t0)/1000);
+  el.textContent='('+elapsed+'s)'+(stage?' · '+stage:'');
+  if(ENG && elapsed%5===0){
+   try{const [c,p]=ENG.split('/');
+    const r=await fetch('/api/engagements/'+enc(c)+'/'+enc(p)+'/progress');
+    if(r.ok){const state=await r.json();
+     if(state.updated_at && Date.parse(state.updated_at)>=t0-2000){
+      stage=state.tool?state.tool.replace(/_/g,' '):(state.status==='queued'?'Waiting for the agent':'Preparing the answer');
+     }
+    }
+   }catch(e){}
+  }
+ },1000);
  return d;
 }
 function setBusy(b){busy=b;q.disabled=b;send.disabled=b;send.textContent=b?'Working…':'Send';
@@ -62,6 +76,7 @@ async function loadCards(){
 async function loadEngagements(){
  let list=[];
  try{const r=await fetch('/api/engagements');list=(await r.json()).engagements||[];}catch(e){}
+ window._engagements=list;
  engsel.innerHTML='';
  if(!list.length){
   const o=document.createElement('option');o.value='';o.textContent='— no engagements —';engsel.appendChild(o);
@@ -78,6 +93,8 @@ async function loadEngagements(){
  renderWelcome();showUpload();loadChat();syncDashLink();
 }
 function syncDashLink(){const a=document.getElementById('dashlink');
+ const current=(window._engagements||[]).find(e=>e.engagement===ENG);
+ document.getElementById('visibility').textContent=current?'Visibility: '+(current.visibility||'owner'):'';
  if(a)a.href=ENG?('/dashboard?e='+encodeURIComponent(ENG)):'/dashboard';}
 engsel.onchange=()=>{ENG=engsel.value;localStorage.setItem('landfall.eng',ENG);HINTED=false;
  document.getElementById('expeng').hidden=!ENG;renderWelcome();showUpload();loadChat();syncDashLink();};
@@ -232,6 +249,7 @@ async function refreshRows(){
 }
 startBtn.onclick=startAnalysis;
 function uploadOne(file){
+ if(window._directUploads && file.size>=8*1024*1024){uploadDirect(file);return;}
  const li=document.createElement('li');li.className='frow';
  li.innerHTML='<span class=nm>'+esc(file.name)+'</span><span class=pbar><i></i></span><span class=st>uploading…</span>';
  frows.prepend(li);
@@ -318,3 +336,26 @@ async function ask(v){
 }
 document.getElementById('f').onsubmit=e=>{e.preventDefault();ask(q.value);};
 loadCards();loadEngagements();loadRegions();q.focus();
+fetch('/api/me').then(r=>r.json()).then(me=>{
+ window._directUploads=me.direct_uploads;
+ document.getElementById('identity').textContent=me.signed_in?'Signed in as '+me.name:'Local preview';
+ document.getElementById('signout').hidden=!me.signed_in;
+}).catch(()=>{document.getElementById('identity').textContent='Identity unavailable';});
+
+async function uploadDirect(file){
+ const [c,p]=ENG.split('/'),base='/api/engagements/'+enc(c)+'/'+enc(p);
+ const kind=ukind();
+ toast('Uploading '+file.name+' directly to secure storage…');
+ try{
+  const response=await fetch(base+'/upload-ticket',{method:'POST',headers:{'content-type':'application/json'},
+   body:JSON.stringify({name:file.name,size:file.size,kind})});
+  if(!response.ok)throw new Error('Could not start upload');
+  const ticket=await response.json();
+  const put=await fetch(ticket.url,{method:'PUT',headers:{'x-ms-blob-type':'BlockBlob'},body:file});
+  if(!put.ok)throw new Error('Storage upload failed');
+  const complete=await fetch(base+'/upload-complete',{method:'POST',headers:{'content-type':'application/json'},
+   body:JSON.stringify({ticket:ticket.ticket})});
+  if(!complete.ok)throw new Error('Upload validation failed');
+  const done=await complete.json();toast(done.name+' uploaded and checked');await loadFiles();
+ }catch(error){toast(error.message+' — please try again');}
+}
