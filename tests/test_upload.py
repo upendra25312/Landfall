@@ -121,6 +121,7 @@ def client(monkeypatch):
     monkeypatch.setenv("STORAGE_URL", "https://s.blob.core.windows.net")
     import importlib
     import app as webapp
+    import web_storage
     importlib.reload(webapp)
     from fastapi.testclient import TestClient
 
@@ -131,7 +132,7 @@ def client(monkeypatch):
             "metadata": {}, "mtime": _dt.datetime(2026, 9, 8, tzinfo=_dt.timezone.utc)},
     }
     cont = _Container(store)
-    monkeypatch.setattr(webapp, "_raw_container", lambda: cont)
+    monkeypatch.setattr(web_storage, "_raw_container", lambda: cont)
     return webapp, TestClient(webapp.app), store
 
 
@@ -234,6 +235,7 @@ def _dq_report(file, table, rows_loaded, confidence="Medium", findings=None, row
 
 @pytest.fixture()
 def analysed(client, monkeypatch):
+    import web_storage
     webapp, c, store = client
     answers = {
         "engagements/contoso-ltd/dc-exit/_ingest/servers.dq.json":
@@ -245,7 +247,7 @@ def analysed(client, monkeypatch):
     acont = _Container({k: {"data": v["data"], "metadata": {},
                             "mtime": _dt.datetime(2026, 9, 8, tzinfo=_dt.timezone.utc)}
                         for k, v in answers.items()})
-    monkeypatch.setattr(webapp, "_estimate_container", lambda: acont)
+    monkeypatch.setattr(web_storage, "_estimate_container", lambda: acont)
     return webapp, c, store
 
 
@@ -294,6 +296,7 @@ def test_chat_page_has_start_analysis(client):
 # --- C21 / E11.8: published-version history -------------------------------
 
 def test_history_lists_snapshots(client, monkeypatch):
+    import web_storage
     webapp, c, _s = client
     hp = "engagements/contoso-ltd/dc-exit/history"
     store = {
@@ -308,7 +311,7 @@ def test_history_lists_snapshots(client, monkeypatch):
                                          "package_id": "PKG-2"}}).encode(),
             "metadata": {}, "mtime": _dt.datetime(2026, 9, 9, tzinfo=_dt.timezone.utc)},
     }
-    monkeypatch.setattr(webapp, "_estimate_container", lambda: _Container(store))
+    monkeypatch.setattr(web_storage, "_estimate_container", lambda: _Container(store))
     j = c.get("/api/engagements/contoso-ltd/dc-exit/history").json()
     assert j["count"] == 2
     assert [v["stamp"] for v in j["versions"]] == ["20260909T090000Z", "20260908T120000Z"]  # newest first
@@ -316,13 +319,14 @@ def test_history_lists_snapshots(client, monkeypatch):
 
 
 def test_dashboard_data_reads_a_snapshot(client, monkeypatch):
+    import web_storage
     webapp, c, _s = client
     store = {
         "engagements/contoso-ltd/dc-exit/history/20260908T120000Z/latest.json": {
             "data": json.dumps({"meta": {"package_id": "OLD"}, "figures": []}).encode(),
             "metadata": {}, "mtime": _dt.datetime(2026, 9, 8, tzinfo=_dt.timezone.utc)},
     }
-    monkeypatch.setattr(webapp, "_estimate_container", lambda: _Container(store))
+    monkeypatch.setattr(web_storage, "_estimate_container", lambda: _Container(store))
     r = c.get("/dashboard/data?e=contoso-ltd/dc-exit&snapshot=20260908T120000Z")
     assert r.status_code == 200 and r.json()["meta"]["package_id"] == "OLD"
 

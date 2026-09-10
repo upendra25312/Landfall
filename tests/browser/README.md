@@ -49,6 +49,12 @@ and drops a before/after screenshot in the PDCA Check step (§4.17).
 
 ## Gotchas
 
+C52 adds `test_router_journey.py`: a tabular chat answer survives reload and the
+actual Excel button downloads a workbook containing the question and provenance.
+Set `C52_SCREENSHOT_DIR` to retain desktop/mobile screenshots of this journey.
+The offline agent now supplies a canned tabular tool result. Azure-client stubs
+live on `web_runtime` and `web_storage`, the modules that own those dependencies.
+
 - **`page.wait_for_function("<string>")` does not work here** — evaluating a string
   as JS violates `script-src 'self'` (no `unsafe-eval`). Use the auto-retrying
   `expect(locator)` assertions from `playwright.sync_api`.

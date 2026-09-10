@@ -25,7 +25,7 @@ from a deterministic Python tool — the model chooses *which* tool and *when*, 
 | What to read | Where | Why |
 |---|---|---|
 | Agent definition — name, system prompt, tool registration | `scripts/create_agent.py` (`AGENT_NAME`, `SYSTEM_PROMPT`, `main()`) | The whole agent is ~200 lines; the prompt is the product's guardrail (no fabricated numbers, always cite a tool, DRAFT boundary). |
-| Name-addressed invocation via the Responses API | `src/web/app.py` → `chat()` (`agent_reference` by name, `previous_response_id` chaining) | How a stateless web tier talks to a stored-conversation agent. |
+| Name-addressed invocation via the Responses API | `src/web/routes/chat.py` → `chat()` (`agent_reference` by name, `previous_response_id` chaining) | How a stateless web tier talks to a stored-conversation agent. |
 | The deterministic tools the agent calls | `src/api/tools.py`, `src/api/deliverable/assemble.py`, everything under `src/api/` | Text-to-SQL is `query_inventory`; the rest are pure functions over inventory + config. |
 | The OpenAPI contracts (one file per tool) | `src/api/openapi/` (17 specs — `query_inventory.json`, `estimate_compute_cost.json`, `publish_estimate.json`, …) | Foundry registers tools from these; the `engagement` arg is required on every one. |
 | Offline evaluation harness | `evals/runner.py` (golden SQL + scenario bands + fault injection + adversarial) | Runs the full pipeline with synthetic price books; gates CI. `python evals/runner.py`. |

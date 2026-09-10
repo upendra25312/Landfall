@@ -58,6 +58,7 @@ def client(monkeypatch):
     monkeypatch.setenv("STORAGE_URL", "https://s.blob.core.windows.net")
     import importlib
     import app as webapp
+    import web_storage
     importlib.reload(webapp)
     from fastapi.testclient import TestClient
 
@@ -66,8 +67,8 @@ def client(monkeypatch):
             {"engagement": "contoso-ltd/dc-exit", "visibility": "all"}).encode()),
     }
     ans: dict = {}
-    monkeypatch.setattr(webapp, "_raw_container", lambda: _Container(raw))
-    monkeypatch.setattr(webapp, "_estimate_container", lambda: _Container(ans))
+    monkeypatch.setattr(web_storage, "_raw_container", lambda: _Container(raw))
+    monkeypatch.setattr(web_storage, "_estimate_container", lambda: _Container(ans))
     return webapp, TestClient(webapp.app), raw, ans
 
 

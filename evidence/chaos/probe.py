@@ -95,7 +95,7 @@ def run() -> dict:
         "cost tools fall back to the estimation rate book when the live API is unreachable")
 
     # C5 — missing AGENT_ID -> clean 503
-    app = _src("src/web/app.py")
+    app = _src("src/web/routes/chat.py")
     add("C5", "AGENT_ID not set" in app and "503" in app,
         "/api/chat returns 503 with a clear reason when AGENT_ID is unset")
 

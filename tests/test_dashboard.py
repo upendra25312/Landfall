@@ -232,6 +232,9 @@ def test_calc_regions_endpoint(client):
 
 
 def test_chat_prepends_engagement_scope(client, monkeypatch):
+    import chat_state
+    import web_access
+    import web_runtime
     webapp, c = client
     seen = {}
 
@@ -249,13 +252,13 @@ def test_chat_prepends_engagement_scope(client, monkeypatch):
     class _OpenAI:
         responses = _Responses()
 
-    monkeypatch.setattr(webapp, "_openai_client", lambda: _OpenAI())
-    monkeypatch.setattr(webapp, "AGENT_NAME", "landfall-migration-estimator")
+    monkeypatch.setattr(web_runtime, "_openai_client", lambda: _OpenAI())
+    monkeypatch.setattr(web_runtime, "AGENT_NAME", "landfall-migration-estimator")
     # the engagement is access-checked (E8.6) — stub the guard + the stored chat
-    monkeypatch.setattr(webapp, "_engagement",
+    monkeypatch.setattr(web_access, "_engagement",
                         lambda c_, p_, req=None: (f"{c_}/{p_}", f"engagements/{c_}/{p_}"))
-    monkeypatch.setattr(webapp, "_load_chat", lambda eid: {})
-    monkeypatch.setattr(webapp, "_save_chat", lambda eid, doc: None)
+    monkeypatch.setattr(chat_state, "_load_chat", lambda eid: {})
+    monkeypatch.setattr(chat_state, "_save_chat", lambda eid, doc: None)
     r = c.post("/api/chat", json={"message": "how many prod servers?",
                                   "engagement": "contoso/dc-exit"})
     assert r.status_code == 200
@@ -265,18 +268,20 @@ def test_chat_prepends_engagement_scope(client, monkeypatch):
 
 
 def test_dashboard_data_404_when_nothing_published(client):
+    import web_storage
     webapp, c = client
-    webapp._blob_state.clear()
+    web_storage._blob_state.clear()
     from unittest.mock import patch
-    with patch.object(webapp, "_read_estimate_blob", return_value=None):
+    with patch.object(web_storage, "_read_estimate_blob", return_value=None):
         assert c.get("/dashboard/data").status_code == 404
 
 
 def test_dashboard_data_returns_the_package(client):
+    import web_storage
     webapp, c = client
     pkg = P.run()
     from unittest.mock import patch
-    with patch.object(webapp, "_read_estimate_blob",
+    with patch.object(web_storage, "_read_estimate_blob",
                       return_value=json.dumps(pkg).encode()):
         r = c.get("/dashboard/data")
         assert r.status_code == 200
@@ -284,9 +289,10 @@ def test_dashboard_data_returns_the_package(client):
 
 
 def test_dashboard_download_streams_blob_with_right_mime(client):
+    import web_storage
     webapp, c = client
     from unittest.mock import patch
-    with patch.object(webapp, "_read_estimate_blob", return_value=b"PK\x03\x04fake"):
+    with patch.object(web_storage, "_read_estimate_blob", return_value=b"PK\x03\x04fake"):
         r = c.get("/dashboard/download/xlsx")
         assert r.status_code == 200
         assert "spreadsheetml" in r.headers["content-type"]
@@ -295,8 +301,9 @@ def test_dashboard_download_streams_blob_with_right_mime(client):
 
 
 def test_healthz_reports_publish_state(client):
+    import web_storage
     webapp, c = client
     from unittest.mock import patch
-    with patch.object(webapp, "_read_estimate_blob", return_value=b"{}"):
+    with patch.object(web_storage, "_read_estimate_blob", return_value=b"{}"):
         j = c.get("/healthz").json()
     assert j["ok"] and j["estimate_published"] is True

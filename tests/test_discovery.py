@@ -182,6 +182,7 @@ def client(monkeypatch):
     monkeypatch.setenv("FOUNDRY_PROJECT_ENDPOINT", "https://example/api/projects/x")
     monkeypatch.setenv("STORAGE_URL", "https://s.blob.core.windows.net")
     import app as webapp
+    import web_storage
     importlib.reload(webapp)
     from fastapi.testclient import TestClient
     store = {
@@ -190,7 +191,7 @@ def client(monkeypatch):
             "metadata": {}, "mtime": _dt.datetime(2026, 9, 9, tzinfo=_dt.timezone.utc)},
     }
     cont = _Container(store)
-    monkeypatch.setattr(webapp, "_raw_container", lambda: cont)
+    monkeypatch.setattr(web_storage, "_raw_container", lambda: cont)
     return webapp, TestClient(webapp.app), store
 
 
