@@ -43,5 +43,5 @@ def test_every_application_route_is_registered_once_from_a_router():
 
     routes = [route for route in app.app.routes if isinstance(route, APIRoute)]
     signatures = [(method, route.path) for route in routes for method in route.methods]
-    assert len(signatures) == len(set(signatures)) == 35
+    assert len(signatures) == len(set(signatures)) == 40
     assert all(route.endpoint.__module__.startswith("routes.") for route in routes)

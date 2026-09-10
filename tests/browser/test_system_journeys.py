@@ -1,6 +1,7 @@
 """C53: browser journeys for create/upload/analysis and specific downloads."""
 import io
 import os
+import re
 from pathlib import Path
 
 from openpyxl import load_workbook
@@ -27,7 +28,7 @@ def test_create_upload_analyse_and_prompt_card(page, base_url, console_errors):
     assert response.value.status == 200
     expect(page.locator("#dqsummary")).to_contain_text("1 rows")
     expect(page.locator("#pipeline .step.done")).to_have_count(2)
-    page.get_by_role("button", name="Full estimate").click()
+    page.get_by_role("button", name=re.compile(r"Full (assessment|estimate)")).click()
     expect(page.locator("#log")).to_contain_text("Here is the full estimate")
     expect(page.get_by_role("button", name="Download as Excel")).to_be_visible()
     page.reload(wait_until="networkidle")

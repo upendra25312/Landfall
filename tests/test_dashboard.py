@@ -229,7 +229,8 @@ def test_prompt_cards_endpoint_returns_intro_and_cards(client):
     assert j["intro"]["title"] and j["intro"]["body"]
     assert isinstance(j["intro"]["capabilities"], list) and j["intro"]["capabilities"]
     labels = [card["label"] for card in j["cards"]]
-    assert "Full estimate" in labels and "Landing zone" in labels
+    assert "Full assessment" in labels and "Azure architecture" in labels
+    assert len(labels) == 6
     assert all(card.get("prompt") for card in j["cards"])
 
 

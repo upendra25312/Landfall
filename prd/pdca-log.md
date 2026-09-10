@@ -5,6 +5,42 @@ Operating model: [`landfall-5x5-prd.md` §7](landfall-5x5-prd.md). Tracker:
 
 ---
 
+## Cycle 63 — Execution-Readiness Experience & 15 Assessment-First Areas (E15.4)
+
+### Plan
+
+Deliver Epic E15.4 (brief E15D.1–E15D.8): bring together Landfall's multi-stage assessment into a unified, execution-ready dashboard and chat experience aligned with the Microsoft Migration Execution Guide (MEG).
+1. Assessment-First Dashboard Areas (§E15D.1): Replace disparate cards with 15 structured numbered dashboard sections spanning:
+   01 Overview, 02 Data & Discovery, 03 Current Estate, 04 Target Architecture, 05 Azure Cost & POE, 06 Migration Strategy (6R), 07 Migration Waves, 08 Timeline, 09 Resource Demand Plan, 10 Capacity & Heatmap, 11 Migration Readiness, 12 Risk Register, 13 Deliverables Hub, 14 Microsoft Guidance, 15 Evidence & Provenance. Include sticky area navigation bar.
+2. Interactive 5-State Readiness Dashboard (§E15D.2): Implement interactive drill-downs for all 21 MEG readiness criteria with 5 canonical states (READY, PARTIAL, GAP, NOT_ASSESSED, NOT_APPLICABLE). Click-to-expand details show Evidence, Missing Decision, Responsible MEG Role, and Recommended Action without arbitrary percentage scores.
+3. Prompt Card Simplification (§E15D.3): Consolidate chat welcome view down to exactly 6 focused cards: Full assessment, Azure architecture, Cost & POE, Migration plan, Resource plan, Ask Microsoft.
+4. 6-Part Recommendation Explanations (§E15D.4): Deterministic justifications for architectural decisions (Firewall, Landing Zone Topology, Resiliency/DR, VM Right-sizing, Replatforming, Resource Planning) providing Recommendation, Customer Driver, Landfall Rule, Microsoft Guidance, Confidence, and Assumptions/Gaps.
+5. Assessment Baseline vs. Live Research Separation (§E15D.5): Completed assessments (latest.json) are immutable baselines; differences against live Microsoft Learn research are flagged for architect review and never silently mutate published figures.
+6. Provenance Metadata (§E15D.6): Authoritative provenance block tracking engine version (2.4.0), assessment date, price date, MEG reference commit (`09b269375dc7c48cee7541e4ca16faf02b3897ca`), artifact SHA-256 (`4b726f1c...`), and guidance validation timestamp.
+7. Deliverable Hub Packaging (§E15D.7): Centralized access to production-grade client artifacts (Excel, Word, PowerPoint, POE, Draw.io, and 15-sheet Resource Plan workbook).
+8. Strict CSP compliance: Maintain zero inline scripts or styles, ensuring zero console errors under strict CSP.
+
+### Do / Check / Act
+
+- Prompt cards: Simplified `src/web/prompt_cards.json` to the 6 primary cards.
+- Recommendations & Compare: Created `src/api/recommendations/explain.py` with 6-part explanations for core topics and `compare_baseline_to_live_guidance`.
+- Provenance: Created `src/api/deliverable/provenance.py` returning complete provenance metadata block.
+- Web routes: Extended `src/web/routes/dashboard.py` with `/dashboard/readiness`, `/dashboard/resource-plan`, `/dashboard/download/resource-plan-xlsx`, `/dashboard/explain`, and `/dashboard/provenance`.
+- Web assets: Upgraded `src/web/dashboard.html`, `src/web/static/dashboard.css`, and `src/web/static/dashboard.js` with 15 numbered assessment-first areas, interactive readiness drill-down drawers, deliverable pack cards, and CSP-compliant DOM toggling.
+- Architectural docs: Created `docs/architecture/execution-readiness.md`.
+- Automated test coverage: Created `tests/test_explain_recommendations.py` (10 tests) and `tests/browser/test_readiness_experience.py` (4 Playwright browser tests). Updated `tests/test_dashboard.py`, `tests/test_web_routers.py`, and `tests/browser/test_system_journeys.py`.
+- **Study / Check:**
+  - `ruff check src/`: 100% clean (0 errors).
+  - `pyright src/`: 0 errors, 0 warnings.
+  - `pytest tests/test_explain_recommendations.py`: 10/10 passed.
+  - `pytest tests/browser/ -v` (with Playwright): 15/15 passed with 0 console errors under strict CSP.
+  - `pytest tests -q`: 617 passed, 18 skipped, 0 failed (100% green full regression suite).
+  - `evals/runner.py`: 32/32 Golden SQL, 30/30 Fault injection, 88/88 Adversarial guardrails, 8/8 Scenarios.
+  - `evidence/scorecard.py`: 4.06/5 overall score.
+- **Act:** Mark E15.4 as done. Epic E15 is 100% complete (4/4 items delivered). Merge feature branch into main and push to origin.
+
+---
+
 ## Cycle 62 — Deterministic Resource-Demand & Capacity Planning Model (E15.3)
 
 ### Plan

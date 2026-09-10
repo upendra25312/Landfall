@@ -64,3 +64,33 @@
   @media (prefers-reduced-motion:reduce){.spin{animation:none}}
   .foot{color:var(--muted);font-size:12px;margin-top:24px;border-top:1px solid var(--line);padding-top:14px}
   code{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:12px}
+
+  /* 15 Assessment-First Navigation (E15D.1) */
+  .area-nav{max-width:1200px;margin:0 auto;padding:0 20px 10px;display:flex;gap:6px;overflow-x:auto;white-space:nowrap;-webkit-overflow-scrolling:touch}
+  .area-btn{background:transparent;border:1px solid var(--line);color:var(--muted);font-size:12px;font-weight:500;padding:5px 11px;border-radius:20px;cursor:pointer;transition:all .15s ease}
+  .area-btn:hover{border-color:var(--accent);color:var(--accent);background:color-mix(in srgb,var(--accent) 5%,transparent)}
+  .area-btn.active{background:var(--accent);color:#fff;border-color:var(--accent);font-weight:600}
+
+  /* MEG 5-State Readiness Badges (E15D.2) */
+  .state-pill{font-size:11px;font-weight:700;letter-spacing:.04em;padding:3px 7px;border-radius:4px;display:inline-block;text-transform:uppercase}
+  .state-ready{background:color-mix(in srgb,var(--good) 16%,transparent);color:var(--good);border:1px solid color-mix(in srgb,var(--good) 30%,transparent)}
+  .state-partial{background:color-mix(in srgb,var(--warn) 16%,transparent);color:var(--warn);border:1px solid color-mix(in srgb,var(--warn) 30%,transparent)}
+  .state-gap{background:color-mix(in srgb,var(--bad) 16%,transparent);color:var(--bad);border:1px solid color-mix(in srgb,var(--bad) 30%,transparent)}
+  .state-not_assessed{background:color-mix(in srgb,var(--muted) 16%,transparent);color:var(--muted);border:1px solid var(--line)}
+  .state-not_applicable{background:transparent;color:var(--muted);border:1px dashed var(--line)}
+
+  /* Readiness Drill-Down (E15D.2) */
+  .readiness-detail{background:color-mix(in srgb,var(--accent) 3%,var(--panel));border:1px solid var(--line);border-radius:8px;padding:12px 14px;margin-top:6px;font-size:12px}
+  .readiness-detail b{color:var(--ink);display:inline-block;width:140px}
+
+  /* Baseline vs Live Research Diff Banner (E15D.5) */
+  .diff-banner{background:color-mix(in srgb,var(--warn) 12%,transparent);border:1px solid color-mix(in srgb,var(--warn) 35%,transparent);border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:13px}
+  .diff-banner b{color:var(--warn)}
+
+  /* Deliverable Pack Downloads (E15D.7) */
+  .dl-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin-top:10px}
+  .dl-card{border:1px solid var(--line);border-radius:8px;padding:14px;background:var(--panel);display:flex;flex-direction:column;gap:6px;text-decoration:none;color:inherit;transition:border-color .15s}
+  .dl-card:hover{border-color:var(--accent)}
+  .dl-card .title{font-weight:600;font-size:14px;color:var(--accent)}
+  .dl-card .meta{font-size:11px;color:var(--muted)}
+  .drill-row[hidden]{display:none!important}
