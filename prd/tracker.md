@@ -9,6 +9,15 @@ Companion to [`prd/landfall-5x5-prd.md`](landfall-5x5-prd.md). Delivery log:
 
 ## Progress
 
+**C66 S2 quarterly price, SKU & CAF re-benchmark tooling (2026-09-10):** delivered automated
+quarterly re-benchmark tooling (`scripts/rebenchmark_prices.py` + `scripts/rebenchmark.ps1`)
+supporting live Azure Retail Prices API pulls and `--offline` deterministic validation against
+catalog fixtures; audits VM SKU family generations (v5 standard, v6 upcoming, v2 mature) and 5
+CAF Cloud Adoption Framework criteria (Gen2 default, constrained vCPU, Premium SSD baseline,
+AZ availability, and 1Y/3Y RI modeling); outputs dated audit reports to
+`evidence/benchmarks/rebenchmark-YYYY-MM-DD.md`; 7 unit tests in `tests/test_rebenchmark.py`,
+633 total tests, 16 browser specs, evals, and scorecard all pass with 0 errors.
+
 **C65 self-explanatory stakeholder experience (2026-09-10):** delivered dual-panel
 Cost & POE layout in Area 05 comparing Working Run-Rate (Retail Prices API) vs Official POE
 (Pricing Calculator) with stakeholder audience tags (`role-tag`) and plain-English
@@ -88,7 +97,7 @@ E13 remains 9/17 done.
 | 1 — Engine | 37 | 8 | 32 | 0 | 0 |
 | 2 — Evidence | 12 | 0 | 4 | 1 | 7 |
 | 2 — Security tail (E8.5–8.7) | 3 | 0 | 2 | 1 (E8.5, cost) | 0 |
-| 3 — Sustain | 3 | 0 | 0 | 0 | 3 |
+| 3 — Sustain | 3 | 1 | 0 | 0 | 2 |
 | E11 — Engagement Workspaces | 26 | 25 | 0 | 0 | 1 (C26b, sponsor-gated) |
 | E12 — Workspace UX & front-end | 12 | 7 | 0 | 0 | 5 |
 | E13 — Provisioning safety, guardrails & sustain | 17 | 9 | 0 | 0 | 8 |
@@ -283,7 +292,7 @@ Roadmap epic opened 2026-09-10 from the master-prompt-v2 reconciliation ([`engag
 | ID | Item | Pri | Status | Owner | Cycle | Acceptance |
 |---|---|---|---|---|---|---|
 | S1 | Full eval + back-test suite in CI per agent version | P1 | backlog | SRE | — | Every agent change re-runs the suite; regressions block. |
-| S2 | Quarterly price / SKU / CAF re-benchmark | P1 | backlog | FinOps | — | A recurring job + a dated report. |
+| S2 | Quarterly price / SKU / CAF re-benchmark | P1 | done (C66) | FinOps | 66 | Delivered automated standalone re-benchmark CLI (`scripts/rebenchmark_prices.py`), PowerShell operator script (`scripts/rebenchmark.ps1`), 7 unit tests in `tests/test_rebenchmark.py`, and dated baseline audit report (`evidence/benchmarks/rebenchmark-2026-09-10.md`). Validated 0 price/disk drifts, 35 curated SKUs, 11 disk tiers, and 5/5 CAF alignment criteria. |
 | S3 | Reference estates refreshed yearly; broken-dump corpus grows with real dumps | P2 | backlog | PM | — | Corpus and estates carry a "last reviewed" date. |
 
 ## Docs & method (not scored, but required)
@@ -300,6 +309,10 @@ Roadmap epic opened 2026-09-10 from the master-prompt-v2 reconciliation ([`engag
 
 | Cycle | Scope | Log |
 |---|---|---|
+| 66 | **S2 — Quarterly price / SKU / CAF re-benchmark tooling.** Automated CLI (`rebenchmark_prices.py`), PowerShell operator script (`rebenchmark.ps1`), 7 unit tests (`test_rebenchmark.py`), and baseline audit report (`evidence/benchmarks/rebenchmark-2026-09-10.md`). Offline deterministic support, CAF conformance checks, and drift detection. | [pdca-log.md](pdca-log.md) · **done** |
+| 65 | **Stakeholder experience & multi-persona Cost/POE transparency.** Dual-panel Area 05 layout (Retail Prices API vs. Azure Pricing Calculator) with reconciliation callout and role tags across Area 13 deliverables. 16 browser tests pass under strict CSP. | [pdca-log.md](pdca-log.md) · **done** |
+| 64 | **E13 milestone closure & hardening (E13.10, E13.14).** Orchestrator acceptance tests (`tests/test_orchestrator.py`), single-region no-DR posture (§7 Decision 20), full repo lint cleanup. Epic E13 100% complete. | [pdca-log.md](pdca-log.md) · **done** |
+| 63 | **E15.4 — Execution-readiness experience & 15 assessment-first areas.** MEG-aligned 15-area dashboard, interactive 5-state readiness drill-downs, 6-part recommendation justifications, immutable baseline vs. live research comparison. | [pdca-log.md](pdca-log.md) · **done** |
 | 52 | **E13.6 — FastAPI router split.** `app.py` → 54-line composition root + eight routers, shared helpers, HTTP contract and persisted-chat → Excel browser checks. **Deployed 2026-09-10 after user follow-up**, including C48; healthy revision, 100% traffic, live smoke 8/8. No provision. | [pdca-log.md](pdca-log.md) · **done** |
 | 1 | E1.1–E1.5 — ingestion & data-quality core (normalize + profiles + DQ + loader + tests); D1 partial | [pdca-log.md](pdca-log.md) · **done** |
 | 1a | sample-estate 30-day performance + flow data (user request) — `performance.csv`, servers/deps rollups, `landfall_performance` profile, schema `dbo.performance` | [pdca-log.md](pdca-log.md) · **done** |

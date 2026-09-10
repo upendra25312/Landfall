@@ -5,6 +5,35 @@ Operating model: [`landfall-5x5-prd.md` §7](landfall-5x5-prd.md). Tracker:
 
 ---
 
+## Cycle 66 — S2 Quarterly Price, SKU & CAF Re-benchmark Tooling
+
+### Plan
+
+Deliver Backlog Item S2 (Phase 3 — Sustain) to establish a deterministic quarterly re-benchmarking tool for Azure pricing, VM SKU generations, and Cloud Adoption Framework (CAF) baselines:
+1. Automated CLI Tool (`scripts/rebenchmark_prices.py`): Fetch rate cards from Azure Retail Prices API (`prices.azure.com`) or run deterministically in `--offline` mode using test fixtures; calculate rate drift percentages vs. baseline price books.
+2. SKU Generation & CAF Conformance Auditing: Audit curated SKUs for generation status (v5 standard, v6 upcoming, v2 mature) and evaluate 5 CAF criteria (Gen2 default, constrained vCPU, Premium SSD baseline, 3-AZ regional coverage, 1Y/3Y RI modeling).
+3. Dated Audit Report Generation: Generate markdown audit reports (`evidence/benchmarks/rebenchmark-YYYY-MM-DD.md`) summarizing metrics, drift percentages, criteria status, and 90-day next review schedules.
+4. PowerShell Operator Script (`scripts/rebenchmark.ps1`): Provide an intuitive one-command interface for operators and automated pipelines with `-Offline`, `-Strict`, `-Region`, and `-Out` parameters.
+5. Unit & Quality Verification: Author dedicated automated tests (`tests/test_rebenchmark.py`), ensure zero drift against scorecard and eval suites, and pass full regression test suite.
+
+### Do / Check / Act
+
+- **CLI Tool:** Created `scripts/rebenchmark_prices.py` implementing live rate card fetching, offline fixture extraction, drift calculation (with configurable drift threshold, default ±5.0%), SKU generation checks across F/D/E series, CAF alignment checks, and markdown/JSON report rendering.
+- **PowerShell Wrapper:** Created `scripts/rebenchmark.ps1` for operator execution with parameter passthroughs and exit-code propagation.
+- **Baseline Audit Report:** Generated `evidence/benchmarks/rebenchmark-2026-09-10.md` confirming `APPROVED` status, 0 price drifts across 35 VM SKUs and 11 disk tiers, and 5/5 CAF criteria met.
+- **Unit Testing:** Created `tests/test_rebenchmark.py` (7 tests) covering generation coverage, CAF validation, synthetic price drift detection, synthetic disk drift detection, offline benchmark payload structure, markdown rendering assertions, and CLI subprocess execution.
+- **Study / Check:**
+  - `pytest tests/test_rebenchmark.py -v`: 7/7 passed.
+  - `ruff check scripts/ tests/test_rebenchmark.py`: 0 errors.
+  - `pwsh -ExecutionPolicy Bypass -File scripts\rebenchmark.ps1 -Offline -Strict`: completed successfully (status: APPROVED).
+  - `pytest tests -q`: 633 passed, 19 skipped, 0 failed (100% green).
+  - `pytest tests/browser -q` (Playwright): 16/16 passed with 0 console errors under strict CSP.
+  - `evals/runner.py`: 32/32 Golden SQL, 30/30 Fault injection, 88/88 Adversarial, 8/8 Scenarios.
+  - `evidence/scorecard.py`: 4.06 / 5.0 overall score, 0 drift.
+- **Act:** Mark Backlog Item S2 as done (C66). Merge feature branch `cycle-66-s2-rebenchmark` into `main` and push to origin.
+
+---
+
 ## Cycle 65 — Self-Explanatory Stakeholder Experience & Multi-Persona Cost/POE Transparency
 
 ### Plan
