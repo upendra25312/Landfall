@@ -5,6 +5,103 @@ Operating model: [`landfall-5x5-prd.md` §7](landfall-5x5-prd.md). Tracker:
 
 ---
 
+## Cycle 51 — `docs/learning-path.md` (E13.12)
+
+**Date:** 2026-09-10 · **Owner:** Writer + Architect · **Tracker:** E13.12
+(folds in brief E14.6 + the §18 lab→enterprise matrix).
+
+### Plan
+
+The sponsor's stated reason for building Landfall is to learn three things by
+doing: **Azure AI Foundry**, **Azure Container Apps**, **enterprise-scale
+design**. The codebase already demonstrates all three but nothing points a reader
+at *where*. E13.12 is a single `docs/` page that maps each goal to the files and
+PRD sections that embody it, so a new engineer reads the code, not a tutorial.
+
+Chosen this cycle over the other sustain items (E13.5 agent ceiling, E13.6 split
+`app.py`, E13.9 E12 tail) because **all three touch production code and need an
+`azd deploy`, and the C48 `azd deploy web` is still outstanding** — piling more
+undeployed production change on top of that is the wrong order. This cycle is
+docs + tests only: zero deploy risk, and it moves Understandability (3.0, a low
+dimension).
+
+Acceptance: the doc exists, is linked from `docs/index.html`, points at real
+files/sections for each goal, and `tests/test_docs.py` proves every reference
+resolves.
+
+### Do
+
+- **`docs/learning-path.md`** (new) — Markdown (precedent: `docs/observability.md`;
+  GitHub Pages renders `.md`). Structure:
+  - **1 · Azure AI Foundry** — the agent-orchestrates-never-calculates pattern: a
+    table of `scripts/create_agent.py` (`AGENT_NAME` / `SYSTEM_PROMPT` / `main()`),
+    the Responses API `agent_reference` call in `src/web/app.py::chat()`,
+    `src/api/tools.py` + `src/api/openapi/` (17 specs), `evals/runner.py`,
+    `evals/adversarial.py`, `evals/output_guard.py` — each with a "why".
+  - **2 · Azure Container Apps** — `infra/resources.bicep` (`containerEnv`,
+    `containerApp`, `calcApp`, `drawioApp`, `uami`), scale-to-zero, the
+    queue-decouple pattern (§4.6 / decision 10, `src/api/lz/functions.py`
+    `stage_calc_run` → `src/calc/worker.py`), ACA **Jobs** (`calcJob` +
+    `src/calc/job.py` `run_once()`, E13.13), KEDA queue trigger with managed
+    identity, Easy Auth (`webAuthConfig` / `functionAuth`), `scripts/smoke.py
+    --cold`, the planned $0 hostname (E12.11).
+  - **3 · Enterprise-scale design** — per-engagement isolation
+    (`src/api/engagement.py` / `engagement_sql.py`), fail-closed RLS
+    (`scripts/schema.sql`), `src/api/sqlguard.py`, ADLS-as-record / SQL-as-projection
+    (**brief E14.6**), `evidence/scorecard.py` + PDCA, the adversarial + fault CI
+    gate, `.claude/agents/landfall-judge.md`, param-gated tiers
+    (`infra/main.bicep` `deploymentTier`), cost guardrails
+    (`Microsoft.Consumption/budgets` + `scripts/spend.py`), the ephemeral
+    operating model (`scripts/teardown.sh` / `rehydrate.sh`), `tests/browser/`,
+    `docs/observability.md`.
+  - **Deployment profiles** — a lab → customer engagement → enterprise matrix
+    (tier / tenancy / auth / network / cost / data lifecycle); only *lab* is
+    exercised; private endpoints noted as descoped on cost (§4.14).
+  - **Suggested reading order** — 7 steps ending at `prd/pdca-log.md`.
+- **`docs/index.html`** — a "Learning Path" card (`href="learning-path.md"`),
+  labelled *for builders*.
+- **`tests/test_docs.py`** (+3):
+  - `test_learning_path_exists_and_is_linked`
+  - `test_learning_path_covers_the_three_goals_and_the_profiles_matrix`
+  - `test_learning_path_repo_references_resolve` — every `` `backticked` `` token
+    that starts with a known top-level dir, and every `](../…)` link, must resolve
+    on disk (ignores `<placeholder>` / glob tokens). This is the anti-rot gate.
+
+Two accuracy fixes made while writing (verified against `infra/resources.bicep`):
+the web app's symbolic name is `containerApp` not `webApp`; Easy Auth is
+`webAuthConfig` (web) + `functionAuth` = `authsettingsV2` (Function).
+
+### Check
+
+- **Full suite: 491 passed, 6 skipped** (`./.venv2/Scripts/python.exe -m pytest
+  tests/ -q`) — +3 over C50's 488.
+- **`tests/test_docs.py`: 10 passed** — the reference-resolution test confirms all
+  ~30 cited paths exist.
+- **`evals/runner.py` exit 0** — golden 32/32, scenarios 8/8, faults 30/30,
+  adversarial 74/74. No `evals/SCORECARD.md` / `evidence/SCORECARD.md` content
+  drift (CRLF-only phantom discarded).
+- No `src/`, `infra/`, or OpenAPI change → **no `azd deploy`, no `azd provision`.**
+  GitHub Pages serves `docs/` and auto-publishes on push to `main`.
+- Scores unchanged this cycle — Understandability 3.0 → 5.0 needs the D2/E10.4
+  three-consultant comprehension trial (people), which this page supports but does
+  not itself close.
+
+### Act
+
+- Branch `c51-learning-path` → commit → merge `--no-ff` to `main` → push. No deploy.
+- Tracker: E13.12 done (C51), progress table E13 **8/17**, cycle-51 row, `D4` row
+  in Docs & method.
+- Memory: `MEMORY.md` + `landfall-5x5-execution.md` (item 2w).
+
+**Next by leverage:** the remaining sustain items all need a deploy —
+**E13.5** (agent-run ceiling + centralized `MAX_*`), **E13.6** (split
+`src/web/app.py` into `APIRouter` modules), **E13.9** (E12 tail: tool-call
+milestones, direct-to-blob SAS, trust surface). **`azd deploy web` (the C48
+`chat.js` fix) is still the top operator action** — do it before or with the next
+web-touching cycle.
+
+---
+
 ## Cycle 50 — `ca-calc` always-on → event-driven Container Apps Job (E13.13)
 
 **Date:** 2026-09-10 · **Owner:** Azure Container Apps architect + SRE ·

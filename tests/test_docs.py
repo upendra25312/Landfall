@@ -53,6 +53,49 @@ def test_worked_example_numbers_match_the_pipeline():
     assert "250 servers" in html and "1,940 current vCPU" in html
 
 
+# --------------------------------------------------------------- E13.12 learning path
+
+_TOP_DIRS = ("src/", "infra/", "evals/", "scripts/", "evidence/", "prd/",
+             "docs/", "tests/", ".claude/", ".github/")
+
+
+def test_learning_path_exists_and_is_linked():
+    assert os.path.exists(os.path.join(DOCS, "learning-path.md"))
+    assert "learning-path.md" in _read(DOCS, "index.html")
+
+
+def test_learning_path_covers_the_three_goals_and_the_profiles_matrix():
+    md = _read(DOCS, "learning-path.md")
+    assert "Azure AI Foundry" in md
+    assert "Azure Container Apps" in md
+    assert "Enterprise-scale design" in md
+    # the folded-in brief items (E14.6 + the lab->enterprise matrix)
+    assert "system of record" in md and "projection" in md
+    assert "Deployment profiles" in md
+    for col in ("Lab", "Customer engagement", "Enterprise"):
+        assert col in md
+
+
+def test_learning_path_repo_references_resolve():
+    """Every `backticked` repo path and every ../ markdown link in the learning
+    path points at a file that exists, so the doc can't rot silently."""
+    md = _read(DOCS, "learning-path.md")
+    missing = []
+
+    for tok in re.findall(r"`([^`]+)`", md):
+        cand = tok.split()[0].strip("().,:;")          # first token, no trailing punct
+        if cand.startswith(_TOP_DIRS) and "<" not in cand and "*" not in cand:
+            if not os.path.exists(os.path.join(ROOT, cand)):
+                missing.append(cand)
+
+    for target in re.findall(r"\]\((\.\./[^)]+)\)", md):
+        target = target.split("#")[0]
+        if not os.path.exists(os.path.normpath(os.path.join(DOCS, target))):
+            missing.append(target)
+
+    assert not missing, f"broken references in learning-path.md: {sorted(set(missing))}"
+
+
 # --------------------------------------------------------------- trials kit
 
 def test_trials_kit_is_complete():
