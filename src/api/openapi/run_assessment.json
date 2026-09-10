@@ -1,0 +1,22 @@
+{
+  "openapi": "3.0.1",
+  "info": {"title": "Run full assessment", "version": "1.0.0"},
+  "servers": [{"url": "https://placeholder.azurewebsites.net/api"}],
+  "paths": {
+    "/run_assessment": {
+      "post": {
+        "operationId": "run_assessment",
+        "description": "Run the fixed assessment pipeline for an engagement. Returns stage status; incomplete stages never count as a full estimate.",
+        "requestBody": {"required": true, "content": {"application/json": {"schema": {
+          "type": "object", "required": ["engagement"], "additionalProperties": false,
+          "properties": {"engagement": {"type": "string", "description": "Authorized active customer/project engagement"}}
+        }}}},
+        "responses": {
+          "200": {"description": "Assessment completed", "content": {"application/json": {"schema": {"type": "object"}}}},
+          "422": {"description": "Assessment incomplete; inspect failed_stage and stages"},
+          "400": {"description": "Invalid engagement"}
+        }
+      }
+    }
+  }
+}

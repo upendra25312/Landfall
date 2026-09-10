@@ -54,6 +54,7 @@ from ingest.functions import ingest_bp  # raw/engagements/*/inventory/* -> norma
 from lz.functions import lz_bp  # design_landing_zone (CAF ALZ from the portfolio)
 from waves.functions import waves_bp  # score_dispositions + plan_waves (E4 wave engine)
 from deliverable.functions import deliverable_bp  # assemble_estimate (E5 structured package)
+from assessment import assessment_bp
 
 app = df.DFApp()
 app.register_functions(bp)
@@ -63,6 +64,7 @@ app.register_functions(ingest_bp)
 app.register_functions(lz_bp)
 app.register_functions(waves_bp)
 app.register_functions(deliverable_bp)
+app.register_functions(assessment_bp)
 
 # Lazily built on first use - keep module import (and worker function indexing) fast
 # and free of network/token calls.

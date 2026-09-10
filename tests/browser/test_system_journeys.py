@@ -50,3 +50,17 @@ def test_empty_engagement_does_not_display_another_estate_as_published(page, bas
     assert workbook.sheetnames
     workbook.close()
     assert console_errors == []
+
+
+def test_throttled_agent_keeps_conversation_and_shows_recovery(page, base_url, console_errors):
+    _goto(page, base_url)
+    _select(page, 'contoso-ltd/dc-exit')
+    page.route('**/api/chat', lambda route: route.fulfill(status=429, content_type='application/json',
+        body='{"error":"The agent is busy. Please retry shortly; saved results are preserved."}'))
+    page.locator('#q').fill('Count the servers')
+    page.locator('#f').evaluate('(form) => form.requestSubmit()')
+    expect(page.locator('#log')).to_contain_text('The agent is busy')
+    expect(page.locator('#log')).to_contain_text('Count the servers')
+    # The injected HTTP failure produces one browser network diagnostic; there
+    # must still be no script exception, CSP failure or unrelated network error.
+    assert console_errors == ['error: Failed to load resource: the server responded with a status of 429 (Too Many Requests)']

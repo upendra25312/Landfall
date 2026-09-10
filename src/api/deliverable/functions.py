@@ -159,14 +159,27 @@ def publish_estimate_route(req: func.HttpRequest) -> func.HttpResponse:
         prefix = eng.estimate_prefix(engagement)
         written = []
 
+        # C56: replaying identical assessment inputs preserves the exact baseline
+        # bytes (including the original publication time), rather than minting a
+        # misleading new version. Ordinary explicit publish behavior is unchanged.
+        if body.get('_idempotent'):
+            try:
+                previous = json.loads(cc.download_blob(f'{prefix}/latest.json').readall())
+                compare = json.loads(json.dumps(previous))
+                compare.get('meta', {}).pop('published_at', None)
+                if compare == package:
+                    return _json({'engagement': engagement, 'unchanged': True,
+                                  'published': ['latest.json', 'latest.xlsx', 'latest.docx', 'latest.pptx'],
+                                  'prefix': prefix, 'package_id': package.get('meta', {}).get('package_id')})
+            except Exception:
+                pass
+
         # E11.8 — snapshot the version being replaced into history/<its-ts>/ so a
         # re-publish never destroys the prior estimate.
         snapshot = _snapshot_previous(cc, engagement, prefix)
 
         package["meta"]["published_at"] = _now()
         payload = json.dumps(package, default=str).encode("utf-8")
-        cc.upload_blob(f"{prefix}/latest.json", payload, overwrite=True)
-        written.append("latest.json")
 
         # stash the raw tool outputs so build_calculator_estimate (E11.16) can
         # translate them into an Azure Pricing Calculator line-item spec later —
@@ -208,11 +221,13 @@ def publish_estimate_route(req: func.HttpRequest) -> func.HttpResponse:
             except Exception:                     # noqa: BLE001
                 logging.warning("publish_estimate: landing-zone diagram skipped", exc_info=True)
 
-        for fmt in ("xlsx", "docx", "pptx"):
-            blob, _name, _mime = export(package, fmt)
+        rendered = {fmt: export(package, fmt)[0] for fmt in ('xlsx', 'docx', 'pptx')}
+        for fmt, blob in rendered.items():
             cc.upload_blob(f"{prefix}/latest.{fmt}", blob, overwrite=True)
             written.append(f"latest.{fmt}")
         package.pop("landing_zone_png_b64", None)   # transient embed payload — not persisted
+        cc.upload_blob(f"{prefix}/latest.json", payload, overwrite=True)
+        written.append("latest.json")
     except Exception as exc:                       # noqa: BLE001
         logging.exception("publish_estimate failed")
         _obs_estimate(locals().get("engagement"), locals().get("package"),
