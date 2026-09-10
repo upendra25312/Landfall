@@ -5,6 +5,33 @@ Operating model: [`landfall-5x5-prd.md` §7](landfall-5x5-prd.md). Tracker:
 
 ---
 
+## Cycle 65 — Self-Explanatory Stakeholder Experience & Multi-Persona Cost/POE Transparency
+
+### Plan
+
+Make the assessment dashboard self-explanatory for all 4 project audiences (Architects, Executives, PMO, and Microsoft Funding Reviewers):
+1. Dual-Panel Cost & POE Layout (Area 05): Split the card into Column 1 (Working Run-Rate via Retail Prices API for Architects/FinOps) and Column 2 (Proof of Estimate via Azure Pricing Calculator for Microsoft Funding), rendered in a full-width card.
+2. Plain-English Reconciliation Banner: Add an explicit callout explaining why the two numbers differ (P95 VM right-sizing vs. standard 730-hour billing month, bundled bandwidth, and platform minimums).
+3. Stakeholder Audience Badges (Area 13): Tag every deliverable in the Deliverables Hub with its target audience (`FOR: MICROSOFT FUNDING`, `FOR: PMO & DELIVERY`, `FOR: EXECUTIVES`, `FOR: CLOUD ARCHITECTS`).
+4. Strict CSP & Browser Automation: Verify zero console errors, zero CSP violations, and full responsive rendering across all 16 Playwright browser specs.
+
+### Do / Check / Act
+
+- **CSS Upgrades:** Added `.cost-dual-grid`, `.cost-panel`, `.role-tag`, `.reconcile-box`, and `.dl-badge` in `src/web/static/dashboard.css`.
+- **Dashboard JS:** Updated Area 05 in `src/web/static/dashboard.js` to render the dual-panel comparison with role tags, working run-rate donut, and the reconciliation callout banner. Updated Area 13 with role tags on each deliverable download card. Enhanced `renderPOE` to display delta indicators and clarified download actions.
+- **Browser Automation:** Added `test_dashboard_cost_and_poe_dual_panel_layout_and_role_tags` to `tests/browser/test_readiness_experience.py` and asserted role-tag badges across Area 13.
+- **Study / Check:**
+  - `pytest tests/browser/ -q` (Playwright): 16/16 passed with 0 console errors under strict CSP.
+  - `pytest tests/test_web_csp.py`: 9/9 passed (0 double-escape artifacts, node syntax check passes).
+  - `pytest tests -q`: 626 passed, 19 skipped, 0 failed (100% green).
+  - `ruff check src/ tests/ evals/`: 0 errors.
+  - `pyright src/`: 0 errors, 0 warnings.
+  - `evals/runner.py`: 32/32 Golden SQL, 30/30 Fault injection, 88/88 Adversarial, 8/8 Scenarios.
+  - `evidence/scorecard.py`: 4.06 / 5.0 overall score, 0 drift.
+- **Act:** Mark Cycle 65 as complete. Merge feature branch into `main` and push to remote.
+
+---
+
 ## Cycle 64 — Epic E13 Milestone Closure & Hardening (E13.10, E13.14)
 
 ### Plan

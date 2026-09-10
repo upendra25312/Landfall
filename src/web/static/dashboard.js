@@ -134,20 +134,50 @@ function render(pkg){
   const dslices=drivers.map((d,i)=>({label:d.driver,value:d.monthly,color:dcolors[i%5]}));
   if(shown<99 && rc.monthly) dslices.push({label:"Other",value:rc.monthly*(100-shown)/100,color:"var(--c5)"});
   const cCost = card("05 Azure Cost & Pricing Calculator POE","F8", `
-    <div data-layout="display:flex;gap:18px;align-items:center;flex-wrap:wrap">
-      <div>${donut(dslices)}</div>
-      <div data-layout="flex:1;min-width:180px">
-        <div data-layout="font-size:20px;font-weight:650">${money(rc.monthly,meta.currency)} <span data-layout="font-size:12px;color:var(--muted)">/ month</span></div>
-        <div data-layout="color:var(--muted);font-size:13px">~${money(rc.annual,meta.currency)} / year · ${rc.reserved_term||"?"} reserved</div>
-        ${rc.one_time? `<div data-layout="color:var(--muted);font-size:13px">one-time ~${money(rc.one_time,meta.currency)}</div>`:""}
+    <div class="cost-dual-grid">
+      <!-- Column 1: Working Run-Rate (Assessment Baseline) -->
+      <div class="cost-panel">
+        <div class="cost-panel-header">
+          <span class="cost-panel-title">Working Run-Rate (Baseline)</span>
+          <span class="role-tag role-arch">For: Architects &amp; FinOps</span>
+        </div>
+        <p class="sub" data-layout="margin:0 0 10px;font-size:11px">Internal Assessment Engine · Retail Prices API</p>
+        <div data-layout="display:flex;gap:14px;align-items:center;flex-wrap:wrap">
+          <div>${donut(dslices)}</div>
+          <div data-layout="flex:1;min-width:140px">
+            <div data-layout="font-size:20px;font-weight:650">${money(rc.monthly,meta.currency)} <span data-layout="font-size:12px;color:var(--muted)">/ month</span></div>
+            <div data-layout="color:var(--muted);font-size:12px">~${money(rc.annual,meta.currency)} / year · ${rc.reserved_term||"?"} reserved</div>
+            ${rc.one_time? `<div data-layout="color:var(--muted);font-size:12px">one-time ~${money(rc.one_time,meta.currency)}</div>`:""}
+          </div>
+        </div>
+        <table data-layout="margin-top:10px;font-size:12px"><thead><tr><th>Cost driver</th><th class="num">Share</th></tr></thead><tbody>
+          ${drivers.map((d,i)=>`<tr><td><i class="legend" data-layout="background:${dcolors[i%5]};width:8px;height:8px;display:inline-block;border-radius:2px;margin-right:5px"></i>${d.driver}</td><td class="num">${d.share_pct}%</td></tr>`).join("")}
+        </tbody></table>
+        <div data-layout="font-size:11px;color:var(--muted);margin-top:auto;padding-top:10px">
+          Sized per VM from uploaded inventory using P95 compute percentiles.
+        </div>
+      </div>
+
+      <!-- Column 2: Microsoft Funding POE (Official Deliverable) -->
+      <div class="cost-panel">
+        <div class="cost-panel-header">
+          <span class="cost-panel-title">Proof of Estimate (Official POE)</span>
+          <span class="role-tag role-ms">For: Microsoft Funding (AMMP/ECIF)</span>
+        </div>
+        <p class="sub" data-layout="margin:0 0 10px;font-size:11px">Real Azure Pricing Calculator · AMMP Funding Deliverable</p>
+        <div id="poeBody"><p class="sub">Checking for Pricing Calculator POE…</p></div>
       </div>
     </div>
-    <table data-layout="margin-top:12px"><thead><tr><th>Cost driver</th><th class="num">Share</th></tr></thead><tbody>
-      ${drivers.map((d,i)=>`<tr><td><i class="legend" data-layout="background:${dcolors[i%5]};width:9px;height:9px;display:inline-block;border-radius:2px;margin-right:6px"></i>${d.driver}</td><td class="num">${d.share_pct}%</td></tr>`).join("")}
-    </tbody></table>
-    <div id="poeContainer" data-layout="margin-top:14px;border-top:1px solid var(--line);padding-top:10px">
-      <div id="poeBody"><p class="sub">Checking for Pricing Calculator POE…</p></div>
-    </div>`);
+
+    <!-- Reconciliation Callout Banner -->
+    <div class="reconcile-box">
+      <b>💡 Why two numbers? (Assessment Run-Rate vs. Pricing Calculator POE):</b>
+      <div data-layout="margin-top:4px;color:var(--muted)">
+        • <b>Working Run-Rate:</b> Evaluates 500+ servers individually in milliseconds using actual P95 CPU/RAM percentiles for precise technical architecture.<br>
+        • <b>Pricing Calculator POE:</b> The official workbook export from <code>azure.microsoft.com/pricing/calculator</code>. It groups resources into consolidated modules, applies standard 730-hour billing months, and includes minimum platform charges required by Microsoft grant review teams.<br>
+        • <b>Action:</b> Submit the <b>Calculator POE (.xlsx)</b> to Microsoft for AMMP / Azure Innovate funding approval.
+      </div>
+    </div>`, true);
   cCost.id = "area-cost-poe"; grid.append(cCost);
   renderPOE();
 
@@ -244,30 +274,36 @@ function render(pkg){
   // Area 13: Deliverables
   const cDeliv = card("13 Deliverables Hub", null, `
     <div data-layout="font-size:12px;color:var(--muted);margin-bottom:10px">
-      Production-grade client artifacts generated directly from the deterministic estimate package:
+      Production-grade client artifacts tailored for specific project stakeholders and funding review teams:
     </div>
     <div class="dl-grid">
-      <a class="dl-card" href="${withScope('/dashboard/download/xlsx')}">
-        <div class="title">Excel Estimate (.xlsx)</div>
-        <div class="meta">Live calculation model with calculation appendix formulas</div>
+      <a class="dl-card" href="${withScope('/dashboard/download/landing-zone-xlsx',{snap:false})}">
+        <div class="dl-badge role-tag role-ms">For: Microsoft Funding Reviewers</div>
+        <div class="title">Calculator POE (.xlsx)</div>
+        <div class="meta">Official Azure Pricing Calculator export for AMMP/ECIF grant approval</div>
       </a>
       <a class="dl-card" href="${withScope('/dashboard/download/resource-plan-xlsx',{snap:false})}">
+        <div class="dl-badge role-tag role-pmo">For: Project Managers &amp; PMO</div>
         <div class="title">Resource Plan (.xlsx)</div>
         <div class="meta">15-sheet workbook: role demand, FTE curve, and heatmap</div>
       </a>
       <a class="dl-card" href="${withScope('/dashboard/download/docx')}">
+        <div class="dl-badge role-tag role-exec">For: Executive Leadership</div>
         <div class="title">Word Proposal (.docx)</div>
         <div class="meta">US-Letter proposal with structured executive narrative</div>
       </a>
       <a class="dl-card" href="${withScope('/dashboard/download/pptx')}">
+        <div class="dl-badge role-tag role-exec">For: Steering Committee</div>
         <div class="title">PowerPoint Deck (.pptx)</div>
         <div class="meta">12-slide presentation with native charts and CAF lifecycle</div>
       </a>
-      <a class="dl-card" href="${withScope('/dashboard/download/landing-zone-xlsx',{snap:false})}">
-        <div class="title">Calculator POE (.xlsx)</div>
-        <div class="meta">Official Azure Pricing Calculator export for funding</div>
+      <a class="dl-card" href="${withScope('/dashboard/download/xlsx')}">
+        <div class="dl-badge role-tag role-arch">For: Cloud Architects &amp; FinOps</div>
+        <div class="title">Excel Estimate (.xlsx)</div>
+        <div class="meta">Live calculation model with calculation appendix formulas</div>
       </a>
       <a class="dl-card" href="${withScope('/dashboard/landing-zone-diagram?fmt=drawio&download=1',{snap:false})}">
+        <div class="dl-badge role-tag role-arch">For: Infrastructure Engineers</div>
         <div class="title">Landing Zone Diagram (.drawio)</div>
         <div class="meta">Editable target hub-spoke architectural topology</div>
       </a>
@@ -411,14 +447,19 @@ function renderPOE(){
       return;
     }
     const rc=d.reconciliation||{}, cur=d.currency||"USD";
+    const deltaBadge = rc.internal_vs_poe_delta_pct!=null
+      ? `<span class="state-pill state-ready" data-layout="font-size:11px;margin-left:8px" title="Variance vs Internal Working Run-Rate">${rc.internal_vs_poe_delta_pct > 0 ? "+" : ""}${rc.internal_vs_poe_delta_pct}% vs baseline</span>`
+      : "";
     safeSetHTML(body,`
       <div data-layout="font-size:22px;font-weight:650">${money(d.monthly_total,cur)}
-        <span data-layout="font-size:12px;color:var(--muted)">/ month · ~${money(d.annual,cur)} / yr</span></div>
+        <span data-layout="font-size:12px;color:var(--muted)">/ month · ~${money(d.annual,cur)} / yr</span>
+        ${deltaBadge}
+      </div>
       <div data-layout="color:var(--muted);font-size:12px;margin:2px 0 10px">
         ${d.line_count} line items · ${d.region||""} · created ${d.created_at||"?"} ·
         source: Azure Pricing Calculator export</div>
       <div class="dl" data-layout="display:flex;gap:8px;flex-wrap:wrap">
-        <a href="${withScope('/dashboard/download/landing-zone-xlsx',{snap:false})}"><b>Download Excel (POE)</b></a>
+        <a href="${withScope('/dashboard/download/landing-zone-xlsx',{snap:false})}"><b>Download Official POE (.xlsx)</b></a>
         ${d.calculator_url?`<a href="${d.calculator_url}" target="_blank" rel="noopener">Open calculator ↗</a>`:""}
       </div>
       ${(d.skipped&&d.skipped.length)? `<details data-layout="margin-top:10px"><summary>Not in the calculator estimate (${d.skipped.length})</summary>

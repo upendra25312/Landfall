@@ -9,6 +9,12 @@ Companion to [`prd/landfall-5x5-prd.md`](landfall-5x5-prd.md). Delivery log:
 
 ## Progress
 
+**C65 self-explanatory stakeholder experience (2026-09-10):** delivered dual-panel
+Cost & POE layout in Area 05 comparing Working Run-Rate (Retail Prices API) vs Official POE
+(Pricing Calculator) with stakeholder audience tags (`role-tag`) and plain-English
+reconciliation banner explaining delta; role-tagged all deliverable cards in Area 13;
+16 Playwright browser journeys, 626 tests, and CI gates pass with 0 errors under strict CSP.
+
 **C64 E13 milestone closure & hardening (2026-09-10):** formalized deterministic
 orchestrator acceptance tests in `tests/test_orchestrator.py` (9 tests: byte-identical
 reproducibility, 16-stage fixed sequence, partial failure preservation, and HTTP route

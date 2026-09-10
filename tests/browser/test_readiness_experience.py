@@ -123,4 +123,42 @@ def test_dashboard_deliverable_pack_and_resource_plan_download(page, base_url, c
     deliv_cards = page.locator("#area-deliverables .dl-card")
     expect(deliv_cards).to_have_count(6)
 
+    # Deliverables hub cards have role-tag badges
+    role_badges = page.locator("#area-deliverables .dl-card .role-tag")
+    expect(role_badges).to_have_count(6)
+
     assert console_errors == []
+
+
+def test_dashboard_cost_and_poe_dual_panel_layout_and_role_tags(page, base_url, console_errors):
+    """Area 05 must render dual-panel layout comparing working run-rate and official POE with role badges and reconciliation box."""
+    page.goto(base_url + "/dashboard?e=contoso-ltd/dc-exit", wait_until="networkidle")
+
+    # Area 05 dual grid
+    cost_area = page.locator("#area-cost-poe")
+    expect(cost_area).to_be_visible()
+
+    dual_grid = cost_area.locator(".cost-dual-grid")
+    expect(dual_grid).to_be_visible()
+
+    panels = dual_grid.locator(".cost-panel")
+    expect(panels).to_have_count(2)
+
+    # Panel 1: Working Run-Rate
+    panel_run_rate = panels.nth(0)
+    expect(panel_run_rate).to_contain_text("Working Run-Rate")
+    expect(panel_run_rate.locator(".role-tag")).to_contain_text("Architects")
+
+    # Panel 2: Official POE
+    panel_poe = panels.nth(1)
+    expect(panel_poe).to_contain_text("Proof of Estimate")
+    expect(panel_poe.locator(".role-tag")).to_contain_text("Microsoft Funding")
+
+    # Reconciliation Callout
+    reconcile_box = cost_area.locator(".reconcile-box")
+    expect(reconcile_box).to_be_visible()
+    expect(reconcile_box).to_contain_text("Why two numbers?")
+    expect(reconcile_box).to_contain_text("Assessment Run-Rate vs. Pricing Calculator POE")
+
+    assert console_errors == []
+
