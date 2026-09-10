@@ -26,7 +26,7 @@ def test_every_openapi_tool_maps_to_a_registered_function(functions):
         if trigger["type"] == "httpTrigger":
             routes.update(("/" + trigger["route"], str(method).lower()) for method in trigger["methods"])
     specs = list((Path(ROOT) / "src/api/openapi").glob("*.json"))
-    assert len(specs) == 17
+    assert len(specs) == 18
     for path in specs:
         for url, operations in json.loads(path.read_text(encoding="utf-8"))["paths"].items():
             for method in operations.keys() & {"get", "post", "put", "delete"}:

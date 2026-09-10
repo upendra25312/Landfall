@@ -41,6 +41,7 @@ _OPENAPI_DIR = os.path.join(
     os.path.dirname(__file__), "..", "src", "api", "openapi"
 )
 _OPENAPI_TOOLS = {
+    "run_assessment": "Run the complete migration assessment in a fixed deterministic sequence for one engagement. Validates and ingests inventory, calculates sizing/cost/waves/landing zone, assembles and publishes deliverables. Returns recorded stages and an explicit failure stage if incomplete. Use this single tool for a full assessment or full estimate; never replace a failed stage with invented figures.",
     "resolve_engagement": "Turn free-text customer + project NAMES into the canonical engagement id (<customer>/<project>) - the same slug used for the ADLS folders and SQL rows. Use it whenever the user names an engagement instead of giving the id, or when no active engagement was supplied. Never guess the slug. Returns fuzzy candidates if the names don't match; create=true provisions the folder skeleton.",
     "run_engagement": "Bulk-ingest an engagement's uploaded inventory folder (detect -> map -> load to Azure SQL, one data-quality report per file, all scoped to that engagement). Call it when the client has uploaded inventory but query_inventory finds nothing, or after new files are added. Safe to re-run - each file's rows are replaced, not duplicated.",
     "query_inventory": "Count / sizing / aggregation questions over the client inventory (Azure SQL).",
@@ -119,7 +120,12 @@ Never combine or compare data across engagements.
   State the end date and critical path; do not invent dates the schedule didn't give.
   `assemble_estimate` turns that into the effort `resource_loading` — a month-by-month
   FTE curve with `peak_fte` and `avg_fte`; quote those, not a made-up team size.
-- To produce the estimate, run the tools above then call `assemble_estimate` with an
+- For a full assessment or full estimate, call `run_assessment` once with the active
+  engagement. It runs the fixed pipeline and publishes the outputs. Report its status
+  and any failed stage; never claim completion if status is failed. Do not retry a
+  failed publishing step automatically. The individual tools below are for focused
+  questions and partial deliverables, not a replacement for the full pipeline.
+- To produce a partial estimate, run the relevant tools above then call `assemble_estimate` with an
   inventory_summary, the data_quality report, and each tool's JSON output. Present its
   `summary_markdown` and headline figures verbatim; cite figure ids for traceability.
   Do not restate numbers the package didn't produce.

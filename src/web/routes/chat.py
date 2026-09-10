@@ -10,6 +10,8 @@ import telemetry as _obs
 import time as _time
 import web_access
 import web_runtime
+from agent_limits import load_limits
+from agent_run import run_response
 
 router = APIRouter()
 
@@ -35,6 +37,9 @@ async def chat(req: Request):
     _t0 = _time.monotonic()
     body = await req.json()
     question = (body.get("message") or "").strip()
+    limits = load_limits()
+    if len(question) > limits.input_characters:
+        return JSONResponse({"error": "Message too long; shorten the question or upload a document."}, status_code=413)
     engagement = (body.get("engagement") or "").strip().strip("/")
 
     def _ms() -> int:
@@ -62,6 +67,8 @@ async def chat(req: Request):
         engagement = _eng[0]
     chat_doc = chat_state._load_chat(engagement) if engagement else {}
     prev_id = chat_doc.get("current_response_id") if engagement else None
+    if sum(t.get('role') == 'user' for t in chat_doc.get('turns', [])) >= limits.conversation_turns:
+        return JSONResponse({"error": "Conversation limit reached. Start a new conversation; your saved assessment is preserved."}, status_code=409)
 
     scoped = question
     if engagement:
@@ -80,7 +87,7 @@ async def chat(req: Request):
         }
         if prev_id:
             kwargs["previous_response_id"] = prev_id
-        resp = web_runtime._openai_client().responses.create(**kwargs)
+        resp = await run_response(web_runtime._openai_client(), kwargs, limits)
         text = (resp.output_text or "").strip()
         if not text:
             _obs.event("web_chat", engagement=_eh, status="empty_agent_response",
@@ -90,6 +97,8 @@ async def chat(req: Request):
                 status_code=502,
             )
         cites = _citations(resp)
+        if resp.status != 'completed':
+            text = 'Partial response — the agent stopped before completion.\n\n' + text
         try:
             from answer_xlsx import tables_from_response
             tables, last_sql = tables_from_response(resp)
@@ -113,15 +122,24 @@ async def chat(req: Request):
                 chat_state._save_chat(engagement, chat_doc)
             except Exception:  # noqa: BLE001
                 web_runtime.log.exception("could not persist the conversation for %s", engagement)
-        _obs.event("web_chat", engagement=_eh, status="ok", scoped=bool(engagement),
+        usage = getattr(resp, 'usage', None)
+        _obs.event("web_chat", engagement=_eh, status="ok" if resp.status == 'completed' else 'partial', scoped=bool(engagement),
+                   input_tokens=getattr(usage, 'input_tokens', None),
+                   output_tokens=getattr(usage, 'output_tokens', None), response_id=resp.id,
                    cited=len(cites), tables=len(tables), chars=len(text), ms=_ms())
         return {"answer": text, "citations": cites, "thread_id": resp.id,
                 "tables": tables, "sql": last_sql}
+    except TimeoutError as exc:
+        _obs.event('web_chat', engagement=_eh, status='timeout', ms=_ms())
+        return JSONResponse({'error': str(exc)}, status_code=504)
     except Exception as exc:  # noqa: BLE001
         web_runtime.log.exception("chat failed")
         _obs.event("web_chat", engagement=_eh, status="error",
                    error=type(exc).__name__, ms=_ms())
-        return JSONResponse({"error": str(exc)}, status_code=500)
+        if getattr(exc, 'status_code', None) == 429:
+            return JSONResponse({'error': 'The agent is busy. Please retry shortly; saved results are preserved.'},
+                                status_code=429, headers={'Retry-After': '15'})
+        return JSONResponse({"error": "The agent request failed. Check saved results before retrying."}, status_code=502)
 
 
 @router.get("/api/engagements/{customer}/{project}/chat")

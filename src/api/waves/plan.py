@@ -56,7 +56,7 @@ class _DSU:
 def plan_waves(applications: list[dict], servers: list[dict],
                dependencies: list[dict], cfg: dict | None = None,
                dispositions: list[dict] | None = None,
-               start_date: str | None = None) -> dict:
+               start_date: str | None = None, *, as_of: str | None = None) -> dict:
     cfg = cfg or load_config()
     w = cfg["waves"]
     reg_scopes = {s.upper() for s in w.get("regulated_scopes_last", [])}
@@ -79,7 +79,7 @@ def plan_waves(applications: list[dict], servers: list[dict],
             continue
         rollup[aid]["servers"] += 1
         rollup[aid]["envs"].add((s.get("env") or "").lower())
-        if _parse_date(s.get("os_eol_date")) and _parse_date(s.get("os_eol_date")) < date.today():
+        if _parse_date(s.get("os_eol_date")) and _parse_date(s.get("os_eol_date")) < (_parse_date(as_of) or date.today()):
             rollup[aid]["eol_servers"] += 1
     for r in rollup.values():
         r["envs"] = sorted(x for x in r["envs"] if x)

@@ -9,6 +9,12 @@ Companion to [`prd/landfall-5x5-prd.md`](landfall-5x5-prd.md). Delivery log:
 
 ## Progress
 
+**C56 assessment runtime:** fixed full-assessment tool and recorded stages,
+idempotent baseline publication, chat limits and usage telemetry implemented.
+560 regression tests pass; release/live verification pending. E13.14/E13.5 are
+in progress until deployed behavior and acceptance are verified. See
+[runtime design](../docs/assessment-runtime.md).
+
 **C55 safe schema:** destructive recreation replaced by guarded additive updates,
 preflight rejection and transactional rollback. 553 tests pass; live replay twice
 preserved global inventory row counts and default-estate hashes. E13.1's schema

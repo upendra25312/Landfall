@@ -9,6 +9,7 @@ import datetime as _dt
 import logging
 import os
 import pathlib
+from agent_limits import load_limits
 
 PROJECT_ENDPOINT = os.environ.get("FOUNDRY_PROJECT_ENDPOINT", "")
 
@@ -29,7 +30,8 @@ def _openai_client():
     """Lazy — keep import (and container start) free of network / token calls."""
     if "openai" not in _clients:
         proj = AIProjectClient(endpoint=PROJECT_ENDPOINT, credential=_cred)
-        _clients["openai"] = proj.get_openai_client()
+        limits = load_limits()
+        _clients["openai"] = proj.get_openai_client().with_options(timeout=30, max_retries=limits.retries)
     return _clients["openai"]
 
 

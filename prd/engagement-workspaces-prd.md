@@ -1,5 +1,12 @@
 # Landfall — Engagement Workspaces (multi-client, dashboard-driven)
 
+**C56 amendment:** full assessments call `run_assessment`; the fixed stage
+sequence, partial-failure semantics, deterministic baseline and chat bounds are
+specified in [assessment-runtime.md](../docs/assessment-runtime.md). Agent tool
+contract changed: deploy API and refresh the agent before using the new prompt.
+Web deployment carries the bounded background-response client. Live acceptance
+remains required; SDK cancellation does not undo an already executed write.
+
 **C55 amendment (2026-09-10):** E13.1 schema preservation implemented and replayed
 twice live without inventory count/default-estate hash changes. Additive nullable
 columns only; incompatible required columns fail rather than remapping customer

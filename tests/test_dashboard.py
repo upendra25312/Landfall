@@ -85,6 +85,19 @@ class _HistContainer(_FakeContainer):
         return [_B(n) for n in list(self.blobs) if n.startswith(name_starts_with)]
 
 
+def test_idempotent_assessment_publish_keeps_baseline_bytes(monkeypatch):
+    from deliverable import functions as dfn
+    fake = _HistContainer()
+    monkeypatch.setattr(dfn, '_container_client', lambda: fake)
+    monkeypatch.setattr(dfn, '_discovery_for', lambda eid: None)
+    body = {'package': P.run(), 'engagement': 'acme/project', '_idempotent': True}
+    assert dfn.publish_estimate_route(_req(body)).status_code == 200
+    before = fake.blobs['engagements/acme/project/estimate/latest.json']
+    response = dfn.publish_estimate_route(_req(body))
+    assert json.loads(response.get_body())['unchanged']
+    assert fake.blobs['engagements/acme/project/estimate/latest.json'] == before
+
+
 def test_publish_estimate_snapshots_the_prior_version(monkeypatch):
     from deliverable import functions as dfn
     fake = _HistContainer()

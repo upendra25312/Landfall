@@ -5,6 +5,33 @@ Operating model: [`landfall-5x5-prd.md` §7](landfall-5x5-prd.md). Tracker:
 
 ---
 
+## Cycle 56 — Deterministic assessment and bounded agent runtime
+
+### Plan
+
+Introduce one full-assessment tool with fixed stages, scoped inventory reads,
+persisted stage status and explicit partial failures. Reuse the tested calculation
+engines and publishing path; record reproducible inputs and dates. Add centralized
+chat limits, nonblocking SDK invocation, bounded conversation history, classified
+errors and usage telemetry. Verify failure paths and deterministic outputs before
+API/web deployment and refreshing the changed agent tool contract.
+
+### Do / Check / Act
+
+Implemented `assessment.py` and its OpenAPI tool, with persisted ordered stages,
+scoped bounded inventory reads, incomplete-price rejection and retained partial
+outputs. Same assessment packages preserve published baseline bytes. Fixed
+assessment-date anchoring of wave EOL scoring. Chat uses nonblocking background
+polling, bounded tool/output/input/turn limits, cancellation attempts, classified
+errors and usage telemetry. **560 pytest passed, 10 skipped**; evals unchanged
+(32 SQL, 30 faults, 74 adversarial, 8 scenarios). Browser fault test initially
+rejected its deliberately injected HTTP 429 network diagnostic; narrowed its
+expectation to that single diagnostic, preserving script/CSP checks. Deployment
+and live Foundry parameter/tool-contract verification pending the release bundle.
+See [runtime limitations](../docs/assessment-runtime.md); cancellation is best
+effort, tool writes cannot be rolled back, and the pipeline is not yet resumable
+Durable orchestration. No score increased for unverified acceptance.
+
 ## Cycle 55 — Preserve inventory during schema updates
 
 ### Plan

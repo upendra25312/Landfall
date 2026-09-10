@@ -1,5 +1,12 @@
 # Landfall — Cycle 54 handoff
 
+## Cycle 56 — assessment runtime
+
+Branch `cycle-56-assessment-runtime`: new assessment tool, stages/partial outputs,
+idempotent publication, bounded background chat, usage telemetry. 560 tests pass,
+evals unchanged. Needs API/web deploy + agent refresh + live verification in the
+release bundle. OAuth registrations requested by user; Entra only is configured.
+
 ## Cycle 55 — safe schema (2026-09-10)
 
 Branch `cycle-55-safe-schema`: guarded additive SQL, destructive statement
