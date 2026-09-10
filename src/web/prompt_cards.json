@@ -12,16 +12,11 @@
     ]
   },
   "cards": [
-    { "label": "Full estimate",        "icon": "◴", "prompt": "Produce the full migration estimate for this engagement and publish it to the dashboard." },
-    { "label": "Landing zone",          "icon": "▦", "prompt": "Design the Azure landing zone for this engagement and walk me through the management groups, spokes, identity, connectivity, policy and DR." },
-    { "label": "Landing-zone diagram",  "icon": "◫", "prompt": "Design the landing zone for this engagement and build the target landing-zone diagram, then tell me where to download the .drawio." },
-    { "label": "Landing-zone cost (Calculator POE)", "icon": "$", "prompt": "Build the Azure Pricing Calculator estimate for this engagement's landing zone and target workloads, and publish it to the dashboard as the Proof of Estimate." },
-    { "label": "Run-rate cost",         "icon": "∑", "prompt": "Break down the Azure run-rate cost with the top cost drivers, the low-expected-high range, the reserved-instance term and the price date." },
-    { "label": "Disposition & waves",   "icon": "➤", "prompt": "Score the 6R dispositions for every application and build the risk-ordered migration wave plan. Call out the pilot wave and any regulated wave." },
-    { "label": "Right-sizing & compute","icon": "⚙", "prompt": "Right-size the servers and estimate the monthly Azure compute cost — quote the SKU mix, the range, and any servers with no performance history." },
-    { "label": "Client deck (PPT)",     "icon": "▣", "prompt": "Assemble the estimate and generate the PowerPoint assessment deck." },
-    { "label": "Excel workbook",        "icon": "▤", "prompt": "Generate the Excel workbook with the full calculation appendix and the assumptions register." },
-    { "label": "What's missing?",       "icon": "?",      "prompt": "What inventory data is missing or low-confidence, and which required discovery-questionnaire questions are still unanswered? Give me the specific list to send the client." },
-    { "label": "Explain a figure",      "icon": "ℹ", "prompt": "Explain figure F8 — where did that number come from, which tool produced it, and under what assumptions?" }
+    { "label": "Full assessment",   "icon": "◴", "prompt": "Produce the full migration estimate for this engagement and publish it to the dashboard." },
+    { "label": "Azure architecture", "icon": "▦", "prompt": "Design the target Azure Landing Zone architecture for this engagement, including management groups, network topology, identity, and security baseline." },
+    { "label": "Cost & POE",         "icon": "$", "prompt": "Estimate the Azure run-rate cost, compute right-sizing, reserved instances, and build the Pricing Calculator Proof of Estimate." },
+    { "label": "Migration plan",     "icon": "➤", "prompt": "Score 6R dispositions, plan risk-ordered migration waves, and generate the migration schedule and critical path." },
+    { "label": "Resource plan",      "icon": "👥", "prompt": "Derive the deterministic resource demand by role and month, evaluate team capacity, and generate the resource plan workbook." },
+    { "label": "Ask Microsoft",      "icon": "🔍", "prompt": "Search Microsoft Learn guidance and Migration Execution Guide best practices for this engagement's target workloads." }
   ]
 }
