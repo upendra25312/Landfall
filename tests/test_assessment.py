@@ -82,3 +82,14 @@ def test_missing_inventory_never_becomes_full_estimate():
     result = run_assessment('acme/project', backend)
     assert result['failed_stage'] == 'data_quality'
     assert not backend.published
+
+
+def test_storage_inventory_is_optional_and_records_zero_cost():
+    backend = Backend()
+    original = backend.inventory
+    backend.inventory = lambda eid: {**original(eid), 'storage': []}
+    result = run_assessment('acme/project', backend, generated_on='2026-09-10')
+    assert result['status'] == 'completed'
+    assert result['outputs']['storage_cost']['totals']['monthly'] == 0
+    assert result['outputs']['storage_cost']['line_items'] == []
+    assert len(backend.published) == 1

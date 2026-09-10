@@ -48,7 +48,8 @@ def _clients():
     from azure.storage.blob import BlobServiceClient
     from azure.storage.queue import QueueClient
 
-    cred = DefaultAzureCredential()
+    client_id = os.environ.get("AZURE_CLIENT_ID")
+    cred = DefaultAzureCredential(managed_identity_client_id=client_id) if client_id else DefaultAzureCredential()
     blob = BlobServiceClient(os.environ["STORAGE_URL"], credential=cred)
     queue = QueueClient(account_url=os.environ["STORAGE_QUEUE_URL"].rstrip("/"),
                         queue_name=os.environ.get("CALC_QUEUE", "calc-jobs"),

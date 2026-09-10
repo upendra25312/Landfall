@@ -9,6 +9,15 @@ Companion to [`prd/landfall-5x5-prd.md`](landfall-5x5-prd.md). Delivery log:
 
 ## Progress
 
+**C58 release & live acceptance (2026-09-10):** C56 API/C57 web release deployed
+(ca-web scaling to zero), Foundry agent v16 refreshed with `run_assessment` tool.
+Live full assessment passed all 16 stages and published all 4 deliverable formats
+(`full-assessment-pass.json`). Storage exact-origin CORS and 1-day abandoned upload
+lifecycle active. Monthly budget (4,200 INR) and Log Analytics daily cap active.
+Event-driven Container Apps Job live scaling and automated fallback proved live.
+Fixed Windows CRLF line-ending in test suite; 569 tests pass (100% green).
+[C58 evidence](../evidence/cycles/c58/REPORT.md).
+
 **C57 security/UI (local validation complete):** strict CSP, sanitized dashboard,
 identity/visibility, upload classification and progress updates implemented.
 568 tests and 11 browser tests pass. Web release and direct-upload activation
