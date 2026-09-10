@@ -18,6 +18,8 @@ class Limits:
     conversation_turns: int = 20
     output_tokens: int = 4000
     input_characters: int = 16000
+    learn_searches_per_turn: int = 3
+    learn_fetches_per_turn: int = 2
 
 
 def load_limits():
@@ -28,4 +30,6 @@ def load_limits():
         _number('MAX_CONVERSATION_TURNS', 20, 1, 100),
         _number('MAX_OUTPUT_TOKENS', 4000, 128, 16000),
         _number('MAX_INPUT_CHARACTERS', 16000, 100, 64000),
+        _number('MAX_LEARN_SEARCHES_PER_TURN', 3, 1, 10),
+        _number('MAX_LEARN_FETCHES_PER_TURN', 2, 1, 10),
     )

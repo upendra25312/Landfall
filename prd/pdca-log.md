@@ -5,6 +5,39 @@ Operating model: [`landfall-5x5-prd.md` §7](landfall-5x5-prd.md). Tracker:
 
 ---
 
+## Cycle 60 — Microsoft Learn MCP Integration & Knowledge Governance (E15.1)
+
+### Plan
+
+Deliver Epic E15.1 (brief E15A.1–E15A.11): integrate official Microsoft Learn MCP
+Server (`https://learn.microsoft.com/api/mcp`) with Landfall. Enforce the three explicit
+authority layers: Customer Facts (dbo.*), Customer Numbers (deterministic engines), and
+Microsoft Guidance (Learn MCP). Implement confidentiality scrubber to strip customer slugs,
+hostnames, private IPs, and secrets from egress queries. Enforce untrusted data encapsulation
+`<untrusted_external_reference>` with prompt-injection quarantine. Implement local caching
+(7-day TTL) and centralized FinOps limits (`MAX_LEARN_SEARCHES_PER_TURN=3`, `MAX_LEARN_FETCHES_PER_TURN=2`).
+Promote `mcp-injection` and `data-egress` in `evals/adversarial.py` to active CI gates.
+Document architecture in `docs/architecture/ms-learn-mcp.md`.
+
+### Do / Check / Act
+
+Implemented `src/api/mcp/learn_client.py` providing `MicrosoftLearnClient`, `LearnCitation`,
+`GuidanceValidation`, `scrub_query`, `encapsulate_untrusted_content`, and `validate_guidance`.
+Added `learn_searches_per_turn` (default 3) and `learn_fetches_per_turn` (default 2) to
+`src/web/agent_limits.py`. Updated `scripts/create_agent.py` `SYSTEM_PROMPT` with the 3 authority
+layers, mandatory provenance requirements, and untrusted MCP data instructions.
+Promoted `mcp-injection` (6 cases) and `data-egress` (8 cases) in `evals/adversarial.py` from
+pending to active CI gates; only `live-jailbreak` remains pending.
+Authored `docs/architecture/ms-learn-mcp.md`.
+Created `tests/test_learn_mcp.py` with 14 unit tests covering discovery, caching, scrubbing,
+injection neutralization, and live opt-in. Regenerated `evals/SCORECARD.md` and `evidence/SCORECARD.md`.
+**Study / Check:** `ruff check src/` passes (0 errors); `pyright src/` passes (0 errors);
+`evals/runner.py` passes all 32 golden SQL, 30 faults, 88/88 adversarial (1 pending), 8 scenarios;
+`pytest tests -q` fully green (583 passed, 14 skipped, 0 failed).
+E15.1 delivered and verified.
+
+---
+
 ## Cycle 59 — CI quality gates: ruff and pyright (E13.8)
 
 ### Plan
