@@ -5,6 +5,13 @@ one layer does not imply a pass in another: mocked functional tests do not prove
 Azure permissions, and HTTP 401 proves an auth boundary, not a working chat.
 Roadmap-only E13/E15 features are not represented as implemented features.
 
+**Latest execution:** [C54 results](../evidence/cycles/c54/REPORT.md) close the
+LibreOffice, four-adapter, live agent/SQL, ingestion and calculator-queue checks.
+Interactive Entra, public CI approval, scratch capacity/OIDC and independent
+reviewers remain prerequisites. C54 adds `validate_agent_roundtrip.py`,
+`validate_calculator_tail.py`, `validate_production_browser.py`,
+`validate_queue_pipeline.py` and `validate_agent_queue.py` under `scripts/`.
+
 ## Execution and acceptance
 
 1. **Plan:** inventory components, interfaces, fixtures, expected results, risks.

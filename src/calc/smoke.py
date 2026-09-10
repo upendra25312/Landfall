@@ -63,6 +63,7 @@ SAMPLE: dict[str, dict] = {
 async def _run(headless: bool = True) -> list[dict]:
     from playwright.async_api import async_playwright
     from driver import _APPLY_MODULE, _CONFIGURED, _add_with_retry, _clear_estimate
+    from configuration import validate_configuration
 
     rows: list[dict] = []
     async with async_playwright() as pw:
@@ -89,8 +90,11 @@ async def _run(headless: bool = True) -> list[dict]:
                           return all.length-1; }}""")
                 fields = [[str(n), v, k] for (n, v, k) in ad["fields"](SAMPLE.get(svc, {}))]
                 res = await page.evaluate(_APPLY_MODULE,
-                                          {"idx": idx, "region": "sweden-central", "fields": fields})
+                                          {"idx": idx, "region": "sweden-central", "fields": fields,
+                                           "regionOptional": svc in ("bandwidth", "azure-dns")})
                 row["missing"] = res.get("missing", [])
+                row["assumptions"] = validate_configuration(svc, SAMPLE.get(svc, {}), res)
+                row["missing"] = []
             except Exception as exc:  # noqa: BLE001
                 row["error"] = str(exc)
             rows.append(row)

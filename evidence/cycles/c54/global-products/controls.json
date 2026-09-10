@@ -1,0 +1,1092 @@
+[
+  {
+    "service": "bandwidth",
+    "config": {
+      "internet_egress_gb": 2048
+    },
+    "fields": [
+      [
+        "dataTransferType",
+        "internetegress",
+        "select"
+      ],
+      [
+        "routedVia",
+        "microsoftglobalnetwork",
+        "select"
+      ],
+      [
+        "internetEgressUnits",
+        2048,
+        "number"
+      ]
+    ],
+    "initial": {
+      "text": "Give feedback\nData Transfer Type:\nInter Region\nInternet Egress\nSource Region:\nCentral US\nEast US\nEast US 2\nNorth Central US\nSouth Central US\nWest Central US\nWest US\nWest US 2\nWest US 3\nUK South\nUK West\nUAE Central\nUAE North\nSwitzerland North\nSwitzerland West\nSweden Central\nSweden South\nSpain Central\nQatar Central\nPoland Central\nNorway East\nNorway West\nNew Zealand North\nMexico Central\nMalaysia West\nKorea Central\nKorea South\nJapan East\nJapan West\nItaly North\nIsrael Central\nIndonesia Central\nCentral India\nIndia South Central\nSouth India\nWest India\nGermany North\nGermany West Central\nFrance Central\nFrance South\nNorth Europe\nWest Europe\nDenmark East\nChile Central\nCanada Central\nCanada East\nBrazil South\nBelgium Central\nUS Gov Arizona\nUS Gov Texas\nUS Gov Virginia\nAustria East\nAustralia Central\nAustralia Central 2\nAustralia East\nAustralia Southeast\nEast Asia\nSoutheast Asia\nSouth Africa North\nSouth Africa West\nDestination Region:\nCentral US\nEast US\nEast US 2\nNorth Central US\nSouth Central US\nWest Central US\nWest US 2\nWest US 3\nUK South\nUK West\nUAE Central\nUAE North\nSwitzerland North\nSwitzerland West\nSweden Central\nSweden South\nSpain Central\nQatar Central\nPoland Central\nNorway East\nNorway West\nNew Zealand North\nMexico Central\nMalaysia West\nKorea Central\nKorea South\nJapan East\nJapan West\nItaly North\nIsrael Central\nIndonesia Central\nCentral India\nIndia South Central\nSouth India\nWest India\nGermany North\nGermany West Central\nFrance Central\nFrance South\nNorth Europe\nWest Europe\nDenmark East\nChile Central\nCanada Central\nCanada East\nBrazil South\nBelgium Central\nUS Gov Arizona\nUS Gov Texas\nUS Gov Virginia\nAustria East\nAustralia Central\nAustralia Central 2\nAustralia East\nAustralia Southeast\nEast Asia\nSoutheast Asia\nSouth Africa North\nSouth Africa West\nOutbound Data Transfer\ni\nGB\n=$0.00\nUpfront cost\n$0.00\nMonthly cost\n$0.00\nAnnual cost\n$0.00",
+      "controls": [
+        {
+          "name": "displayName",
+          "value": "",
+          "type": "text",
+          "visible": true,
+          "options": null
+        },
+        {
+          "name": "dataTransferType",
+          "value": "interregion",
+          "type": "select-one",
+          "visible": true,
+          "options": [
+            {
+              "value": "interregion",
+              "text": "Inter Region"
+            },
+            {
+              "value": "internetegress",
+              "text": "Internet Egress"
+            }
+          ]
+        },
+        {
+          "name": "sourceRegion",
+          "value": "us-west",
+          "type": "select-one",
+          "visible": true,
+          "options": [
+            {
+              "value": "us-central",
+              "text": "Central US"
+            },
+            {
+              "value": "us-east",
+              "text": "East US"
+            },
+            {
+              "value": "us-east-2",
+              "text": "East US 2"
+            },
+            {
+              "value": "us-north-central",
+              "text": "North Central US"
+            },
+            {
+              "value": "us-south-central",
+              "text": "South Central US"
+            },
+            {
+              "value": "us-west-central",
+              "text": "West Central US"
+            },
+            {
+              "value": "us-west",
+              "text": "West US"
+            },
+            {
+              "value": "us-west-2",
+              "text": "West US 2"
+            },
+            {
+              "value": "us-west-3",
+              "text": "West US 3"
+            },
+            {
+              "value": "united-kingdom-south",
+              "text": "UK South"
+            },
+            {
+              "value": "united-kingdom-west",
+              "text": "UK West"
+            },
+            {
+              "value": "uae-central",
+              "text": "UAE Central"
+            },
+            {
+              "value": "uae-north",
+              "text": "UAE North"
+            },
+            {
+              "value": "switzerland-north",
+              "text": "Switzerland North"
+            },
+            {
+              "value": "switzerland-west",
+              "text": "Switzerland West"
+            },
+            {
+              "value": "sweden-central",
+              "text": "Sweden Central"
+            },
+            {
+              "value": "sweden-south",
+              "text": "Sweden South"
+            },
+            {
+              "value": "spain-central",
+              "text": "Spain Central"
+            },
+            {
+              "value": "qatar-central",
+              "text": "Qatar Central"
+            },
+            {
+              "value": "poland-central",
+              "text": "Poland Central"
+            },
+            {
+              "value": "norway-east",
+              "text": "Norway East"
+            },
+            {
+              "value": "norway-west",
+              "text": "Norway West"
+            },
+            {
+              "value": "new-zealand-north",
+              "text": "New Zealand North"
+            },
+            {
+              "value": "mexico-central",
+              "text": "Mexico Central"
+            },
+            {
+              "value": "malaysia-west",
+              "text": "Malaysia West"
+            },
+            {
+              "value": "korea-central",
+              "text": "Korea Central"
+            },
+            {
+              "value": "korea-south",
+              "text": "Korea South"
+            },
+            {
+              "value": "japan-east",
+              "text": "Japan East"
+            },
+            {
+              "value": "japan-west",
+              "text": "Japan West"
+            },
+            {
+              "value": "italy-north",
+              "text": "Italy North"
+            },
+            {
+              "value": "israel-central",
+              "text": "Israel Central"
+            },
+            {
+              "value": "indonesia-central",
+              "text": "Indonesia Central"
+            },
+            {
+              "value": "central-india",
+              "text": "Central India"
+            },
+            {
+              "value": "south-central-india",
+              "text": "India South Central"
+            },
+            {
+              "value": "south-india",
+              "text": "South India"
+            },
+            {
+              "value": "west-india",
+              "text": "West India"
+            },
+            {
+              "value": "germany-north",
+              "text": "Germany North"
+            },
+            {
+              "value": "germany-west-central",
+              "text": "Germany West Central"
+            },
+            {
+              "value": "france-central",
+              "text": "France Central"
+            },
+            {
+              "value": "france-south",
+              "text": "France South"
+            },
+            {
+              "value": "europe-north",
+              "text": "North Europe"
+            },
+            {
+              "value": "europe-west",
+              "text": "West Europe"
+            },
+            {
+              "value": "denmark-east",
+              "text": "Denmark East"
+            },
+            {
+              "value": "chile-central",
+              "text": "Chile Central"
+            },
+            {
+              "value": "canada-central",
+              "text": "Canada Central"
+            },
+            {
+              "value": "canada-east",
+              "text": "Canada East"
+            },
+            {
+              "value": "brazil-south",
+              "text": "Brazil South"
+            },
+            {
+              "value": "belgium-central",
+              "text": "Belgium Central"
+            },
+            {
+              "value": "usgov-arizona",
+              "text": "US Gov Arizona"
+            },
+            {
+              "value": "usgov-texas",
+              "text": "US Gov Texas"
+            },
+            {
+              "value": "usgov-virginia",
+              "text": "US Gov Virginia"
+            },
+            {
+              "value": "austria-east",
+              "text": "Austria East"
+            },
+            {
+              "value": "australia-central",
+              "text": "Australia Central"
+            },
+            {
+              "value": "australia-central-2",
+              "text": "Australia Central 2"
+            },
+            {
+              "value": "australia-east",
+              "text": "Australia East"
+            },
+            {
+              "value": "australia-southeast",
+              "text": "Australia Southeast"
+            },
+            {
+              "value": "asia-pacific-east",
+              "text": "East Asia"
+            },
+            {
+              "value": "asia-pacific-southeast",
+              "text": "Southeast Asia"
+            },
+            {
+              "value": "south-africa-north",
+              "text": "South Africa North"
+            },
+            {
+              "value": "south-africa-west",
+              "text": "South Africa West"
+            }
+          ]
+        },
+        {
+          "name": "destinationRegion",
+          "value": "asia-pacific-east",
+          "type": "select-one",
+          "visible": true,
+          "options": [
+            {
+              "value": "us-central",
+              "text": "Central US"
+            },
+            {
+              "value": "us-east",
+              "text": "East US"
+            },
+            {
+              "value": "us-east-2",
+              "text": "East US 2"
+            },
+            {
+              "value": "us-north-central",
+              "text": "North Central US"
+            },
+            {
+              "value": "us-south-central",
+              "text": "South Central US"
+            },
+            {
+              "value": "us-west-central",
+              "text": "West Central US"
+            },
+            {
+              "value": "us-west-2",
+              "text": "West US 2"
+            },
+            {
+              "value": "us-west-3",
+              "text": "West US 3"
+            },
+            {
+              "value": "united-kingdom-south",
+              "text": "UK South"
+            },
+            {
+              "value": "united-kingdom-west",
+              "text": "UK West"
+            },
+            {
+              "value": "uae-central",
+              "text": "UAE Central"
+            },
+            {
+              "value": "uae-north",
+              "text": "UAE North"
+            },
+            {
+              "value": "switzerland-north",
+              "text": "Switzerland North"
+            },
+            {
+              "value": "switzerland-west",
+              "text": "Switzerland West"
+            },
+            {
+              "value": "sweden-central",
+              "text": "Sweden Central"
+            },
+            {
+              "value": "sweden-south",
+              "text": "Sweden South"
+            },
+            {
+              "value": "spain-central",
+              "text": "Spain Central"
+            },
+            {
+              "value": "qatar-central",
+              "text": "Qatar Central"
+            },
+            {
+              "value": "poland-central",
+              "text": "Poland Central"
+            },
+            {
+              "value": "norway-east",
+              "text": "Norway East"
+            },
+            {
+              "value": "norway-west",
+              "text": "Norway West"
+            },
+            {
+              "value": "new-zealand-north",
+              "text": "New Zealand North"
+            },
+            {
+              "value": "mexico-central",
+              "text": "Mexico Central"
+            },
+            {
+              "value": "malaysia-west",
+              "text": "Malaysia West"
+            },
+            {
+              "value": "korea-central",
+              "text": "Korea Central"
+            },
+            {
+              "value": "korea-south",
+              "text": "Korea South"
+            },
+            {
+              "value": "japan-east",
+              "text": "Japan East"
+            },
+            {
+              "value": "japan-west",
+              "text": "Japan West"
+            },
+            {
+              "value": "italy-north",
+              "text": "Italy North"
+            },
+            {
+              "value": "israel-central",
+              "text": "Israel Central"
+            },
+            {
+              "value": "indonesia-central",
+              "text": "Indonesia Central"
+            },
+            {
+              "value": "central-india",
+              "text": "Central India"
+            },
+            {
+              "value": "south-central-india",
+              "text": "India South Central"
+            },
+            {
+              "value": "south-india",
+              "text": "South India"
+            },
+            {
+              "value": "west-india",
+              "text": "West India"
+            },
+            {
+              "value": "germany-north",
+              "text": "Germany North"
+            },
+            {
+              "value": "germany-west-central",
+              "text": "Germany West Central"
+            },
+            {
+              "value": "france-central",
+              "text": "France Central"
+            },
+            {
+              "value": "france-south",
+              "text": "France South"
+            },
+            {
+              "value": "europe-north",
+              "text": "North Europe"
+            },
+            {
+              "value": "europe-west",
+              "text": "West Europe"
+            },
+            {
+              "value": "denmark-east",
+              "text": "Denmark East"
+            },
+            {
+              "value": "chile-central",
+              "text": "Chile Central"
+            },
+            {
+              "value": "canada-central",
+              "text": "Canada Central"
+            },
+            {
+              "value": "canada-east",
+              "text": "Canada East"
+            },
+            {
+              "value": "brazil-south",
+              "text": "Brazil South"
+            },
+            {
+              "value": "belgium-central",
+              "text": "Belgium Central"
+            },
+            {
+              "value": "usgov-arizona",
+              "text": "US Gov Arizona"
+            },
+            {
+              "value": "usgov-texas",
+              "text": "US Gov Texas"
+            },
+            {
+              "value": "usgov-virginia",
+              "text": "US Gov Virginia"
+            },
+            {
+              "value": "austria-east",
+              "text": "Austria East"
+            },
+            {
+              "value": "australia-central",
+              "text": "Australia Central"
+            },
+            {
+              "value": "australia-central-2",
+              "text": "Australia Central 2"
+            },
+            {
+              "value": "australia-east",
+              "text": "Australia East"
+            },
+            {
+              "value": "australia-southeast",
+              "text": "Australia Southeast"
+            },
+            {
+              "value": "asia-pacific-east",
+              "text": "East Asia"
+            },
+            {
+              "value": "asia-pacific-southeast",
+              "text": "Southeast Asia"
+            },
+            {
+              "value": "south-africa-north",
+              "text": "South Africa North"
+            },
+            {
+              "value": "south-africa-west",
+              "text": "South Africa West"
+            }
+          ]
+        },
+        {
+          "name": "interRegionUnits",
+          "value": "5",
+          "type": "number",
+          "visible": true,
+          "options": null
+        }
+      ]
+    },
+    "apply": {
+      "missing": [
+        "region=sweden-central"
+      ],
+      "applied": [
+        "dataTransferType",
+        "routedVia",
+        "internetEgressUnits"
+      ]
+    },
+    "final": {
+      "text": "Give feedback\nData Transfer Type:\nInter Region\nInternet Egress\nSource Region:\nCentral US\nEast US\nEast US 2\nNorth Central US\nSouth Central US\nWest Central US\nWest US\nWest US 2\nWest US 3\nUK South\nUK West\nUAE Central\nUAE North\nSwitzerland North\nSwitzerland West\nSweden Central\nSweden South\nSpain Central\nQatar Central\nPoland Central\nNorway East\nNorway West\nNew Zealand North\nMexico Central\nMalaysia West\nKorea Central\nKorea South\nJapan East\nJapan West\nItaly North\nIsrael Central\nIndonesia Central\nCentral India\nIndia South Central\nSouth India\nWest India\nGermany North\nGermany West Central\nFrance Central\nFrance South\nNorth Europe\nWest Europe\nDenmark East\nChile Central\nCanada Central\nCanada East\nBrazil South\nBelgium Central\nUS Gov Arizona\nUS Gov Texas\nUS Gov Virginia\nAustria East\nAustralia Central\nAustralia Central 2\nAustralia East\nAustralia Southeast\nEast Asia\nSoutheast Asia\nSouth Africa North\nSouth Africa West\nRouted Via:\nMicrosoft Global Network\nPublic Internet\ni\nOutbound Data Transfer\ni\nGB\n=$169.48\nUpfront cost\n$0.00\nMonthly cost\n$169.48\nAnnual cost\n$2,033.71",
+      "controls": [
+        {
+          "name": "displayName",
+          "value": "",
+          "type": "text",
+          "visible": true,
+          "options": null
+        },
+        {
+          "name": "dataTransferType",
+          "value": "internetegress",
+          "type": "select-one",
+          "visible": true,
+          "options": [
+            {
+              "value": "interregion",
+              "text": "Inter Region"
+            },
+            {
+              "value": "internetegress",
+              "text": "Internet Egress"
+            }
+          ]
+        },
+        {
+          "name": "sourceRegion",
+          "value": "us-west",
+          "type": "select-one",
+          "visible": true,
+          "options": [
+            {
+              "value": "us-central",
+              "text": "Central US"
+            },
+            {
+              "value": "us-east",
+              "text": "East US"
+            },
+            {
+              "value": "us-east-2",
+              "text": "East US 2"
+            },
+            {
+              "value": "us-north-central",
+              "text": "North Central US"
+            },
+            {
+              "value": "us-south-central",
+              "text": "South Central US"
+            },
+            {
+              "value": "us-west-central",
+              "text": "West Central US"
+            },
+            {
+              "value": "us-west",
+              "text": "West US"
+            },
+            {
+              "value": "us-west-2",
+              "text": "West US 2"
+            },
+            {
+              "value": "us-west-3",
+              "text": "West US 3"
+            },
+            {
+              "value": "united-kingdom-south",
+              "text": "UK South"
+            },
+            {
+              "value": "united-kingdom-west",
+              "text": "UK West"
+            },
+            {
+              "value": "uae-central",
+              "text": "UAE Central"
+            },
+            {
+              "value": "uae-north",
+              "text": "UAE North"
+            },
+            {
+              "value": "switzerland-north",
+              "text": "Switzerland North"
+            },
+            {
+              "value": "switzerland-west",
+              "text": "Switzerland West"
+            },
+            {
+              "value": "sweden-central",
+              "text": "Sweden Central"
+            },
+            {
+              "value": "sweden-south",
+              "text": "Sweden South"
+            },
+            {
+              "value": "spain-central",
+              "text": "Spain Central"
+            },
+            {
+              "value": "qatar-central",
+              "text": "Qatar Central"
+            },
+            {
+              "value": "poland-central",
+              "text": "Poland Central"
+            },
+            {
+              "value": "norway-east",
+              "text": "Norway East"
+            },
+            {
+              "value": "norway-west",
+              "text": "Norway West"
+            },
+            {
+              "value": "new-zealand-north",
+              "text": "New Zealand North"
+            },
+            {
+              "value": "mexico-central",
+              "text": "Mexico Central"
+            },
+            {
+              "value": "malaysia-west",
+              "text": "Malaysia West"
+            },
+            {
+              "value": "korea-central",
+              "text": "Korea Central"
+            },
+            {
+              "value": "korea-south",
+              "text": "Korea South"
+            },
+            {
+              "value": "japan-east",
+              "text": "Japan East"
+            },
+            {
+              "value": "japan-west",
+              "text": "Japan West"
+            },
+            {
+              "value": "italy-north",
+              "text": "Italy North"
+            },
+            {
+              "value": "israel-central",
+              "text": "Israel Central"
+            },
+            {
+              "value": "indonesia-central",
+              "text": "Indonesia Central"
+            },
+            {
+              "value": "central-india",
+              "text": "Central India"
+            },
+            {
+              "value": "south-central-india",
+              "text": "India South Central"
+            },
+            {
+              "value": "south-india",
+              "text": "South India"
+            },
+            {
+              "value": "west-india",
+              "text": "West India"
+            },
+            {
+              "value": "germany-north",
+              "text": "Germany North"
+            },
+            {
+              "value": "germany-west-central",
+              "text": "Germany West Central"
+            },
+            {
+              "value": "france-central",
+              "text": "France Central"
+            },
+            {
+              "value": "france-south",
+              "text": "France South"
+            },
+            {
+              "value": "europe-north",
+              "text": "North Europe"
+            },
+            {
+              "value": "europe-west",
+              "text": "West Europe"
+            },
+            {
+              "value": "denmark-east",
+              "text": "Denmark East"
+            },
+            {
+              "value": "chile-central",
+              "text": "Chile Central"
+            },
+            {
+              "value": "canada-central",
+              "text": "Canada Central"
+            },
+            {
+              "value": "canada-east",
+              "text": "Canada East"
+            },
+            {
+              "value": "brazil-south",
+              "text": "Brazil South"
+            },
+            {
+              "value": "belgium-central",
+              "text": "Belgium Central"
+            },
+            {
+              "value": "usgov-arizona",
+              "text": "US Gov Arizona"
+            },
+            {
+              "value": "usgov-texas",
+              "text": "US Gov Texas"
+            },
+            {
+              "value": "usgov-virginia",
+              "text": "US Gov Virginia"
+            },
+            {
+              "value": "austria-east",
+              "text": "Austria East"
+            },
+            {
+              "value": "australia-central",
+              "text": "Australia Central"
+            },
+            {
+              "value": "australia-central-2",
+              "text": "Australia Central 2"
+            },
+            {
+              "value": "australia-east",
+              "text": "Australia East"
+            },
+            {
+              "value": "australia-southeast",
+              "text": "Australia Southeast"
+            },
+            {
+              "value": "asia-pacific-east",
+              "text": "East Asia"
+            },
+            {
+              "value": "asia-pacific-southeast",
+              "text": "Southeast Asia"
+            },
+            {
+              "value": "south-africa-north",
+              "text": "South Africa North"
+            },
+            {
+              "value": "south-africa-west",
+              "text": "South Africa West"
+            }
+          ]
+        },
+        {
+          "name": "routedVia",
+          "value": "microsoftglobalnetwork",
+          "type": "select-one",
+          "visible": true,
+          "options": [
+            {
+              "value": "microsoftglobalnetwork",
+              "text": "Microsoft Global Network"
+            },
+            {
+              "value": "publicinternet",
+              "text": "Public Internet"
+            }
+          ]
+        },
+        {
+          "name": "internetEgressUnits",
+          "value": "2048",
+          "type": "number",
+          "visible": true,
+          "options": null
+        }
+      ]
+    },
+    "valid": false,
+    "error": "bandwidth: calculator configuration incomplete: region=sweden-central",
+    "export": {
+      "region": null,
+      "description": "Internet egress, 2048 GB outbound data transfer from West US routed via Microsoft Global Network",
+      "monthly_cost": 169.476,
+      "ui_total_matches": true
+    }
+  },
+  {
+    "service": "azure-dns",
+    "config": {
+      "public_zones": 1,
+      "private_zones": 4,
+      "queries_millions": 5
+    },
+    "fields": [
+      [
+        "type",
+        "private",
+        "select"
+      ],
+      [
+        "privateZones",
+        5,
+        "number"
+      ],
+      [
+        "privateQueries",
+        5,
+        "number"
+      ]
+    ],
+    "initial": {
+      "text": "Give feedback\nZone:\nZone 1\nZone 2\nZone 3\nZone 4\nUS Gov Zone 1\nSKU:\nDNS\nDNS Private Resolver\nDNS Security Policy\nType:\nPublic\nPrivate\ni\n\n*DNS Private Resolver service pricing is located under the SKU field in the above drop down menu.\n\nHosted DNS zones\n=$0.00\nDNS queries (millions)\n=$0.00\nUpfront cost\n$0.00\nMonthly cost\n$0.00\nAnnual cost\n$0.00",
+      "controls": [
+        {
+          "name": "displayName",
+          "value": "",
+          "type": "text",
+          "visible": true,
+          "options": null
+        },
+        {
+          "name": "zone",
+          "value": "zone1",
+          "type": "select-one",
+          "visible": true,
+          "options": [
+            {
+              "value": "zone1",
+              "text": "Zone 1"
+            },
+            {
+              "value": "zone2",
+              "text": "Zone 2"
+            },
+            {
+              "value": "zone3",
+              "text": "Zone 3"
+            },
+            {
+              "value": "zone4",
+              "text": "Zone 4"
+            },
+            {
+              "value": "usgov-zone1",
+              "text": "US Gov Zone 1"
+            }
+          ]
+        },
+        {
+          "name": "dnsSku",
+          "value": "dns",
+          "type": "select-one",
+          "visible": true,
+          "options": [
+            {
+              "value": "dns",
+              "text": "DNS"
+            },
+            {
+              "value": "dns_private",
+              "text": "DNS Private Resolver"
+            },
+            {
+              "value": "dns_security",
+              "text": "DNS Security Policy"
+            }
+          ]
+        },
+        {
+          "name": "type",
+          "value": "public",
+          "type": "select-one",
+          "visible": true,
+          "options": [
+            {
+              "value": "public",
+              "text": "Public"
+            },
+            {
+              "value": "private",
+              "text": "Private"
+            }
+          ]
+        },
+        {
+          "name": "zones",
+          "value": "0",
+          "type": "number",
+          "visible": true,
+          "options": null
+        },
+        {
+          "name": "queries",
+          "value": "0",
+          "type": "number",
+          "visible": true,
+          "options": null
+        }
+      ]
+    },
+    "apply": {
+      "missing": [
+        "region=sweden-central"
+      ],
+      "applied": [
+        "type",
+        "privateZones",
+        "privateQueries"
+      ]
+    },
+    "final": {
+      "text": "Give feedback\nZone:\nZone 1\nZone 2\nZone 3\nZone 4\nUS Gov Zone 1\nSKU:\nDNS\nDNS Private Resolver\nDNS Security Policy\nType:\nPublic\nPrivate\ni\n\n*DNS Private Resolver service pricing is located under the SKU field in the above drop down menu.\n\nHosted DNS zones\n=$2.50\nDNS queries (millions)\n=$2.00\nUpfront cost\n$0.00\nMonthly cost\n$4.50\nAnnual cost\n$54.00",
+      "controls": [
+        {
+          "name": "displayName",
+          "value": "",
+          "type": "text",
+          "visible": true,
+          "options": null
+        },
+        {
+          "name": "zone",
+          "value": "zone1",
+          "type": "select-one",
+          "visible": true,
+          "options": [
+            {
+              "value": "zone1",
+              "text": "Zone 1"
+            },
+            {
+              "value": "zone2",
+              "text": "Zone 2"
+            },
+            {
+              "value": "zone3",
+              "text": "Zone 3"
+            },
+            {
+              "value": "zone4",
+              "text": "Zone 4"
+            },
+            {
+              "value": "usgov-zone1",
+              "text": "US Gov Zone 1"
+            }
+          ]
+        },
+        {
+          "name": "dnsSku",
+          "value": "dns",
+          "type": "select-one",
+          "visible": true,
+          "options": [
+            {
+              "value": "dns",
+              "text": "DNS"
+            },
+            {
+              "value": "dns_private",
+              "text": "DNS Private Resolver"
+            },
+            {
+              "value": "dns_security",
+              "text": "DNS Security Policy"
+            }
+          ]
+        },
+        {
+          "name": "type",
+          "value": "private",
+          "type": "select-one",
+          "visible": true,
+          "options": [
+            {
+              "value": "public",
+              "text": "Public"
+            },
+            {
+              "value": "private",
+              "text": "Private"
+            }
+          ]
+        },
+        {
+          "name": "privateZones",
+          "value": "5",
+          "type": "number",
+          "visible": true,
+          "options": null
+        },
+        {
+          "name": "privateQueries",
+          "value": "5",
+          "type": "number",
+          "visible": true,
+          "options": null
+        }
+      ]
+    },
+    "valid": false,
+    "error": "azure-dns: calculator configuration incomplete: region=sweden-central",
+    "export": {
+      "region": null,
+      "description": "Zone 1, DNS, Private; 5 hosted DNS zones, 5 DNS queries",
+      "monthly_cost": 4.5,
+      "ui_total_matches": true
+    }
+  }
+]

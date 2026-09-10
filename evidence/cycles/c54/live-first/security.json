@@ -1,0 +1,109 @@
+{
+  "ok": false,
+  "checks": [
+    {
+      "check": "web / unauthenticated",
+      "pass": false,
+      "severity": "critical",
+      "detail": "HTTP 0 (want 401/403/302)"
+    },
+    {
+      "check": "web /dashboard unauthenticated",
+      "pass": true,
+      "severity": null,
+      "detail": "HTTP 401 (want 401/403/302)"
+    },
+    {
+      "check": "web /api/engagements unauthenticated",
+      "pass": true,
+      "severity": null,
+      "detail": "HTTP 401 (want 401/403/302)"
+    },
+    {
+      "check": "web /healthz unauthenticated",
+      "pass": true,
+      "severity": null,
+      "detail": "HTTP 401 (want 401/403/302)"
+    },
+    {
+      "check": "web /questionnaire unauthenticated",
+      "pass": true,
+      "severity": null,
+      "detail": "HTTP 401 (want 401/403/302)"
+    },
+    {
+      "check": "function /api/engagements unauthenticated",
+      "pass": true,
+      "severity": null,
+      "detail": "HTTP 401 (want 401/403)"
+    },
+    {
+      "check": "function /api/query_inventory unauthenticated",
+      "pass": true,
+      "severity": null,
+      "detail": "HTTP 401 (want 401/403)"
+    },
+    {
+      "check": "function /api/publish_estimate unauthenticated",
+      "pass": true,
+      "severity": null,
+      "detail": "HTTP 401 (want 401/403)"
+    },
+    {
+      "check": "HSTS present",
+      "pass": true,
+      "severity": null,
+      "detail": "max-age=31536000; includeSubDomains"
+    },
+    {
+      "check": "no Server/version banner",
+      "pass": true,
+      "severity": null,
+      "detail": "(none)"
+    },
+    {
+      "check": "app response headers (CSP / nosniff / frame)",
+      "pass": true,
+      "severity": null,
+      "detail": "not observable behind Easy Auth (401 before the app) \u2014 asserted in tests/test_web_csp.py"
+    },
+    {
+      "check": "sql guard blocks injection / write / DDL payloads",
+      "pass": true,
+      "severity": null,
+      "detail": "11/11 rejected"
+    },
+    {
+      "check": "sql guard neutralises comment tricks",
+      "pass": true,
+      "severity": null,
+      "detail": "2/2"
+    },
+    {
+      "check": "sql guard allows a legitimate query",
+      "pass": true,
+      "severity": null,
+      "detail": "ok"
+    },
+    {
+      "check": "engagement slug rejects traversal",
+      "pass": true,
+      "severity": null,
+      "detail": "0 of 8 bad slugs escaped"
+    },
+    {
+      "check": "no obvious secrets committed",
+      "pass": true,
+      "severity": null,
+      "detail": "git grep clean"
+    }
+  ],
+  "findings": [
+    {
+      "check": "web / unauthenticated",
+      "pass": false,
+      "severity": "critical",
+      "detail": "HTTP 0 (want 401/403/302)"
+    }
+  ]
+}

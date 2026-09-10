@@ -9,6 +9,14 @@ Companion to [`prd/landfall-5x5-prd.md`](landfall-5x5-prd.md). Delivery log:
 
 ## Progress
 
+**C54 validation tail (2026-09-10):** real LibreOffice recalculation, the four
+calculator adapter exports/variants, live Foundry→Function→SQL scoped counts and
+blob/Event Grid ingestion are verified. **21/21 adapters pass; the live calculator
+queue produced a four-service Excel export.** Fixed V2 gateway controls and live
+Foundry result extraction for chat Excel export; web and calc deployed. Public CI
+publication needs approval after automatic-review rejection. See [C54 results](../evidence/cycles/c54/REPORT.md)
+for release execution and the remaining human/auth/scratch-environment prerequisites.
+
 **C53 system validation (2026-09-10):** the [test plan](../tests/SYSTEM-TEST-PLAN.md)
 maps 18 component/feature groups to executable gates and remaining live/manual
 acceptance. Added archive/engagement isolation regressions, Function contracts,

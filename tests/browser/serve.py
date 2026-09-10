@@ -110,11 +110,11 @@ class _FakeResp:
         self.output_text = text
         self.status = "completed"
         self.id = "resp_offline_1"
-        self.output = [SimpleNamespace(
-            type="function_call_output", call_id="offline-query", output={
+        self.output = [SimpleNamespace(type="openapi_call", call_id="offline-query", name="query_inventory_query_inventory"), SimpleNamespace(
+            type="openapi_call_output", call_id="offline-query", output={"response": json.dumps({
                 "columns": ["hostname", "vcpu"], "rows": [["web01", 4]],
                 "sql": "SELECT hostname, vcpu FROM servers",
-            })]
+            })})]
 
 
 class _FakeResponses:

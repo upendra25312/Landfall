@@ -1,3 +1,36 @@
+# Landfall — Cycle 54 handoff
+
+2026-09-10 · branch `cycle-54-validation-tail` · baseline main `ad167a0`.
+User requested completion of the C53 pending checks. Current evidence:
+[C54 report](evidence/cycles/c54/REPORT.md).
+
+543 local tests, 7 browser journeys and 6 real LibreOffice tests pass. Four
+calculator adapter tails verified with actual exports/non-default variants;
+Application Gateway V2 controls fixed. Explicit calculator failures replace
+partial/default-price exports. Bastion's unavailable regional transfer controls
+permit only the exact documented free 5 GB default with an assumption.
+Live Foundry tool/SQL counts are 250/default and 0/empty; actual OpenAPI outputs
+are verified. Fixed chat Excel extraction for the live `openapi_call_output`
+envelope; browser fixture now uses it. Live synthetic blob/Event Grid ingestion
+loaded one row in `validation-c54/pipeline-20260910090640` (retained).
+
+Web and calc deployed successfully: ready revisions end `1789031554` and
+`1789031776`. Live smoke 8/8, service readiness 10/10, security and authenticated
+service checks pass. All 21 adapters pass. Live managed-identity Function→queue→
+calculator worker produced a four-service Excel file for the second retained
+engagement `validation-c54/pipeline-20260910091657`.
+
+Remote CI is blocked: automatic approval review rejected publishing the C52–C54
+branch/evidence to the public GitHub repo without explicit approval. The review
+document is in `evidence/cycles/c54/PUBLICATION-REVIEW.md`; no push/workaround was
+performed. Interactive browser is blocked on Entra sign-in. Scratch checks need a separate authorized
+subscription with a free Search slot plus OIDC configuration. Real independent
+reviewer assignments are pending. No customer data, paid tiers or provisioning
+of the populated resource group were changed. Pre-existing master prompt remains
+untouched. See the final report for updated release outcomes.
+
+---
+
 # Landfall — Cycle 53 handoff
 
 2026-09-10 · `cycle-53-system-validation` · baseline main `c00df7f`.

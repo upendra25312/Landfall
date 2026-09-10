@@ -1,0 +1,109 @@
+{
+  "observed_at": "2026-09-10T09:21:47.657752+00:00",
+  "checks": [
+    {
+      "check": "subscription",
+      "status": "PASS",
+      "detail": {
+        "id": "f609eb5b-df3e-4fab-9a1b-9a8fea2f157f",
+        "state": "Enabled"
+      }
+    },
+    {
+      "check": "resource_group",
+      "status": "PASS",
+      "detail": {
+        "location": "swedencentral",
+        "name": "rg-landfall",
+        "state": "Succeeded"
+      }
+    },
+    {
+      "check": "container_web",
+      "status": "PASS",
+      "detail": [
+        {
+          "name": "ca-web-tmglwfatwcsa2",
+          "ready": "ca-web-tmglwfatwcsa2--azd-1789031554",
+          "revision": "ca-web-tmglwfatwcsa2--azd-1789031554",
+          "state": "Succeeded"
+        }
+      ]
+    },
+    {
+      "check": "container_calc",
+      "status": "PASS",
+      "detail": [
+        {
+          "name": "ca-calc-tmglwfatwcsa2",
+          "ready": "ca-calc-tmglwfatwcsa2--azd-1789031776",
+          "revision": "ca-calc-tmglwfatwcsa2--azd-1789031776",
+          "state": "Succeeded"
+        }
+      ]
+    },
+    {
+      "check": "container_drawio",
+      "status": "PASS",
+      "detail": [
+        {
+          "name": "ca-drawio-tmglwfatwcsa2",
+          "ready": "ca-drawio-tmglwfatwcsa2--y6qxyr5",
+          "revision": "ca-drawio-tmglwfatwcsa2--y6qxyr5",
+          "state": "Succeeded"
+        }
+      ]
+    },
+    {
+      "check": "function_registration",
+      "status": "PASS",
+      "detail": {
+        "expected": 27,
+        "registered": 27,
+        "missing": []
+      }
+    },
+    {
+      "check": "search_resource",
+      "status": "PASS",
+      "detail": [
+        {
+          "name": "srch-tmglwfatwcsa2",
+          "type": "Microsoft.Search/searchServices"
+        }
+      ]
+    },
+    {
+      "check": "foundry_resource",
+      "status": "PASS",
+      "detail": [
+        {
+          "name": "aif-tmglwfatwcsa2",
+          "type": "Microsoft.CognitiveServices/accounts"
+        }
+      ]
+    },
+    {
+      "check": "monitoring_resource",
+      "status": "PASS",
+      "detail": [
+        {
+          "name": "appi-tmglwfatwcsa2",
+          "type": "Microsoft.Insights/components"
+        }
+      ]
+    },
+    {
+      "check": "registry_resource",
+      "status": "PASS",
+      "detail": [
+        {
+          "name": "crtmglwfatwcsa2",
+          "type": "Microsoft.ContainerRegistry/registries"
+        }
+      ]
+    }
+  ],
+  "scope": "read-only control-plane registration/readiness; not data-plane functional proof",
+  "ok": true
+}

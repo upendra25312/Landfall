@@ -327,7 +327,7 @@ def _bastion_fields(c: dict) -> list[tuple]:
     odt = "basic" if t == "basic" else "standard"
     f += [
         (f"{odt}OutboundDataTransferFactor", "1", "select"),
-        (f"{odt}OutboundDataTransfer", _num(round(float(c.get("outbound_data_gb") or 5))), "number"),
+        (f"{odt}OutboundDataTransfer", _num(round(float(c.get("outbound_data_gb", 5)))), "number"),
     ]
     return f
 
@@ -365,11 +365,15 @@ _AG_TIER = {"standard": "standard", "wafv2": "wafv2", "standard_v2": "standard",
 def _app_gateway_fields(c: dict) -> list[tuple]:
     return [
         ("tier", _pick(c.get("tier"), _AG_TIER, "standard"), "select"),
-        ("size", "medium", "select"),
-        ("processedUnits", "1", "select"),
-        ("instances", _num(c.get("capacity_units", 2)), "number"),
+        # V2 capacity is the maximum of compute, connections and throughput.
+        # Pin the other dimensions to zero when only capacity_units is supplied.
+        ("computeUnits", _num(c.get("capacity_units", 2)), "number"),
+        ("persistentConnections", _num(c.get("persistent_connections", 0)), "number"),
+        ("throughput", _num(c.get("throughput_mbps", 0)), "number"),
         ("hours", _num(c.get("hours", _HOURS_MONTH)), "number"),
-        ("dataUnits", _num(round(float(c.get("data_processed_gb") or 0))), "number"),
+        ("hoursFactor", "1", "select"),
+        ("storageUnits", "1", "select"),
+        ("units", _num(round(float(c.get("outbound_data_gb", c.get("data_processed_gb", 0))))), "number"),
     ]
 
 
@@ -413,15 +417,15 @@ ADAPTERS: dict[str, dict] = {
     "vpn-gateway":           {"product": "VPN Gateway", "fields": _vpn_fields, "verified": True},
     "expressroute":          {"product": "Azure ExpressRoute", "fields": _expressroute_fields, "verified": True},
     "azure-firewall":        {"product": "Azure Firewall", "fields": _firewall_fields, "verified": True},
-    "azure-bastion":         {"product": "Azure Bastion", "fields": _bastion_fields, "verified": False},
+    "azure-bastion":         {"product": "Azure Bastion", "fields": _bastion_fields, "verified": True},
     "ddos-protection-plan":  {"product": "Azure DDoS Protection", "fields": _ddos_fields, "verified": True},
     "azure-dns":             {"product": "Azure DNS", "fields": _dns_fields, "verified": True},
     "key-vault":             {"product": "Key Vault", "fields": _key_vault_fields, "verified": True},
     "azure-site-recovery":   {"product": "Azure Site Recovery", "fields": _asr_fields, "verified": True},
-    # selectors confirmed, but the value maps still need an end-to-end price check:
-    "azure-monitor":         {"product": "Azure Monitor", "fields": _monitor_fields, "verified": False},
-    "load-balancer":         {"product": "Load Balancer", "fields": _load_balancer_fields, "verified": False},
-    "application-gateway":   {"product": "Application Gateway", "fields": _app_gateway_fields, "verified": False},
+    # C54: controls, non-default values and actual Excel/UI totals verified.
+    "azure-monitor":         {"product": "Azure Monitor", "fields": _monitor_fields, "verified": True},
+    "load-balancer":         {"product": "Load Balancer", "fields": _load_balancer_fields, "verified": True},
+    "application-gateway":   {"product": "Application Gateway", "fields": _app_gateway_fields, "verified": True},
 }
 
 # spec `service` aliases -> canonical key above

@@ -1,0 +1,196 @@
+{
+  "rows": [
+    {
+      "service": "virtual-machines",
+      "product": "Virtual Machines",
+      "verified": true,
+      "added": true,
+      "missing": [],
+      "error": null,
+      "assumptions": []
+    },
+    {
+      "service": "managed-disks",
+      "product": "Managed Disks",
+      "verified": true,
+      "added": true,
+      "missing": [],
+      "error": null,
+      "assumptions": []
+    },
+    {
+      "service": "storage-accounts",
+      "product": "Storage Accounts",
+      "verified": true,
+      "added": true,
+      "missing": [],
+      "error": null,
+      "assumptions": []
+    },
+    {
+      "service": "azure-files",
+      "product": "Azure Files",
+      "verified": true,
+      "added": true,
+      "missing": [],
+      "error": null,
+      "assumptions": []
+    },
+    {
+      "service": "azure-netapp-files",
+      "product": "Azure NetApp Files",
+      "verified": true,
+      "added": true,
+      "missing": [],
+      "error": null,
+      "assumptions": []
+    },
+    {
+      "service": "sql-managed-instance",
+      "product": "Azure SQL Managed Instance",
+      "verified": true,
+      "added": true,
+      "missing": [],
+      "error": null,
+      "assumptions": []
+    },
+    {
+      "service": "sql-database",
+      "product": "Azure SQL Database",
+      "verified": true,
+      "added": true,
+      "missing": [],
+      "error": null,
+      "assumptions": []
+    },
+    {
+      "service": "azure-database-for-postgresql",
+      "product": "Azure Database for PostgreSQL",
+      "verified": true,
+      "added": true,
+      "missing": [],
+      "error": null,
+      "assumptions": []
+    },
+    {
+      "service": "azure-database-for-mysql",
+      "product": "Azure Database for MySQL",
+      "verified": true,
+      "added": true,
+      "missing": [],
+      "error": null,
+      "assumptions": []
+    },
+    {
+      "service": "bandwidth",
+      "product": "Bandwidth",
+      "verified": true,
+      "added": true,
+      "missing": [],
+      "error": null,
+      "assumptions": []
+    },
+    {
+      "service": "vpn-gateway",
+      "product": "VPN Gateway",
+      "verified": true,
+      "added": true,
+      "missing": [],
+      "error": null,
+      "assumptions": []
+    },
+    {
+      "service": "expressroute",
+      "product": "Azure ExpressRoute",
+      "verified": true,
+      "added": true,
+      "missing": [],
+      "error": null,
+      "assumptions": []
+    },
+    {
+      "service": "azure-firewall",
+      "product": "Azure Firewall",
+      "verified": true,
+      "added": true,
+      "missing": [],
+      "error": null,
+      "assumptions": []
+    },
+    {
+      "service": "azure-bastion",
+      "product": "Azure Bastion",
+      "verified": true,
+      "added": true,
+      "missing": [],
+      "error": null,
+      "assumptions": [
+        "Bastion transfer controls unavailable in this region; calculator's 5 GB default retained. The requested 5 GB/month is within Microsoft's published free allowance."
+      ]
+    },
+    {
+      "service": "ddos-protection-plan",
+      "product": "Azure DDoS Protection",
+      "verified": true,
+      "added": true,
+      "missing": [],
+      "error": null,
+      "assumptions": []
+    },
+    {
+      "service": "azure-dns",
+      "product": "Azure DNS",
+      "verified": true,
+      "added": true,
+      "missing": [],
+      "error": null,
+      "assumptions": []
+    },
+    {
+      "service": "key-vault",
+      "product": "Key Vault",
+      "verified": true,
+      "added": true,
+      "missing": [],
+      "error": null,
+      "assumptions": []
+    },
+    {
+      "service": "azure-site-recovery",
+      "product": "Azure Site Recovery",
+      "verified": true,
+      "added": true,
+      "missing": [],
+      "error": null,
+      "assumptions": []
+    },
+    {
+      "service": "azure-monitor",
+      "product": "Azure Monitor",
+      "verified": true,
+      "added": true,
+      "missing": [],
+      "error": null,
+      "assumptions": []
+    },
+    {
+      "service": "load-balancer",
+      "product": "Load Balancer",
+      "verified": true,
+      "added": true,
+      "missing": [],
+      "error": null,
+      "assumptions": []
+    },
+    {
+      "service": "application-gateway",
+      "product": "Application Gateway",
+      "verified": true,
+      "added": true,
+      "missing": [],
+      "error": null,
+      "assumptions": []
+    }
+  ],
+  "broke": []
+}

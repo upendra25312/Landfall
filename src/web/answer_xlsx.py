@@ -119,12 +119,12 @@ def tables_from_response(resp) -> tuple[list[dict], str | None]:
     names: dict[str, str] = {}
     for item in getattr(resp, "output", None) or []:
         itype = getattr(item, "type", "") or ""
-        if itype in ("function_call", "tool_call"):
+        if itype in ("function_call", "tool_call", "openapi_call"):
             cid = getattr(item, "call_id", None) or getattr(item, "id", None)
             nm = getattr(item, "name", None) or ""
             if cid:
                 names[cid] = nm
-        if itype in ("function_call_output", "tool_call_output", "function_call_result"):
+        if itype in ("function_call_output", "tool_call_output", "function_call_result", "openapi_call_output"):
             cid = getattr(item, "call_id", None) or getattr(item, "id", None)
             nm = names.get(cid, "")
             out = getattr(item, "output", None)
@@ -132,6 +132,10 @@ def tables_from_response(resp) -> tuple[list[dict], str | None]:
                 continue
             try:
                 payload = _json.loads(out) if isinstance(out, str) else out
+                if itype == "openapi_call_output" and isinstance(payload, dict) and "response" in payload:
+                    payload = payload["response"]
+                    if isinstance(payload, str):
+                        payload = _json.loads(payload)
             except Exception:  # noqa: BLE001
                 continue
             if not isinstance(payload, dict):
