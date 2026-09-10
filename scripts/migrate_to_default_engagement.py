@@ -61,7 +61,7 @@ def _plan_blob(svc) -> list[tuple]:
             continue
         for name in names:
             rest = name[len(old):]
-            if not rest or name.startswith(f"engagements/"):
+            if not rest or name.startswith("engagements/"):
                 continue
             moves.append((container, name, new + rest))
     return moves
