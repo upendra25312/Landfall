@@ -1270,6 +1270,14 @@ inspiration.
 
 ## 6. PDCA cadence
 
+**C54 — validation tail:** actual Foundry OpenAPI outputs must be extracted into
+chat Excel tables, including their nested response envelope. Calculator adapter
+acceptance includes requested field values, actual exported descriptions and
+agreement between displayed and exported costs, with non-default variants.
+Incomplete controls or unavailable non-default quantities fail the calculation;
+the exact Bastion 5 GB default is disclosed where its regional control is absent.
+See [C54 validation evidence](../evidence/cycles/c54/REPORT.md).
+
 **C53 — system validation (2026-09-10):** the
 [system test plan](../tests/SYSTEM-TEST-PLAN.md) maps implemented workspaces,
 services and tools to repeatable tests. Dashboard artifact lookup is strictly

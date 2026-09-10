@@ -75,9 +75,12 @@ def main(argv=None):
                          f"--junitxml={output / 'browser.xml'}"],
              {"BROWSER": "1", "C53_SCREENSHOT_DIR": str(output / "screenshots")}),
         ]
-        if shutil.which("soffice"):
+        office_dir = Path(os.environ.get("ProgramFiles", "C:/Program Files")) / "LibreOffice/program"
+        office = shutil.which("soffice") or (str(office_dir / "soffice.exe") if (office_dir / "soffice.exe").exists() else None)
+        if office:
             commands.append(("recalc", [py, "-m", "pytest", "tests/test_xlsx_recalc.py", "-q",
-                                        "-p", "no:cacheprovider", f"--junitxml={output / 'recalc.xml'}"], {"RECALC": "1"}))
+                                        "-p", "no:cacheprovider", f"--junitxml={output / 'recalc.xml'}"],
+                             {"RECALC": "1", "PATH": str(Path(office).parent) + os.pathsep + os.environ.get("PATH", "")}))
         else:
             outstanding.append("LibreOffice recalculation: soffice not installed (CI has this gate)")
         commands.append(("evidence-drift", ["git", "diff", "--exit-code", "--", "evals/SCORECARD.md",

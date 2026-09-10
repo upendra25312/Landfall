@@ -3,3 +3,4 @@ azure-search-documents==11.6.0
 azure-ai-projects==2.6.0
 mssql-python                 # apply_sql.py — schema + grant, no sqlcmd needed (E9.1)
 azure-storage-blob                # export_all.py — close-out engagement dump (E9.5)
+azure-storage-queue==12.12.0       # C54 live calculator queue validation; matches worker

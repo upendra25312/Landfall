@@ -1,0 +1,162 @@
+{
+  "observed_at": "2026-09-10T08:52:09.071914+00:00",
+  "checks": [
+    {
+      "engagement": "_default_/_default_",
+      "status": "FAIL",
+      "error": "BadRequestError",
+      "http_status": 400
+    },
+    {
+      "engagement": "validation-c54/empty",
+      "status": "completed",
+      "text": "Answer | There are 0 servers in the inventory.\n\nBasis | The SQL query `SELECT COUNT(*) AS server_count FROM dbo.servers` was executed against the engagement's database.\n\nAssumptions | None.\n\nData gaps | None.\n\nConfidence | High.",
+      "output": [
+        {
+          "id": "mcpl_046c408ac39fcc1f006aa26f9f3dbc8190b939365901a06ba7",
+          "server_label": "microsoft_docs",
+          "tools": [
+            {
+              "input_schema": {
+                "type": "object",
+                "properties": {
+                  "query": {
+                    "type": "string",
+                    "description": "a query or topic about Microsoft/Azure products, services, platforms, developer tools, frameworks, or APIs",
+                    "properties": {},
+                    "default": null,
+                    "required": []
+                  }
+                },
+                "required": []
+              },
+              "name": "microsoft_docs_search",
+              "annotations": {},
+              "description": "Search official Microsoft/Azure documentation to find the most relevant and trustworthy content for a user's query. This tool returns up to 10 high-quality content chunks (each max 500 tokens), extracted from Microsoft Learn and other official sources. Each result includes the article title, URL, and a self-contained content excerpt optimized for fast retrieval and reasoning. Always use this tool to quickly ground your answers in accurate, first-party Microsoft/Azure knowledge.\n\n## Follow-up Pattern\nTo ensure completeness, use microsoft_docs_fetch when high-value pages are identified by search. The fetch tool complements search by providing the full detail. This is a required step for comprehensive results."
+            },
+            {
+              "input_schema": {
+                "type": "object",
+                "properties": {
+                  "query": {
+                    "type": "string",
+                    "description": "a descriptive query, SDK name, method name or code snippet related to Microsoft/Azure products, services, platforms, developer tools, frameworks, APIs or SDKs",
+                    "properties": {},
+                    "required": []
+                  },
+                  "language": {
+                    "type": "string",
+                    "description": "Optional parameter specifying the programming language of code snippets to retrieve. Can significantly improve search quality if provided. Eligible values: csharp javascript typescript python powershell azurecli al sql java kusto cpp go rust ruby php",
+                    "properties": {},
+                    "default": null,
+                    "required": []
+                  }
+                },
+                "required": [
+                  "query"
+                ]
+              },
+              "name": "microsoft_code_sample_search",
+              "annotations": {},
+              "description": "Search for code snippets and examples in official Microsoft Learn documentation. This tool retrieves relevant code samples from Microsoft documentation pages providing developers with practical implementation examples and best practices for Microsoft/Azure products and services related coding tasks. This tool will help you use the **LATEST OFFICIAL** code snippets to empower coding capabilities.\n\n## When to Use This Tool\n- When you are going to provide sample Microsoft/Azure related code snippets in your answers.\n- When you are **generating any Microsoft/Azure related code**.\n\n## Usage Pattern\nInput a descriptive query, or SDK/class/method name to retrieve related code samples. The optional parameter `language` can help to filter results.\n\nEligible values for `language` parameter include: csharp javascript typescript python powershell azurecli al sql java kusto cpp go rust ruby php"
+            },
+            {
+              "input_schema": {
+                "type": "object",
+                "properties": {
+                  "url": {
+                    "type": "string",
+                    "description": "URL of the Microsoft documentation page to read",
+                    "properties": {},
+                    "required": []
+                  }
+                },
+                "required": [
+                  "url"
+                ]
+              },
+              "name": "microsoft_docs_fetch",
+              "annotations": {},
+              "description": "Fetch and convert a Microsoft Learn documentation webpage to markdown format. This tool retrieves the latest complete content of Microsoft documentation webpages including Azure, .NET, Microsoft 365, and other Microsoft technologies.\n\n## When to Use This Tool\n- When search results provide incomplete information or truncated content\n- When you need complete step-by-step procedures or tutorials\n- When you need troubleshooting sections, prerequisites, or detailed explanations\n- When search results reference a specific page that seems highly relevant\n- For comprehensive guides that require full context\n\n## Usage Pattern\nUse this tool AFTER microsoft_docs_search when you identify specific high-value pages that need complete content. The search tool gives you an overview; this tool gives you the complete picture.\n\n## URL Requirements\n- The URL must be a valid HTML documentation webpage from the microsoft.com domain\n- Binary files (PDF, DOCX, images, etc.) are not supported\n\n## Output Format\nmarkdown with headings, code blocks, tables, and links preserved."
+            }
+          ],
+          "type": "mcp_list_tools",
+          "error": null,
+          "agent_reference": {
+            "type": "agent_reference",
+            "name": "landfall-migration-estimator",
+            "version": "15"
+          },
+          "response_id": "resp_046c408ac39fcc1f006aa26f9ef2ac81908f13dfc40d0ca96d"
+        },
+        {
+          "id": "fc_046c408ac39fcc1f006aa26fa04e2881909b48af1280e7f4d4",
+          "content": null,
+          "role": null,
+          "status": "completed",
+          "type": "openapi_call",
+          "phase": null,
+          "agent_reference": {
+            "type": "agent_reference",
+            "name": "landfall-migration-estimator",
+            "version": "15"
+          },
+          "response_id": "resp_046c408ac39fcc1f006aa26f9ef2ac81908f13dfc40d0ca96d",
+          "call_id": "call_59ca84517492498ebbb3f23a36be3e64",
+          "name": "query_inventory_query_inventory",
+          "arguments": "{\"question\":\"count the servers\",\"engagement\":\"validation-c54/empty\"}"
+        },
+        {
+          "id": "fco_046c408ac39fcc1f006aa26fb788348190b0c139fc19fd571e",
+          "content": null,
+          "role": null,
+          "status": "completed",
+          "type": "openapi_call_output",
+          "phase": null,
+          "agent_reference": {
+            "type": "agent_reference",
+            "name": "landfall-migration-estimator",
+            "version": "15"
+          },
+          "response_id": "resp_046c408ac39fcc1f006aa26f9ef2ac81908f13dfc40d0ca96d",
+          "call_id": "call_59ca84517492498ebbb3f23a36be3e64",
+          "name": "query_inventory_query_inventory",
+          "output": "{\n        \"response\": \"{\\n  \\\"sql\\\": \\\"SELECT COUNT(*) AS server_count FROM dbo.servers\\\",\\n  \\\"columns\\\": [\\n    \\\"server_count\\\"\\n  ],\\n  \\\"rows\\\": [\\n    [\\n      0\\n    ]\\n  ],\\n  \\\"row_count\\\": 1,\\n  \\\"truncated\\\": false\\n}\"\n      }"
+        },
+        {
+          "id": "msg_046c408ac39fcc1f006aa26fb8180c8190bbf559439512cdb7",
+          "content": [
+            {
+              "annotations": [],
+              "text": "Answer | There are 0 servers in the inventory.\n\nBasis | The SQL query `SELECT COUNT(*) AS server_count FROM dbo.servers` was executed against the engagement's database.\n\nAssumptions | None.\n\nData gaps | None.\n\nConfidence | High.",
+              "type": "output_text",
+              "logprobs": []
+            }
+          ],
+          "role": "assistant",
+          "status": "completed",
+          "type": "message",
+          "phase": null,
+          "agent_reference": {
+            "type": "agent_reference",
+            "name": "landfall-migration-estimator",
+            "version": "15"
+          },
+          "response_id": "resp_046c408ac39fcc1f006aa26f9ef2ac81908f13dfc40d0ca96d"
+        }
+      ],
+      "usage": {
+        "input_tokens": 6640,
+        "input_tokens_details": {
+          "cache_write_tokens": 0,
+          "cached_tokens": 6400
+        },
+        "output_tokens": 83,
+        "output_tokens_details": {
+          "reasoning_tokens": 0
+        },
+        "total_tokens": 6723
+      }
+    }
+  ]
+}

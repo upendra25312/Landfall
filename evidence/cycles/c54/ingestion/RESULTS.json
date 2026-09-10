@@ -1,0 +1,22 @@
+{
+  "engagement": "validation-c54/pipeline-20260910090640",
+  "retained_test_data": true,
+  "status": "PASS",
+  "ingestion": {
+    "engagement": "validation-c54/pipeline-20260910090640",
+    "file": "servers.csv",
+    "profile": "landfall_servers",
+    "table": "servers",
+    "rows_in": 1,
+    "rows_loaded": 1,
+    "rows_rejected": 0,
+    "status": "ok",
+    "confidence_hint": "Medium",
+    "findings": [
+      "1 of 1 servers (100%) have no CPU/RAM utilisation history \u2014 compute right-sizing for those will be LOW confidence. Ask the client for a vCenter performance export (30+ days).",
+      "1 servers (100%) are not mapped to an application \u2014 wave planning will group by infrastructure role only. Ask the client for a server-to-application mapping.",
+      "No dependency data loaded \u2014 move groups will be inferred from the application mapping only, not from observed network flow. Ask the client for a dependency / netflow export if available."
+    ],
+    "mapping_applied": null
+  }
+}

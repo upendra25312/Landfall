@@ -13,10 +13,9 @@ the estimate name / currency / licensing program, clicks Export, and returns:
 Every calculator module renders as a ``div.row.product-module``; modules are
 appended in add order, so the one just added is the last. Field-setting uses the
 native value setter + input/change events (the calculator is a React SPA and that
-is what makes it recompute). Everything is best-effort per line item: a product
-that can't be added, or an adapter whose controls no longer resolve, is recorded
-in ``skipped`` / ``applied[].fields_not_set`` and the run continues — a broken
-adapter never blocks the rest and never invents a price.
+is what makes it recompute). Unknown services are explicitly skipped. Incomplete
+configurations or driver failures abort the run so partially configured modules
+cannot contribute default prices to the exported estimate.
 """
 from __future__ import annotations
 
@@ -24,6 +23,7 @@ import base64
 import logging
 
 from adapters import adapter_for
+from configuration import validate_configuration
 
 CALCULATOR_URL = "https://azure.microsoft.com/pricing/calculator/"
 _NAV_TIMEOUT = 60_000
@@ -38,7 +38,7 @@ _CONFIGURED = "[...document.querySelectorAll('.row.product-module')].filter(m =>
 # kinds: select | number | radio | typeahead | accordion
 # Returns { missing:[names], applied:[names] }
 _APPLY_MODULE = r"""
-async ({ idx, region, fields }) => {
+async ({ idx, region, fields, regionOptional = false }) => {
   const sleep = ms => new Promise(r => setTimeout(r, ms));
   // re-resolve every time — the calculator can replace a module node on re-render
   const M = () => document.querySelectorAll('.row.product-module')[idx];
@@ -52,12 +52,15 @@ async ({ idx, region, fields }) => {
   };
 
   const applied = [];
+  const regionMissing = [];
 
   // region first (every module has select[name=region])
   const rsel = M() && M().querySelector('select[name="region"]');
   if (rsel && region) {
     if ([...rsel.options].some(o => o.value === region)) { setNative(rsel, region); await sleep(150); }
+    else regionMissing.push('region=' + region);
   }
+  else if (region && !regionOptional) regionMissing.push('region=' + region);
 
   const applyOne = async ([name, value, kind]) => {
     const mod = M();
@@ -112,7 +115,7 @@ async ({ idx, region, fields }) => {
     pending = still;
   }
   await sleep(600);
-  return { missing: pending.map(f => f[0] + (f[2] === 'select' ? '=' + f[1] : '')), applied };
+  return { missing: regionMissing.concat(pending.map(f => f[0] + (f[2] === 'select' ? '=' + f[1] : ''))), applied };
 };
 """
 
@@ -154,17 +157,23 @@ async def build_estimate(spec: dict) -> dict:
                         }}""")
                 fields = [[str(n), v, k] for (n, v, k) in ad["fields"](item.get("config", {}))]
                 res = await page.evaluate(_APPLY_MODULE, {
-                    "idx": idx, "region": item.get("region") or region_default, "fields": fields})
+                    "idx": idx, "region": item.get("region") or region_default, "fields": fields,
+                    "regionOptional": svc in ("bandwidth", "azure-dns")})
                 await page.wait_for_timeout(_SETTLE_MS)
 
                 rec = {"service": svc, "note": item.get("note"),
                        "verified_adapter": ad.get("verified", False)}
-                if res.get("missing"):
-                    rec["fields_not_set"] = res["missing"]
+                notes = validate_configuration(svc, item.get("config", {}), res)
+                if notes:
+                    rec["assumptions"] = notes
                 applied.append(rec)
+            except ValueError:
+                # A partially configured module would pollute the exported total.
+                # Fail explicitly rather than ship its default price as evidence.
+                raise
             except Exception as exc:  # noqa: BLE001
                 logging.exception("line item %s (%s) failed", i, svc)
-                skipped.append({"what": item.get("note") or svc, "why": f"driver error: {exc}"})
+                raise RuntimeError(f"calculator line item {i} ({svc}) failed") from exc
 
         # global: estimate name / currency / licensing program
         await _set_global(page, "input[name=estimate-name]", spec.get("estimate_name", ""))

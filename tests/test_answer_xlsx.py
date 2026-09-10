@@ -16,6 +16,20 @@ def _load(b):
     return load_workbook(io.BytesIO(b))
 
 
+def test_live_foundry_openapi_result_exports_the_sql_count():
+    from types import SimpleNamespace
+    payload = {"columns": ["server_count"], "rows": [[250]], "sql": "SELECT COUNT(*) FROM dbo.servers"}
+    response = SimpleNamespace(output=[
+        SimpleNamespace(type="openapi_call", call_id="c54", name="query_inventory_query_inventory"),
+        SimpleNamespace(type="openapi_call_output", call_id="c54",
+                        output=json.dumps({"response": json.dumps(payload)})),
+    ])
+    tables, sql = tables_from_response(response)
+    assert tables and tables[0]["rows"] == [[250]]
+    workbook = _load(build_answer_workbook("validation/c54", "count", "250", tables, sql))
+    assert workbook["results"]["A2"].value == 250
+
+
 def test_workbook_has_answer_table_and_provenance_sheets():
     b = build_answer_workbook(
         "contoso/dc-exit", "How many prod Windows servers?",

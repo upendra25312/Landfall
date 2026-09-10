@@ -1,0 +1,26 @@
+
+Azure Pricing Calculator — adapter smoke (21 adapters)
+
+  [OK ] virtual-machines               
+  [OK ] managed-disks                  
+  [OK ] storage-accounts               
+  [OK ] azure-files                    
+  [OK ] azure-netapp-files             
+  [OK ] sql-managed-instance           
+  [OK ] sql-database                   
+  [OK ] azure-database-for-postgresql  
+  [OK ] azure-database-for-mysql       
+  [OK ] bandwidth                      
+  [OK ] vpn-gateway                    
+  [OK ] expressroute                   
+  [OK ] azure-firewall                 
+  [OK ] azure-bastion                  
+  [OK ] ddos-protection-plan           
+  [OK ] azure-dns                      
+  [OK ] key-vault                      
+  [OK ] azure-site-recovery            
+  [OK ] azure-monitor                  
+  [OK ] load-balancer                  
+  [OK ] application-gateway            
+
+all verified adapters resolved their controls.

@@ -5,6 +5,28 @@ Operating model: [`landfall-5x5-prd.md` §7](landfall-5x5-prd.md). Tracker:
 
 ---
 
+## Cycle 54 — Complete the validation tail
+
+**Date:** 2026-09-10 · **Branch:** `cycle-54-validation-tail`
+
+### Plan
+
+Complete the remaining C53 checks: inspect and correct the four unverified
+calculator adapters against live controls and exported values; run real workbook
+recalculation; exercise authenticated production services using available approved
+identity flows; run remote CI where repository authentication permits it. Preserve
+customer data and the free-tier budget. Scratch lifecycle/chaos requires an
+isolated environment; do not provision or induce faults in populated rg-landfall.
+Independent security/human/architect/FinOps review must use actual reviewers;
+prepare executable review material and record unavailable prerequisites honestly.
+
+### Do / Check / Act
+
+In progress. Retain evidence, fix reproduced defects, run regression, deploy only
+changed services, update tracker/PRDs/handoff, commit and merge `--no-ff`.
+
+---
+
 ## Cycle 53 — System validation plan, regression coverage, and fixes
 
 **Date:** 2026-09-10 · **Branch:** `cycle-53-system-validation`

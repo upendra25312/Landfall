@@ -1,0 +1,5 @@
+{
+  "status": "BLOCKED",
+  "reason": "Interactive Entra sign-in was not completed",
+  "error": "TimeoutError"
+}

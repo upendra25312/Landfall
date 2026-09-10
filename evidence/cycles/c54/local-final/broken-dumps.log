@@ -1,0 +1,11 @@
+ok  01_unrecognised_firewall_export.csv        unrecognised rows= 0 Low
+ok  02_empty.csv                               unrecognised rows= 0 Low
+ok  03_servers_header_only.csv                 ok           rows= 0 Low
+ok  04_performance_no_dates.csv                rejected     rows= 0 Low
+ok  05_servers_ragged_rows.csv                 ok           rows=12 Medium
+ok  06_servers_garbage_numerics.csv            ok           rows=12 Low
+ok  07_servers_duplicate_ids.csv               ok           rows= 9 Medium
+ok  08_servers_utf16.csv                       unrecognised rows= 0 Low
+ok  09_dependencies_orphan_endpoints.csv       ok           rows= 8 Low
+
+ALL HANDLED PER E1.4
