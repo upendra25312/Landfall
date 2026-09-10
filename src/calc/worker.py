@@ -113,6 +113,42 @@ async def _process(blob, job: dict) -> None:
         }, default=str).encode(), "application/json")
 
 
+async def run_once(max_jobs: int = 8) -> int:
+    """Drain the queue once and exit — the entrypoint for the event-driven
+    Container Apps **Job** (E13.13). KEDA starts one execution per batch of
+    `queueLength` messages; this drains whatever is visible (up to `max_jobs`),
+    then returns so the replica terminates. Returns the number of jobs processed.
+    """
+    try:
+        blob, queue = _clients()
+    except Exception:  # noqa: BLE001
+        logging.exception("ca-calc job: cannot build storage clients")
+        return 0
+    done = 0
+    while done < max_jobs:
+        msgs = list(queue.receive_messages(visibility_timeout=_VISIBILITY_S, max_messages=1))
+        if not msgs:
+            break
+        for m in msgs:
+            try:
+                job = json.loads(m.content)
+                if m.dequeue_count and m.dequeue_count > _MAX_DEQUEUE:
+                    logging.error("dropping calc job after %s attempts: %s",
+                                  m.dequeue_count, m.content[:200])
+                else:
+                    await _process(blob, job)
+                    done += 1
+            except Exception:  # noqa: BLE001
+                logging.exception("calc job errored (deleting to avoid poison loop)")
+            finally:
+                try:
+                    queue.delete_message(m)
+                except Exception:  # noqa: BLE001
+                    logging.exception("could not delete calc message")
+    logging.info("ca-calc job: processed %s job(s), exiting", done)
+    return done
+
+
 async def consume_forever() -> None:
     try:
         blob, queue = _clients()

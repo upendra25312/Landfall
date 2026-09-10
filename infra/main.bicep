@@ -56,8 +56,11 @@ param budgetStartDate string = utcNow('yyyy-MM-01')
 @description('Log Analytics daily ingestion cap in GB (E13.4) — a runaway-telemetry brake. "-1" = uncapped (the prod tier always uncaps). Default 0.5. azd env set LOG_ANALYTICS_DAILY_CAP_GB 1')
 param logAnalyticsDailyCapGb string = '0.5'
 
-@description('ca-calc always-on replicas (E13.4 / §4.15). 1 (default) = the POE queue worker is always running while the stack is up (a few $/month; the ACA free grant covers most of it). 0 = cheaper but a POE run may sit unprocessed — KEDA queue scale-up on managed-identity auth did not work in C25b. azd env set CALC_MIN_REPLICAS 0')
+@description('ca-calc always-on replicas (E13.4 / §4.15). 1 (default) = the POE queue worker is always running while the stack is up (a few $/month; the ACA free grant covers most of it). 0 = cheaper but a POE run may sit unprocessed — KEDA queue scale-up on managed-identity auth did not work in C25b. Ignored when useCalcJob = true. azd env set CALC_MIN_REPLICAS 0')
 param calcMinReplicas int = 1
+
+@description('E13.13 / §21 DoD — run ca-calc as an event-driven Container Apps Job (minExecutions 0, KEDA azure-queue trigger) instead of an always-on Container App. false (default) = byte-identical to today. azd env set USE_CALC_JOB true on a provision to remove the always-on 2-vCPU/4-GiB replica.')
+param useCalcJob bool = false
 
 @description('Entra app-registration client id for ca-web Easy Auth (E8.2). Empty = a fresh deploy has NO web auth. Set WEB_AUTH_CLIENT_ID + WEB_AUTH_CLIENT_SECRET to manage it as IaC — see DEPLOY.md.')
 param webAuthClientId string = ''
@@ -107,6 +110,7 @@ module resources './resources.bicep' = {
     budgetStartDate: budgetStartDate
     logAnalyticsDailyCapGb: logAnalyticsDailyCapGb
     calcMinReplicas: calcMinReplicas
+    useCalcJob: useCalcJob
     webAuthClientId: webAuthClientId
     webAuthClientSecret: webAuthClientSecret
     deployDrawio: deployDrawio

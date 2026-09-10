@@ -19,6 +19,7 @@
     "monthlyBudget": { "value": "${MONTHLY_BUDGET=50}" },
     "logAnalyticsDailyCapGb": { "value": "${LOG_ANALYTICS_DAILY_CAP_GB=0.5}" },
     "calcMinReplicas": { "value": "${CALC_MIN_REPLICAS=1}" },
+    "useCalcJob": { "value": "${USE_CALC_JOB=false}" },
     "webAuthClientId": { "value": "${WEB_AUTH_CLIENT_ID=}" },
     "webAuthClientSecret": { "value": "${WEB_AUTH_CLIENT_SECRET=}" },
     "deployDrawio": { "value": "${DEPLOY_DRAWIO=false}" },
