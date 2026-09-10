@@ -20,6 +20,7 @@ import io
 import json
 import os
 import sys
+from types import SimpleNamespace
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
 _ROOT = os.path.dirname(os.path.dirname(_HERE))
@@ -114,7 +115,11 @@ class _FakeResp:
         self.output_text = text
         self.status = "completed"
         self.id = "resp_offline_1"
-        self.output: list = []
+        self.output = [SimpleNamespace(
+            type="function_call_output", call_id="offline-query", output={
+                "columns": ["hostname", "vcpu"], "rows": [["web01", 4]],
+                "sql": "SELECT hostname, vcpu FROM servers",
+            })]
 
 
 class _FakeResponses:
@@ -170,13 +175,15 @@ def _seed(raw: _Store, ans: _Store, mode: str):
 
 def build_app(seed: str = "full"):
     import app as webapp
+    import web_runtime
+    import web_storage
 
     raw, ans = _Store(), _Store()
     _seed(raw, ans, seed)
-    webapp._raw_container = lambda: raw
-    webapp._estimate_container = lambda: ans
-    webapp._openai_client = lambda: _FakeOpenAI()
-    webapp._blob_state.clear()
+    web_storage._raw_container = lambda: raw
+    web_storage._estimate_container = lambda: ans
+    web_runtime._openai_client = lambda: _FakeOpenAI()
+    web_storage._blob_state.clear()
     return webapp.app, raw, ans
 
 

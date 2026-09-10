@@ -200,6 +200,7 @@ def webapp(monkeypatch):
     monkeypatch.setenv("STORAGE_URL", "https://s.blob.core.windows.net")
     import importlib
     import app as wa
+    import web_storage
     importlib.reload(wa)
     from fastapi.testclient import TestClient
 
@@ -210,8 +211,8 @@ def webapp(monkeypatch):
             json.dumps({"engagement": "dave/pub", "created_by": "dave", "visibility": "all"}).encode(),
     }
     cont = _WContainer(store)
-    monkeypatch.setattr(wa, "_raw_container", lambda: cont)
-    monkeypatch.setattr(wa, "_estimate_container", lambda: cont)
+    monkeypatch.setattr(web_storage, "_raw_container", lambda: cont)
+    monkeypatch.setattr(web_storage, "_estimate_container", lambda: cont)
     return wa, TestClient(wa.app), store
 
 
@@ -242,13 +243,14 @@ def test_web_dashboard_data_403_when_not_visible(webapp):
 # --- E8.6 — chat is bound to the caller's access on the engagement ----------
 
 def _stub_agent(wa, monkeypatch):
+    import web_runtime
     class _Resp:
         id = "resp_leaked_from_alice"
         status = "completed"
         output_text = "ok"
         output = []
-    monkeypatch.setattr(wa, "AGENT_NAME", "agent")
-    monkeypatch.setattr(wa, "_openai_client",
+    monkeypatch.setattr(web_runtime, "AGENT_NAME", "agent")
+    monkeypatch.setattr(web_runtime, "_openai_client",
                         lambda: type("O", (), {"responses": type("R", (), {
                             "create": staticmethod(lambda **kw: (_SEEN.update(kw) or _Resp()))})()})())
 

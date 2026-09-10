@@ -52,8 +52,9 @@ def test_event_never_raises_on_bad_input():
 
 def test_chat_emits_web_chat_on_the_unconfigured_path(monkeypatch, caplog):
     import app as webapp
+    import web_runtime
     from fastapi.testclient import TestClient
-    monkeypatch.setattr(webapp, "AGENT_NAME", "")
+    monkeypatch.setattr(web_runtime, "AGENT_NAME", "")
     c = TestClient(webapp.app)
     with caplog.at_level(logging.INFO, logger="landfall.web"):
         r = c.post("/api/chat", json={"message": "hi"})
@@ -63,8 +64,8 @@ def test_chat_emits_web_chat_on_the_unconfigured_path(monkeypatch, caplog):
 
 
 def test_chat_source_emits_web_chat_on_ok_and_error_paths():
-    src = open(os.path.join(ROOT, "src", "web", "app.py"), encoding="utf-8").read()
-    body = src.split("async def chat(", 1)[1].split("\n@app", 1)[0]
+    src = open(os.path.join(ROOT, "src", "web", "routes", "chat.py"), encoding="utf-8").read()
+    body = src.split("async def chat(", 1)[1].split("\n@router", 1)[0]
     for status in ('status="ok"', 'status="error"', 'status="unknown_engagement"',
                    'status="empty_agent_response"'):
         assert status in body, status

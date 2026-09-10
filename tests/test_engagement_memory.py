@@ -87,6 +87,8 @@ def app_client(monkeypatch):
     monkeypatch.setenv("STORAGE_URL", "https://s.blob.core.windows.net")
     import importlib
     import app as webapp
+    import web_runtime
+    import web_storage
     importlib.reload(webapp)
     from fastapi.testclient import TestClient
 
@@ -98,9 +100,9 @@ def app_client(monkeypatch):
     }
     ans_store = {}
     raw, ans = _Container(raw_store), _Container(ans_store)
-    monkeypatch.setattr(webapp, "_raw_container", lambda: raw)
-    monkeypatch.setattr(webapp, "_estimate_container", lambda: ans)
-    monkeypatch.setattr(webapp, "AGENT_NAME", "landfall-migration-estimator")
+    monkeypatch.setattr(web_storage, "_raw_container", lambda: raw)
+    monkeypatch.setattr(web_storage, "_estimate_container", lambda: ans)
+    monkeypatch.setattr(web_runtime, "AGENT_NAME", "landfall-migration-estimator")
 
     seq = {"n": 0}
 
@@ -111,7 +113,7 @@ def app_client(monkeypatch):
                 seq["n"] += 1
                 _OAI._last = kw
                 return _Resp(f"resp_{seq['n']}", f"answer {seq['n']}")
-    monkeypatch.setattr(webapp, "_openai_client", lambda: _OAI())
+    monkeypatch.setattr(web_runtime, "_openai_client", lambda: _OAI())
     return webapp, TestClient(webapp.app), raw_store, ans_store, _OAI
 
 

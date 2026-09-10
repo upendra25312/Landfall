@@ -5,6 +5,97 @@ Operating model: [`landfall-5x5-prd.md` §7](landfall-5x5-prd.md). Tracker:
 
 ---
 
+## Cycle 52 — FastAPI router split (E13.6)
+
+**Date:** 2026-09-10 · **Owner:** Python · **Tracker:** E13.6
+**Branch:** `cycle-52-web-routers`
+
+### Plan
+
+Split the 1,159-line web entrypoint into focused APIRouters for chat,
+engagements, uploads, analysis, transfers, questionnaire, dashboard, and pages.
+Extract shared storage, identity, and runtime helpers without changing HTTP
+contracts, access checks, conversation persistence, telemetry, or page assets.
+Keep `app.py` below 150 lines and each route module below 300 lines.
+Update test stubs to patch the owning modules, then prove route/OpenAPI parity,
+run the full pytest suite, evals, and offline Playwright harness. Capture browser
+evidence before and after the extraction. No Azure commands or live changes.
+
+### Do
+
+- Extracted all 30 route/method combinations into eight `src/web/routes/`
+  modules: chat (185 lines), engagements (148), uploads (145), analysis (175),
+  transfers (111), questionnaire (68), dashboard (97), and pages (68).
+- `src/web/app.py` is now 54 lines: telemetry configuration, unchanged security
+  middleware, and router registration. Shared dependencies live in
+  `web_runtime.py`, `web_storage.py`, `web_access.py`, and `chat_state.py`.
+  Azure clients remain lazy; routers never import `app`. No static asset or
+  Foundry tool-contract changes.
+- Repointed existing test stubs, the chaos C5/C6 source probe, and the
+  learning-path chat reference to the owning modules. The security-header test
+  explicitly stubs storage rather than relying on entrypoint reload to reset it.
+- Added `tests/test_web_routers.py` and the pre-extraction C51 OpenAPI snapshot:
+  exact HTTP schema parity, 30 unique route/method combinations, module-size
+  limits, and no router → entrypoint imports.
+- Added `tests/browser/test_router_journey.py`; the offline agent supplies a
+  canned tabular tool result. A real browser sends a question, reloads the saved
+  conversation, downloads Excel via its button, and verifies question/provenance.
+
+### Check
+
+```text
+.venv2\Scripts\python.exe -m pytest -q -p no:cacheprovider
+494 passed, 7 skipped, 1 warning in 35.54s; exit 0
+
+.venv2\Scripts\python.exe evals\runner.py
+Golden SQL 32/32; faults 30/30; adversarial 74/74 (3 previously pending);
+full-estimate scenarios + output guard 8/8; exit 0
+
+$env:BROWSER='1'; .venv2\Scripts\python.exe -m pytest tests\browser -q -p no:cacheprovider
+Before: 5 passed in 7.81s; after: 5 passed in 7.85s; exit 0
+```
+
+The full suite includes Python 3.11 syntax compatibility and the existing static
+JavaScript parse guard. No JS changed. The seven skips are the five separately
+run browser tests, opt-in live calculator smoke, and LibreOffice recalculation.
+The warning is the
+existing Starlette/AnyIO deprecation. `-p no:cacheprovider` avoids the inaccessible
+local pytest cache; project Python execution required sandbox escalation.
+
+First full run: 6 failures (one erroneous qualification of the `_save_chat`
+parameter caused five conversation failures; the chaos probe still read the old
+path). Corrected both. A subsequent run was interrupted while diagnosing a
+storage wait in the header-only test; explicit offline stubbing resolved it.
+The final full run above is green.
+
+Both scorecards have **zero content drift**; no score regeneration or score
+increase. OpenAPI matches the pre-extraction snapshot exactly. `git diff --check`
+passes. No Azure command, infrastructure change, new resource, or prod-tier change.
+
+Browser evidence (zero console/page errors):
+- Desktop: [before](../evidence/cycles/c52/before/chat-desktop.png) /
+  [after](../evidence/cycles/c52/after/chat-desktop.png).
+- Mobile, 375 px: [before](../evidence/cycles/c52/before/chat-mobile.png) /
+  [after](../evidence/cycles/c52/after/chat-mobile.png).
+- Each before/after pair has an identical SHA-256 hash; mobile was visually
+  inspected. Layout and rendered content are unchanged.
+
+### Act
+
+Tracker and PRD §5b/§6 updated; handoff in `HANDOFF-NOTES.md` for the operator to
+fold into Claude memory. E13.6 is **in-review (code complete)** until deployment
+and live acceptance; Epic E13 remains 8 done, with 1 in review and 8 backlog.
+Self-check replaces the Claude-only judge: tests/evals/browser green, scorecards
+unchanged, bookkeeping complete, cycle branch used, no new resources, no Azure
+commands, and no agent-contract change. Commit on `cycle-52-web-routers`, merge
+with `--no-ff`; do not include the pre-existing untracked master-prompt document.
+
+**NEEDS azd deploy web** by the operator, bundled with the pending C48 fix.
+After deployment verify authenticated engagement switching, upload/analysis,
+chat persistence, and exports. No provision or agent recreation is required.
+
+---
+
 ## Cycle 51 — `docs/learning-path.md` (E13.12)
 
 **Date:** 2026-09-10 · **Owner:** Writer + Architect · **Tracker:** E13.12

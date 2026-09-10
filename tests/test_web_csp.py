@@ -41,8 +41,12 @@ def test_strict_csp_on_the_chat_page_and_its_assets():
         assert "base-uri 'none'" in csp
 
 
-def test_security_headers_on_every_response():
+def test_security_headers_on_every_response(monkeypatch):
     webapp, c = _client()
+    import web_storage
+    # This checks response headers, not Azure connectivity. Runtime/storage now
+    # live outside app.py, so reloading the entrypoint no longer resets clients.
+    monkeypatch.setattr(web_storage, "_read_estimate_blob", lambda *_args: None)
     for path in ("/", "/dashboard", "/healthz", "/static/chat.css"):
         h = c.get(path).headers
         assert h.get("x-content-type-options") == "nosniff", path
