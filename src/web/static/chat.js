@@ -46,7 +46,7 @@ function renderWelcome(){
   : '<p class="sub warn">No engagement selected. Pick one top-left, or click <b>+ New engagement</b> to start a customer / project — then upload their server &amp; application inventory.</p>';
  w.innerHTML='<div class=intro><h2>'+esc(i.title||'Landfall — Migration Estimator')+'</h2>'
   +engnote
-  +'<p>'+esc(i.body||'').replace(/\\n/g,'<br>')+'</p>'
+  +'<p>'+esc(i.body||'').replace(/\n/g,'<br>')+'</p>'
   +(caps?'<ul class=caps>'+caps+'</ul>':'')+'</div>'
   +(cards?'<div class=cardgrid>'+cards+'</div>':'');
  w.querySelectorAll('.pc').forEach(b=>b.onclick=()=>{if(busy)return;ask(CARDS[+b.dataset.i].prompt);});
@@ -106,7 +106,7 @@ impfile.onchange=async()=>{
  const fd=new FormData();fd.append('file',f);
  let r=await fetch('/api/engagements/import',{method:'POST',body:fd});
  let j=await r.json();
- if(r.status===409 && confirm(j.error+'\\n\\nReplace it?')){
+ if(r.status===409 && confirm(j.error+'\n\nReplace it?')){
   fd.append('overwrite','true');
   r=await fetch('/api/engagements/import',{method:'POST',body:fd});j=await r.json();
  }
@@ -291,7 +291,7 @@ async function ask(v){
  v=(v||'').trim();if(!v||busy)return;
  if(!ENG){
   add('Pick an engagement first (top-left) — or click "+ New engagement" to create one. '
-     +'Every question is scoped to a customer / project so the estimate stays that client\\'s.','a');
+     +'Every question is scoped to a customer / project so the estimate stays that client\'s.','a');
   engform.hidden=false;return;
  }
  const w=document.getElementById('welcome');if(w)w.remove();
@@ -300,8 +300,8 @@ async function ask(v){
  if(PIPE && PIPE.analysed===false && !HINTED){
   HINTED=true;
   add('Heads up — no inventory has been analysed for this engagement yet, so I have no '
-     +'server data to work from. Upload the client\\'s inventory and click "Start analysis" '
-     +'for a grounded estimate. I\\'ll still answer general questions.','a');
+     +'server data to work from. Upload the client\'s inventory and click "Start analysis" '
+     +'for a grounded estimate. I\'ll still answer general questions.','a');
  }
  setBusy(true);
  const ph=working();
