@@ -61,6 +61,7 @@ def _parse_eval_scorecard() -> dict:
         "golden_sql": _grab("Golden text-to-SQL"),
         "scenarios": _grab("Full-estimate scenarios"),
         "faults": _grab("Fault injection"),
+        "adversarial": _grab("Adversarial guardrails"),
         "overall": "PASS" if "**Overall** | **PASS**" in txt else "?",
     }
 
@@ -184,7 +185,7 @@ def rubric(live: dict) -> list[dict]:
                 "web-tier alert; induce the chaos scenarios C2-C6 end-to-end on a "
                 "scratch env."},
 
-        {"dim": "Security", "score": 3.75,
+        {"dim": "Security", "score": 4.0,
          "bar": "External pen test passes; isolation test passes; data-handling statement "
                 "signed.",
          "basis": "Function + web EasyAuth on (anon → 401, verified live); SQL Row-Level "
@@ -196,11 +197,18 @@ def rubric(live: dict) -> list[dict]:
                   "injection payloads + neutralises comment tricks. `ca-web` EasyAuth is "
                   "now param-gated in Bicep (was imperative). Chat page `/` + `/static/*` "
                   "serve a strict CSP (no `unsafe-inline`) + nosniff / frame / referrer on "
-                  "every response (E12.7, C41) — closes the one self-assessment finding. "
-                  "Private endpoints descoped on cost (RLS + sqlguard + Entra-only auth are "
-                  "the SQL data-plane control). Data-handling statement drafted, not signed.",
+                  "every response (E12.7, C41). Private endpoints descoped on cost (RLS + "
+                  "sqlguard + Entra-only auth are the SQL data-plane control). "
+                  f"**E13.3 (C47): a CI-gated adversarial suite — {ev.get('adversarial', '?')} — "
+                  "exercises the guardrails with hostile input: SQL injection / DDL / "
+                  "stacked statements, the engagement-isolation binding (RLS bound "
+                  "read-only before model SQL runs), engagement-id + blob-path traversal, "
+                  "malicious uploads, fabricated-number output-guard, and the agent "
+                  "instruction contract — any regression fails the build.** Data-handling "
+                  "statement drafted, not signed.",
          "evidence": [("threat model", "pentest/threat-model.md"),
                       ("self-assessment", "pentest/RESULTS.md"),
+                      ("adversarial eval suite", "../evals/adversarial.py"),
                       ("SQL guard", "../src/api/sqlguard.py"),
                       ("isolation + chat-binding tests", "../tests/test_access_control.py"),
                       ("data-handling statement", "data-handling-statement.md")],
@@ -209,20 +217,24 @@ def rubric(live: dict) -> list[dict]:
                 "acceptable data-plane posture (private endpoints are descoped on cost); "
                 "CISO signature on the data-handling statement (E8.7); migrate the live "
                 "web-auth config to the Bicep param + pin functionAuthAllowedClientIds to "
-                "the Foundry MSI; tighten the SQL firewall from all-Azure to own-compute IPs."},
+                "the Foundry MSI; tighten the SQL firewall from all-Azure to own-compute "
+                "IPs; the adversarial suite's pending cases (MCP-injection, data-egress, "
+                "live-model jailbreak) land with E15.1."},
 
         {"dim": "Reliability", "score": 5.0 if ev_ok else 2.0,
          "bar": "Eval CI gate: ≥95% text-to-SQL, 0 un-sourced numbers, byte-identical "
                 "re-runs, 100% fail-loud.",
          "basis": (f"CI gate on every push/PR — golden SQL {ev.get('golden_sql', '?')}, "
                    f"scenarios + output guard {ev.get('scenarios', '?')}, fault injection "
-                   f"{ev.get('faults', '?')}; numeric output is tool-computed and "
+                   f"{ev.get('faults', '?')}, adversarial guardrails "
+                   f"{ev.get('adversarial', '?')}; numeric output is tool-computed and "
                    f"deterministic; SCORECARD drift fails the build."
                    if ev_ok else f"eval suite not green: {ev}"),
          "evidence": [("eval scorecard", "../evals/SCORECARD.md"),
                       ("history", "evals/history/"),
                       ("CI", "../.github/workflows/evals.yml"),
-                      ("output guard", "../evals/output_guard.py")],
+                      ("output guard", "../evals/output_guard.py"),
+                      ("adversarial suite", "../evals/adversarial.py")],
          "gap": None if ev_ok else "make the eval suite green"},
     ]
 
@@ -276,7 +288,8 @@ def _md(sc: dict) -> str:
             if bt.get("pass") else f"❌ {bt}")
     bd_s = (f"✅ {bd.get('files')} files, all per E1.4" if bd.get("pass") else f"❌ {bd}")
     ev_s = (f"✅ {ev.get('overall')} — SQL {ev.get('golden_sql')}, scenarios "
-            f"{ev.get('scenarios')}, faults {ev.get('faults')}"
+            f"{ev.get('scenarios')}, faults {ev.get('faults')}, adversarial "
+            f"{ev.get('adversarial')}"
             if ev.get("overall") == "PASS" else f"❌ {ev}")
     L += ["## Evidence pack index", "",
           "| Artefact | Tracker | Status |",
@@ -284,7 +297,7 @@ def _md(sc: dict) -> str:
           f"| [`backtest/`](backtest/) | E10.1 | {bt_s} |",
           f"| [`broken-dumps/`](broken-dumps/) | E10.2 | {bd_s} |",
           f"| [`evals/`](evals/) → [`../evals/SCORECARD.md`](../evals/SCORECARD.md) | E10.3 / E7 | {ev_s} |",
-          "| `pentest/` | E10.4 / E8 | ⬜ not started |",
+          "| [`pentest/`](pentest/) + [`../evals/adversarial.py`](../evals/adversarial.py) | E10.4 / E8 / E13.3 | 🟡 threat model + self-assessment + CI-gated adversarial suite; external pen test open |",
           "| `trials/` | E10.4 / Usability + Understandability | ⬜ not started |",
           "| `chaos/` | E10.4 / Operability | ⬜ not started |",
           "| [`data-handling-statement.md`](data-handling-statement.md) | E8.7 | 🟡 drafted — pending signature |",

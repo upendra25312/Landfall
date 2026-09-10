@@ -32,7 +32,7 @@ _NUM = re.compile(
     r"(?P<cur>[$€£]\s?)?"
     r"(?P<val>\d{1,3}(?:,\d{3})+(?:\.\d+)?|\d+(?:\.\d+)?)"
     r"\s?(?P<suf>million|billion|thousand|bn|mn|[MBKk]\b|%|PD\b|person-days?|vCPU\b|"
-    r"servers?\b|GB\b|TB\b|/mo\b|/month\b|/yr\b|/year\b)?",
+    r"FTE\b|servers?\b|GB\b|TB\b|/mo\b|/month\b|/yr\b|/year\b)?",
     re.IGNORECASE,
 )
 _SCALE = {"million": 1e6, "mn": 1e6, "m": 1e6, "billion": 1e9, "bn": 1e9, "b": 1e9,

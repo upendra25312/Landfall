@@ -5,6 +5,198 @@ Operating model: [`landfall-5x5-prd.md` §7](landfall-5x5-prd.md). Tracker:
 
 ---
 
+## Cycle 47 — adversarial eval suite (E13.3) + `landfall-judge` cycle gate (E13.17)
+
+**Date:** 2026-09-10 · **Owner:** Azure AI architect + DevSecOps + Method ·
+**Tracker:** E13.3 (adversarial half) + E13.17. §4.16 flagged E13.3 as the only
+self-contained Security lever left (Security 3.75; the external pen test needs a
+person). Sponsor also asked for a "judge" agent that checks progress + quality and
+coordinates a correct deploy.
+
+### Decide
+
+- **Problem:** `evals/faults.py` is *infra* fault injection only — there is no
+  eval that throws hostile input at the guardrails (SQL injection → tool abuse,
+  coerced cross-engagement read, path traversal, malicious upload, fabricated
+  numbers). The threat model (`evidence/pentest/threat-model.md`) tells an external
+  tester to try exactly these; nothing gates them on every commit.
+- **Choice:** `evals/adversarial.py` — exercise the **deterministic** guardrails
+  offline (no live model), wire it into `evals/runner.py` as a hard gate + into the
+  SCORECARD. The live-model half of E13.3 (bump the Foundry agent to a current-gen
+  model, re-run evals, record the delta) needs a deploy + token spend → **deferred
+  to a sponsor-run cycle**.
+- **Judge agent → Claude Code subagent, not Foundry** (§7 decision 19). It runs
+  `pytest` / `evals` / `az bicep build` / `git` and reads the tracker + memory —
+  none of which a Foundry runtime agent can do; and the Foundry agent is the
+  customer-facing product, which must not carry dev-orchestration logic. Toolboxes
+  stay deferred (only relevant to E15.1, and the brief says evaluate-not-adopt).
+- **Cost:** $0 — offline evals + a subagent definition. **Security:** the gate
+  turns a class of regressions (weakened injection resistance, a new route that
+  skips the RLS binding, an upload filter hole) into a red build.
+
+### Plan
+
+- `evals/adversarial.py` (new) · wire into `evals/runner.py` (import, run, scorecard
+  section, gate on it) · `tests/test_evals.py` +2 wrappers · regenerate
+  `evals/SCORECARD.md`.
+- `evals/output_guard.py` — add `FTE` to the claim-suffix regex (an adversarial
+  case found "14 FTE" slipped through as a structural number).
+- `evidence/scorecard.py` — Security 3.75 → 4.0 (basis + gap + evidence), thread
+  `adversarial` through `_parse_eval_scorecard` + the Reliability basis + the
+  evidence index; regenerate `evidence/SCORECARD.md`.
+- `.claude/agents/landfall-judge.md` (new) — Gate A / B / C + verdict format.
+- `.github/workflows/evals.yml`, `evals/README.md`, `evidence/pentest/README.md` —
+  reference the suite. PRD §5b (E13.3, E13.17) + §6 + §7 decision 19; tracker;
+  memory.
+
+### Do
+
+- **`evals/adversarial.py` — 74 cases / 6 categories:**
+  - `sql-guard` — 18 hostile SELECTs rejected by `sqlguard.safe_select`
+    (stacked `; DROP`, `UNION ... sys.tables`, `information_schema`, `xp_cmdshell`,
+    `OR '1'='1'; SELECT 1`, unknown table, `INTO`, `WAITFOR`, `sp_configure`,
+    `OPENROWSET`, `FOR JSON`, bare DML/DDL) + 3 legit queries still pass.
+  - `engagement-isolation` — `set_engagement` binds a **read-only** session context
+    to the *caller's* id; a malformed/traversal id is refused before any DB
+    round-trip; `query_inventory` calls `_set_engagement` **before** `cur.execute`
+    (source-order check, so a model SQL that hard-codes another `engagement_id` is
+    still RLS-scoped); `schema.sql` policy is `STATE = ON` + `SESSION_CONTEXT`.
+  - `path-traversal` — 13 malformed engagement ids rejected (`..`, backslashes,
+    3-segment, uppercase, spaces, `;`, NUL, empty segment, over-long); crafted
+    Event Grid blob subjects with `../` don't resolve to a valid (engagement, file)
+    pair; derived blob prefixes carry no `..`.
+  - `upload-content` — `uploads.classify` rejects `.xlsm` / `.exe` / `.js` / `.ps1`
+    / `.7z`, a fake-`.xlsx` (HTML body), a binary-as-`.csv`; accepts real csv / pdf
+    / png; `safe_name` strips `../` and separators.
+  - `output-guard` — fabricated cost ($2.45M/yr), FTE (14), "Microsoft recommends
+    ... $1,850/month", and person-days (5,200) are all flagged; two properly-cited
+    numbers pass. (Added `FTE` to `_NUM` — "14 FTE" was under `_STRUCTURAL_MAX`.)
+  - `system-prompt` — the 5 load-bearing instructions are present in
+    `create_agent.SYSTEM_PROMPT` (no cross-engagement, reject-without-engagement,
+    no invented slug, no unsourced number, no hand-designed topology).
+  - **Pending** (in the SCORECARD, not gated — need E15.1 + a live agent):
+    `mcp-injection`, `data-egress`, `live-jailbreak`.
+- **`.claude/agents/landfall-judge.md`** — an `opus`, read-only (Read/Grep/Glob/
+  Bash) subagent. Gate A: pytest + `evals/runner.py` exit 0 + no SCORECARD drift +
+  `py311` + Playwright specs for UI changes. Gate B: diff → the right
+  `azd deploy <service>`, **never `azd provision`** (schema.sql DROP), `create_agent.py`
+  re-run when the tool contract changed, no new always-on resource, `prod`
+  untouched. Gate C: tracker + pdca-log + memory updated + consistent cycle number,
+  branch not `main`, commit trailer, `--no-ff` merge, LF phantom-diff check. Emits
+  `VERDICT: GO | NO-GO` + blocking issues + a deploy plan.
+
+### Check
+
+| gate | result |
+|---|---|
+| unit | **466 pytest**, 2 skipped (+2 adversarial wrappers) |
+| evals | `evals/runner.py` **exit 0** — golden 32/32, scenarios 8/8, faults 30/30, **adversarial 74/74** (3 pending) |
+| scorecards | `evals/SCORECARD.md` + `evidence/SCORECARD.md` regenerated — **Security 3.75 → 4.0, overall 4.03 → 4.06** |
+| drift | backtest / broken-dumps — untouched |
+| bicep | n/a (no `infra/` change) |
+| scope | evals + evidence + agent def + CI label + docs — **no `src/` runtime change → no deploy** |
+| cost | $0 |
+
+### Act
+
+- `c47-adversarial` → merge `--no-ff` to `main`, push. **No `azd` deploy** (nothing
+  under `src/` changed; `create_agent.py` unchanged).
+- **Deferred:** the model-review half of E13.3 (needs a live agent version bump +
+  token cost — a sponsor-run cycle).
+- **Next by leverage:** E13.11 (safe teardown / rehydrate — the last P1 ephemeral
+  guardrail) or E13.15 (the `tests/browser/` Playwright harness, so §4.17 has teeth).
+- From here, run `landfall-judge` at the end of each cycle before commit/merge.
+
+---
+
+## Cycle 46 — master-prompt-v2 reconciliation + Playwright validation protocol
+
+**Date:** 2026-09-10 · **Owner:** full panel (Azure AI architect · cloud-arch
+director · FinOps · Python · Foundry · UI/UX · full-stack · DevSecOps) ·
+**Tracker:** none — a planning pass the sponsor asked for after supplying
+`prd/landfall_master_implementation_prompt_revised_v2.md` (a from-scratch strategic
+brief proposing epics E14 + E15A–E15D). **Docs only — no code, no deploy.**
+
+### Decide
+
+- The brief overlaps the live repo heavily: **~60 % of its E14 P0/P1 asks are
+  already done or already planned as Epic E13.** Adopting its E14/E15A–D numbering
+  verbatim would fork the PRD — which the brief itself forbids ("preserve the
+  existing repository structure; do not create duplicate PRD/tracker files").
+- **Decision:** adopt the brief *in intent, not in numbering*. Map every item to
+  done / covered-by-E13 / new-E13 / new-E15 / descoped (§4.16). Keep our numbers,
+  keep `MONTHLY_BUDGET` in **INR** (not the brief's `MONTHLY_BUDGET_USD` — an INR
+  sub would fire a `50` budget instantly).
+- **`_v2` delta over the first file = §5A "External Reference Sources" only.** It
+  pins the real Microsoft Learn MCP endpoint (`learn.microsoft.com/api/mcp`,
+  public, no auth) → E15.1 is now concretely buildable; the MEG repo
+  (`github.com/Azure/migration`) with an 8-step pin discipline; and two
+  **proprietary** template URLs (AnalysisTabs, Smartsheet) — **not carried into any
+  committed doc** (kept to the sponsor's private brief; the resource workbook is
+  designed from the domain, not their layout).
+- **Sponsor also asked (mid-pass):** validate every change with Playwright browser
+  automation, tests driving the implementation → new **§4.17 protocol** + decision 18.
+
+### Plan
+
+- `engagement-workspaces-prd.md`: **§4.16** (reconciliation map — every E14/E15
+  item → disposition), **§4.17** (Playwright validation protocol), **§5c** (Epic
+  E15 work breakdown: E15.1–E15.4), extend **§5b** (E13.3 scope widened; E13.5 =
+  centralized limits; new E13.13–E13.16), **§7** decisions 17 + 18, status line, §6
+  cadence (C44–C47 rows + the per-cycle browser gate).
+- `tracker.md`: progress table (E13 12→16; new E15 epic, 4 items), Epic E13 rows
+  E13.13–E13.16, new Epic E15 section, cycle-46 delivery-log row.
+- Memory: `landfall-5x5-execution.md` (item 2r + Key facts), `MEMORY.md`, and a
+  note on the reconciliation + the Playwright gate.
+
+### Do
+
+- **§4.16** — 24-row disposition table. New E13 items: **E13.13** (`ca-calc`
+  always-on → event-driven ACA **Job**, `minExecutions 0`, dormant param-gated —
+  clears the §21 DoD + the best Container Apps Jobs learning exercise; ~$0 saving,
+  the ACA free grant already covers `ca-calc` idle), **E13.14** (deterministic
+  `run_assessment(engagement)` orchestrator — the LLM never drives the sequence;
+  makes "same input → same estimate" trivial to assert). Auth-fail-closed (E14.3)
+  folded into E13.11; ADLS-as-SoR + lab→enterprise matrix into E13.12; ruff/pyright
+  is already E13.8; split-`app.py` is already E13.6.
+- **E13.3 widened** to ~12 adversarial cases (incl. MCP-injection + customer-data-
+  egress placeholders, wired live with E15.1) and confirmed **next by leverage** —
+  the one remaining self-contained Security lever (Security 3.75; the external pen
+  test needs a person).
+- **§5c Epic E15** — E15.1 Learn MCP + governance (allow-list, per-turn call caps
+  in the E13.5 config, graceful degradation, provenance, UX authority labels,
+  same-cycle adversarial evals); E15.2 MEG (licensing spike *first* — output a
+  go/no-go note, not code); E15.3 resource-demand model (demand deterministic,
+  capacity user-supplied, never fabricate availability/rates/people, LLM never
+  allocates FTE); E15.4 execution-readiness UX. **Principles locked now**, enforced
+  by the E13.3 evals before the features exist.
+- **§4.17** — per-change loop: local `uvicorn` + offline stubs → committed
+  `tests/browser/<surface>` spec → `browser_navigate`/`snapshot`/`click`/`type`/
+  `file_upload` → assert on snapshot text + **0 console errors** (a CSP violation
+  shows here) + expected `/api/*` network calls → red→change→green with before/
+  after screenshots in the PDCA Check step. 6 core regression journeys listed.
+  Headless-in-CI is **E13.16** (needs E13.11 + OIDC); until then it's a mandatory
+  manual gate evidenced by screenshots.
+
+### Check
+
+| gate | result |
+|---|---|
+| scope | docs + tracker + memory only — **no code, no deploy** |
+| `tests/test_docs.py` | _run before commit_ |
+| full `pytest` | _run before commit — expect 464 pass, unchanged_ |
+| evals / SCORECARD | untouched — no drift expected |
+| new cross-refs | §4.16 → E13/E15 items; §4.17 → E13.15/E13.16; decisions 17/18 |
+
+### Act
+
+- Next: **C47 = E13.3** (`evals/adversarial.py`, ~12 cases, CI gate) — the last
+  buildable-solo Security item; then E13.11 (safe teardown / rehydrate).
+- Epic E15 stays roadmap until the E13 architecture block is clear.
+- From C47 on, every UI cycle carries a `tests/browser/` spec + screenshots.
+
+---
+
 ## Cycle 45 — fix the red `evals` CI (Python 3.11 f-string) + a compat guard
 
 **Date:** 2026-09-10 · **Owner:** SRE ·
