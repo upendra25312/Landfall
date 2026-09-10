@@ -5,6 +5,87 @@ Operating model: [`landfall-5x5-prd.md` §7](landfall-5x5-prd.md). Tracker:
 
 ---
 
+## Cycle 50 — `ca-calc` always-on → event-driven Container Apps Job (E13.13)
+
+**Date:** 2026-09-10 · **Owner:** Azure Container Apps architect + SRE ·
+**Tracker:** E13.13 (= brief E14.2). §21 Definition-of-Done: "No always-on
+2-vCPU/4-GiB calculator worker remains." Also the best hands-on **Container Apps
+Jobs** exercise in the repo (a stated learning goal).
+
+### Decide
+
+- **Problem:** `ca-calc` runs `minReplicas: 1` at 2 vCPU / 4 GiB — the only
+  always-on container — to poll `calc-jobs`. It processes a few messages per
+  engagement. C25b tried KEDA scale-to-zero on the *Container App* and it never
+  scaled the replica up on a queued message (the MI-auth scaler shape wasn't
+  wired through in that CA/KEDA version).
+- **Choice:** a **Container Apps Job** with `triggerType: 'Event'` — KEDA starts
+  one *execution* per `calc-jobs` batch, the container drains the queue once and
+  exits, `minExecutions: 0`. The Jobs event trigger with managed-identity auth on
+  the `azure-queue` scaler is the *documented* path (distinct from the CA replica
+  scaler that failed in C25b). The dollar saving is ~nil (the ACA free grant
+  already absorbs `ca-calc` idle — §4.15) but it clears the DoD and is real
+  learning.
+- **Cost:** $0 change (dormant). **Security:** unchanged — MI for queue + blob,
+  no keys; the poison-message drop is kept.
+- Ships **dormant** (`USE_CALC_JOB=false`) — a normal `azd up` is byte-identical.
+  The operator flips it on a provision and proves the scaler live.
+
+### Plan
+
+- `src/calc/worker.py` — `run_once(max_jobs=8)`: receive → process → delete, loop
+  until the queue is empty or the cap is hit, return the count. Keeps the
+  `dequeue_count > _MAX_DEQUEUE` poison drop.
+- `src/calc/job.py` — the Job entrypoint: `asyncio.run(run_once())`; **exit 0**
+  even when the queue was empty by the time it ran (a benign KEDA race — a
+  non-zero exit marks the execution Failed and retries it).
+- `infra/resources.bicep` — `param useCalcJob bool = false`;
+  `resource calcJob 'Microsoft.App/jobs@2024-10-02-preview' = if (useCalcJob)`
+  (Event trigger, `replicaTimeout: 1800`, `replicaRetryLimit: 1`, KEDA
+  `azure-queue` rule `{ accountName, queueName, queueLength: '1', identity: uami.id }`,
+  `parallelism: 1`, `replicaCompletionCount: 1`, `command: ['python','job.py']`,
+  2 vCPU / 4 GiB); `calcApp` → `if (!useCalcJob)`; outputs guarded.
+- `infra/main.bicep` + `main.parameters.json` — thread `useCalcJob`
+  (`USE_CALC_JOB=false`).
+- `DEPLOY.md` cost lever #4; `tests/test_calc_job.py`.
+
+### Do
+
+- All of the above. The Function side (`build_calculator_estimate` staging a spec
+  + dropping a queue message) is **unchanged** — the Job consumes the same queue.
+- `calcJob` and `calcApp` share the `azd-service-name: 'calc'` tag and the
+  `ca-calc-<token>` name; only one exists per `useCalcJob`. `azd deploy calc`
+  targets whichever is tagged; if azd can't push to a job, `az containerapp job
+  update --image` (documented).
+- `drawioKey`-style deterministic defaults not needed here — the Job reads the
+  same `STORAGE_*` / `CALC_QUEUE` env as the app.
+
+### Check
+
+| gate | result |
+|---|---|
+| new tests | `tests/test_calc_job.py` — **12 passed** (bicep structure, `az bicep build`, `run_once` drain/empty/poison, `job.main` exit codes) |
+| calc suite | `test_calc_service.py` + `test_calc_adapters.py` green |
+| bicep | `az bicep build --file infra/main.bicep` exit 0 |
+| py311 | `test_py311_compat` green (job.py / worker.py parse on 3.11) |
+| full suite | **488 passed, 6 skipped** (`pytest tests/ -q`) |
+| evals | `evals/runner.py` exit 0 (untouched) |
+| scope | `src/calc/` (a one-shot entrypoint + a helper fn) + **dormant** param-gated Bicep + docs + tests → **no `azd` deploy, no `azd provision`** |
+| cost | $0 (dormant); when enabled, removes the always-on replica |
+
+### Act
+
+- `c50-calc-job` → merge `--no-ff` to `main`, push. No deploy.
+- **Operator, on a future provision:** `azd env set USE_CALC_JOB true` → `azd up`
+  (or `rehydrate.sh`) → confirm `ca-calc-<token>` is a `Microsoft.App/jobs` →
+  ask the agent for a Calculator POE → confirm a Job *execution* starts, writes
+  `landing_zone.*`, and completes; `az containerapp job execution list`.
+- **Next:** the sustain items — E13.5 (agent-run ceiling + centralized `MAX_*`),
+  E13.6 (split `src/web/app.py` into routers), E13.9 (E12 tail), or E13.12
+  (`docs/learning-path.md` — now has the ACA Jobs pattern to document).
+
+---
+
 ## Cycle 49 — safe teardown / rehydrate for the ephemeral operating model (E13.11)
 
 **Date:** 2026-09-10 · **Owner:** SRE + FinOps ·

@@ -435,6 +435,12 @@ azd up
    ~$5–12/month, so this is a good habit rather than a hard necessity.)
 3. On a **Visual Studio subscription**, keep the **spending limit ON** — a hard $0
    stop when the monthly credit runs out.
+4. **`azd env set USE_CALC_JOB true`** (then a provision) — runs `ca-calc` as an
+   event-driven **Container Apps Job** (`minExecutions: 0`) instead of an always-on
+   2-vCPU/4-GiB Container App. A POE run starts a Job execution from zero and exits;
+   nothing runs between engagements. The default (`false`) is unchanged. After the
+   provision, `azd deploy calc` pushes the image; if azd doesn't target the job,
+   `az containerapp job update -g <rg> -n ca-calc-<token> --image <acr>/landfall/calc-landfall:latest`.
 
 Check month-to-date spend against the budget any time:
 

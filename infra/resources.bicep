@@ -42,8 +42,11 @@ param budgetStartDate string = utcNow('yyyy-MM-01')
 @description('Log Analytics daily ingestion cap in GB (E13.4). "-1" = uncapped; prod is always uncapped.')
 param logAnalyticsDailyCapGb string = '0.5'
 
-@description('ca-calc always-on replicas (E13.4 / §4.15). 1 = POE queue worker always running; 0 = cheaper but a POE run may not process (see C25b).')
+@description('ca-calc always-on replicas (E13.4 / §4.15). 1 = POE queue worker always running; 0 = cheaper but a POE run may not process (see C25b). Ignored when useCalcJob = true.')
 param calcMinReplicas int = 1
+
+@description('E13.13 / §21 DoD. false (default) = ca-calc is an always-on Container App running worker.consume_forever() — byte-identical to today. true = ca-calc is an event-driven Container Apps **Job** (job.py drains the calc-jobs queue once per KEDA-started execution, minExecutions 0) — no always-on 2-vCPU/4-GiB replica. Flip with `azd env set USE_CALC_JOB true` on a provision. The Function side is unchanged (it just drops a queue message).')
+param useCalcJob bool = false
 
 @description('Entra app-registration client id for ca-web Easy Auth (E8.2/E8.5). Empty = no Bicep-managed web auth — a fresh deploy has NO web auth (the live env keeps whatever was set with `az containerapp auth`). Set WEB_AUTH_CLIENT_ID + WEB_AUTH_CLIENT_SECRET and re-provision to manage it as IaC. See DEPLOY.md.')
 param webAuthClientId string = ''
@@ -510,7 +513,7 @@ resource webAuthConfig 'Microsoft.App/containerApps/authConfigs@2024-03-01' = if
 @description('ca-calc container image. Empty on first provision; azd sets SERVICE_CALC_IMAGE_NAME after the first deploy.')
 param calcImageName string = ''
 
-resource calcApp 'Microsoft.App/containerApps@2024-10-02-preview' = {
+resource calcApp 'Microsoft.App/containerApps@2024-10-02-preview' = if (!useCalcJob) {
   name: '${abbrs.appContainerApps}calc-${resourceToken}'
   location: location
   tags: union(tags, { 'azd-service-name': 'calc' })
@@ -572,6 +575,71 @@ resource calcApp 'Microsoft.App/containerApps@2024-10-02-preview' = {
           }
         ]
       }
+    }
+  }
+}
+
+// ==================================================================
+// job-calc - ca-calc as an event-driven Container Apps JOB (E13.13 / §21 DoD).
+// KEDA azure-queue trigger (managed-identity auth) starts one execution per
+// calc-jobs message; job.py drains the queue once and exits. No always-on
+// replica. Active instead of calcApp when useCalcJob = true.
+// ==================================================================
+resource calcJob 'Microsoft.App/jobs@2024-10-02-preview' = if (useCalcJob) {
+  name: '${abbrs.appContainerApps}calc-${resourceToken}'
+  location: location
+  tags: union(tags, { 'azd-service-name': 'calc' })
+  identity: {
+    type: 'UserAssigned'
+    userAssignedIdentities: { '${uami.id}': {} }
+  }
+  properties: {
+    environmentId: containerEnv.id
+    configuration: {
+      triggerType: 'Event'
+      replicaTimeout: 1800          // 30 min — longer than the worst-case calculator drive
+      replicaRetryLimit: 1
+      registries: [
+        { server: acr.properties.loginServer, identity: uami.id }
+      ]
+      eventTriggerConfig: {
+        parallelism: 1
+        replicaCompletionCount: 1
+        scale: {
+          minExecutions: 0
+          maxExecutions: 3
+          pollingInterval: 30
+          rules: [
+            {
+              name: 'calc-jobs-queue'
+              type: 'azure-queue'
+              metadata: {
+                accountName: storage.name
+                queueName: calcJobsQueue.name
+                queueLength: '1'
+              }
+              identity: uami.id
+            }
+          ]
+        }
+      }
+    }
+    template: {
+      containers: [
+        {
+          name: 'calc'
+          image: !empty(calcImageName) ? calcImageName : 'mcr.microsoft.com/azuredocs/containerapps-helloworld:latest'
+          command: [ 'python', 'job.py' ]
+          resources: { cpu: json('2.0'), memory: '4Gi' }   // Chromium + a 50+ module page + export (C25b)
+          env: [
+            { name: 'APPLICATIONINSIGHTS_CONNECTION_STRING', value: appInsights.properties.ConnectionString }
+            { name: 'AZURE_CLIENT_ID', value: uami.properties.clientId }
+            { name: 'STORAGE_URL', value: storage.properties.primaryEndpoints.blob }
+            { name: 'STORAGE_QUEUE_URL', value: storage.properties.primaryEndpoints.queue }
+            { name: 'CALC_QUEUE', value: calcJobsQueue.name }
+          ]
+        }
+      ]
     }
   }
 }
@@ -911,8 +979,9 @@ output functionAppName string = functionApp.name
 output eventGridSystemTopicName string = egSystemTopic.name
 output containerAppName string = containerApp.name
 output containerAppUri string = 'https://${containerApp.properties.configuration.ingress.fqdn}'
-output calcAppName string = calcApp.name
-// ca-calc has no ingress — it's a queue worker (E11.16); no URI to output.
+// ca-calc has no ingress — it's a queue worker (E11.16) / Job (E13.13); no URI.
+output calcAppName string = useCalcJob ? calcJob!.name : calcApp!.name
+output calcIsJob bool = useCalcJob
 output drawioAppName string = deployDrawio ? drawioApp!.name : ''
 output drawioAppUri string = empty(drawioApp.?properties.?configuration.?ingress.?fqdn ?? '') ? '' : 'https://${drawioApp!.properties.configuration.ingress.fqdn}'
 output containerRegistryLoginServer string = acr.properties.loginServer
