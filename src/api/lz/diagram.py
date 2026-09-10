@@ -165,8 +165,8 @@ def build_drawio(design: dict) -> str:
     # --- DR region ----------------------------------------------------
     if dr_region:
         drg = x.group(f"DR region — {dr_region}", 20, 40 + hub_h + 130, _COL_W * 2, 70, _C_EDGE_DR)
-        drcell = x.cell("Paired region · ASR + native DB replication (tier 1–2) · GRS backup",
-                        drg, 20, _HEADER + 8, _COL_W * 2 - 40, 30, colour="#FDE7E9")
+        x.cell("Paired region · ASR + native DB replication (tier 1–2) · GRS backup",
+               drg, 20, _HEADER + 8, _COL_W * 2 - 40, 30, colour="#FDE7E9")
         x.edge(hub, drg, "region pair", _C_EDGE_DR, dashed=True)
 
     # --- title banner ----------------------------------------------

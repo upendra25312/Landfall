@@ -1,0 +1,21 @@
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "W"]
+ignore = ["E501"]
+
+[tool.pyright]
+include = ["src"]
+extraPaths = ["src", "src/api", "src/web", "src/calc"]
+pythonVersion = "3.11"
+typeCheckingMode = "basic"
+reportMissingImports = false
+reportMissingTypeStubs = false
+reportOptionalMemberAccess = false
+reportOptionalSubscript = false
+reportAttributeAccessIssue = false
+reportArgumentType = false
+reportCallIssue = false
+

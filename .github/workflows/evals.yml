@@ -30,6 +30,12 @@ jobs:
           pip install -r src/api/requirements.txt
           pip install -r tests/requirements-dev.txt
 
+      - name: Lint gate (ruff check — E13.8)
+        run: ruff check src/
+
+      - name: Type-check gate (pyright — E13.8)
+        run: pyright src/
+
       - name: Unit tests
         run: pytest tests -q
 
