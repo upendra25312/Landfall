@@ -5,6 +5,92 @@ Operating model: [`landfall-5x5-prd.md` §7](landfall-5x5-prd.md). Tracker:
 
 ---
 
+## Cycle 49 — safe teardown / rehydrate for the ephemeral operating model (E13.11)
+
+**Date:** 2026-09-10 · **Owner:** SRE + FinOps ·
+**Tracker:** E13.11 — the last P1 ephemeral guardrail. §7 decision 16: the sponsor
+runs Landfall on a $40–50/mo budget, `azd up` on demand, `azd down --purge` after.
+
+### Decide
+
+- **Problem:** the teardown/rehydrate flow was a paragraph in §4.15, not runnable.
+  `azd down --purge` is irreversible; a fumbled order loses every engagement. And
+  a fresh `azd up` does **not** reproduce `ca-drawio` (`deployDrawio` was in
+  `resources.bicep` but never threaded to `main.bicep` / `main.parameters.json`,
+  so `azd` could not set it) — flagged as a blocker since C43.
+- **Choice:** two guarded scripts (sh + ps1) + thread `deployDrawio` through so a
+  *set-once* `azd env set DEPLOY_DRAWIO true` (persisted in `.azure/<env>/`) makes
+  a rehydrated stack come back whole. The Bicep change ships **dormant**
+  (`DEPLOY_DRAWIO=false`) — a normal `azd up` is byte-identical, so **no
+  `azd provision`** this cycle.
+- **Cost:** $0. **Security:** teardown is the *sanctioned* destructive path,
+  gated on a verified export; rehydrate refuses to `azd up` a live RG (which would
+  re-run `postprovision` → `schema.sql` DROP).
+- I can't run `azd down` / `azd up` — the scripts are validated structurally; the
+  operator runs the live round-trip once.
+
+### Plan
+
+- `scripts/teardown.{sh,ps1}`, `scripts/rehydrate.{sh,ps1}`.
+- `infra/main.bicep` + `infra/main.parameters.json` — `deployDrawio` /
+  `drawioImageName` / `drawioKey`.
+- `scripts/smoke.py` — `--cold` / `--cold-budget`.
+- `DEPLOY.md` — "Run a session / tear down after".
+- `tests/test_teardown_rehydrate.py`.
+
+### Do
+
+- **`teardown.sh`** — load the azd env → if the RG is already gone, exit 0 →
+  `export_all.py --out <backup> --sql` → assert `manifest.json` exists and
+  `failed == 0` (else **abort before `azd down`**) → `sha256sum` the archive →
+  `azd down --force --purge` → assert `az group show` fails (RG gone). Prints the
+  `rehydrate.sh <backup>` command.
+- **`rehydrate.sh <backup> [eid...]`** — **refuse if the RG still exists** (point
+  the user at `azd deploy` for updates) → echo the `DEPLOY_DRAWIO` /
+  `WEB_AUTH_CLIENT_ID` switch state → `azd up` → `create_agent.py` →
+  `smoke.py --cold` → list the `*.landfall.zip` and tell the user to import them
+  from the dashboard's **↑ import** (the import API is behind Easy Auth, so not a
+  curl).
+- **Bicep:** `main.bicep` gains the 3 params + passes them to `resources`;
+  `drawioKey` defaults to `uniqueString(resourceToken, 'drawio-render')` when
+  empty so a fresh RG regenerates a matching pair for the app secret and the
+  Function's `DRAWIO_RENDER_KEY`. `main.parameters.json` +`DEPLOY_DRAWIO=false`,
+  `SERVICE_DRAWIO_IMAGE_NAME`, `DRAWIO_KEY`. `resources.bicep` already gates every
+  drawio resource on `if (deployDrawio)`. `az bicep build` clean.
+- **`smoke.py --cold`** — `_timed_http()` wraps the probe; a `cold_start` check
+  times `web /healthz` + `function /api/engagements` and FAILs past
+  `--cold-budget` (default 120 s) or if nothing answers.
+- **`tests/test_teardown_rehydrate.py` (11)** — export-before-destroy ordering,
+  `$FAILED` gates `azd down`, the rehydrate RG-gone precondition, the PowerShell
+  twins carry the same guards, the drawio params are threaded + dormant + a normal
+  deploy is byte-identical, `az bicep build` compiles, `smoke.run_checks(cold=True)`
+  adds `cold_start`, the CLI accepts `--cold` / `--cold-budget`.
+
+### Check
+
+| gate | result |
+|---|---|
+| new tests | `tests/test_teardown_rehydrate.py` — **11 passed** |
+| smoke | `test_smoke.py` green; `smoke.py --from-env --cold` runs, `cold_start` SKIPs with no endpoint |
+| bicep | `az bicep build --file infra/main.bicep` exit 0 |
+| full suite | **479 passed, 6 skipped** (`pytest tests/ -q`) — +11 vs C48 |
+| evals | `evals/runner.py` exit 0 (untouched) |
+| scope | scripts + **dormant** param-gated Bicep + `smoke.py` + docs + tests → **no `azd` deploy, no `azd provision`** |
+| cost | $0 |
+
+### Act
+
+- `c49-teardown-rehydrate` → merge `--no-ff` to `main`, push. No deploy.
+- **Operator, one-time live proof:** `scripts/teardown.sh` (from a deployment with
+  ≥1 engagement) → confirm the backup + RG gone → `scripts/rehydrate.sh <backup>`
+  → confirm `smoke.py --cold` green → re-import an engagement → confirm its data.
+  Set `DEPLOY_DRAWIO=true` + `WEB_AUTH_CLIENT_ID` first for a complete stack.
+- **Next:** E13.13 (`ca-calc` always-on → event-driven ACA Job — the §21 DoD item
+  + the best Container Apps Jobs learning exercise), or the sustain items
+  (E13.5 agent-run ceiling, E13.6 split `app.py`, E13.9 E12 tail).
+
+---
+
 ## Cycle 48 — Playwright browser-automation harness (E13.15) + the P0 it caught
 
 **Date:** 2026-09-10 · **Owner:** QA + Full-stack ·

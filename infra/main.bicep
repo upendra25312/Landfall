@@ -64,6 +64,13 @@ param webAuthClientId string = ''
 @secure()
 param webAuthClientSecret string = ''
 
+@description('Deploy the ca-drawio SVG->PNG rasteriser as part of `azd up` (E11.22 / C27b / E13.11). false (default) = a fresh deploy is byte-identical to today (the diagram still ships as .drawio + .svg; only the .png embed in .pptx/.docx is absent). true = a fresh `azd up` / rehydrate reproduces the full stack. azd env set DEPLOY_DRAWIO true')
+param deployDrawio bool = false
+@description('ca-drawio container image — azd sets SERVICE_DRAWIO_IMAGE_NAME after the first build.')
+param drawioImageName string = ''
+@description('Shared key the Function sends to ca-drawio (X-Drawio-Key). Empty = derived deterministically from the resource token, so a fresh RG regenerates a matching pair for the app secret and the Function env var.')
+param drawioKey string = ''
+
 var abbrs = loadJsonContent('./abbreviations.json')
 var resourceToken = toLower(uniqueString(subscription().id, environmentName, location))
 var tags = { 'azd-env-name': environmentName }
@@ -102,6 +109,9 @@ module resources './resources.bicep' = {
     calcMinReplicas: calcMinReplicas
     webAuthClientId: webAuthClientId
     webAuthClientSecret: webAuthClientSecret
+    deployDrawio: deployDrawio
+    drawioImageName: drawioImageName
+    drawioKey: empty(drawioKey) ? uniqueString(resourceToken, 'drawio-render') : drawioKey
   }
 }
 

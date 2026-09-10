@@ -28,6 +28,7 @@ import os
 import shutil
 import subprocess
 import sys
+import time
 import urllib.error
 import urllib.request
 
@@ -100,6 +101,14 @@ def _http_status(url: str, method: str = "GET", timeout: int = 20,
         return 0
 
 
+def _timed_http(url: str, timeout: int = 90, **kw) -> tuple[int, float]:
+    """(status, wall-clock seconds). The first hit after `azd up` / a scale-to-zero
+    idle is the cold start — E9.2 / E13.11."""
+    t0 = time.monotonic()
+    code = _http_status(url, timeout=timeout, **kw)
+    return code, round(time.monotonic() - t0, 1)
+
+
 # ---------------------------------------------------------------- checks
 
 class Result:
@@ -123,7 +132,8 @@ def _need(cfg: dict, *keys: str) -> str | None:
     return next((k for k in keys if not cfg.get(k)), None)
 
 
-def run_checks(cfg: dict, deep: bool = False) -> Result:
+def run_checks(cfg: dict, deep: bool = False, cold: bool = False,
+               cold_budget_s: int = 120) -> Result:
     r = Result()
     rg = cfg.get("AZURE_RESOURCE_GROUP", "")
 
@@ -226,7 +236,33 @@ def run_checks(cfg: dict, deep: bool = False) -> Result:
     else:
         r.add("blob_containers", SKIP, "no storage account")
 
-    # 7 — deep: the agent name resolves in the Foundry project
+    # 7 — cold-start timing: the wall-clock of the first hit to each front door
+    #     after a fresh `azd up` / rehydrate (E13.11). PASS while it answers inside
+    #     the budget; FAIL only if it exceeds it or never answers.
+    if cold:
+        worst = 0.0
+        probes = []
+        if web_uri:
+            probes.append(("web /healthz", f"{web_uri}/healthz"))
+        if func and rg:
+            fhost = (show or {}).get("host") if isinstance(show, dict) else None
+            probes.append(("function /api/engagements",
+                           f"https://{fhost or func + '.azurewebsites.net'}/api/engagements"))
+        if not probes:
+            r.add("cold_start", SKIP, "no web/function endpoint")
+        else:
+            parts = []
+            over = False
+            for label, url in probes:
+                code, secs = _timed_http(url, timeout=max(cold_budget_s, 30))
+                worst = max(worst, secs)
+                answered = code in _HOST_UP and code != 0
+                over = over or not answered or secs > cold_budget_s
+                parts.append(f"{label} {secs}s ({code})")
+            r.add("cold_start", FAIL if over else PASS,
+                  f"{'; '.join(parts)}  [budget {cold_budget_s}s, worst {worst}s]")
+
+    # 8 — deep: the agent name resolves in the Foundry project
     if deep:
         _deep_agent(cfg, r)
         _deep_query(cfg, r)
@@ -274,11 +310,13 @@ def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description="Landfall post-deploy smoke test (E9.2)")
     ap.add_argument("--json", metavar="PATH", help="write the structured result here")
     ap.add_argument("--deep", action="store_true", help="also run agent-resolve + live query_inventory checks")
+    ap.add_argument("--cold", action="store_true", help="also time the first hit to each front door (cold start — E13.11)")
+    ap.add_argument("--cold-budget", type=int, default=120, metavar="S", help="cold_start fails past this many seconds (default 120)")
     ap.add_argument("--from-env", action="store_true", help="ignore `azd`, take config from the environment")
     args = ap.parse_args(argv)
 
     cfg = load_config(from_env=args.from_env)
-    result = run_checks(cfg, deep=args.deep)
+    result = run_checks(cfg, deep=args.deep, cold=args.cold, cold_budget_s=args.cold_budget)
     d = result.to_dict()
 
     width = max(len(c["check"]) for c in result.checks)
