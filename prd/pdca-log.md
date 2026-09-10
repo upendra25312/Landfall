@@ -5,6 +5,31 @@ Operating model: [`landfall-5x5-prd.md` §7](landfall-5x5-prd.md). Tracker:
 
 ---
 
+## Cycle 59 — CI quality gates: ruff and pyright (E13.8)
+
+### Plan
+
+Close the E13 architecture backlog item E13.8 (brief E14.14). Introduce `ruff check`
+and `pyright` across `src/` to catch syntax defects, unused imports/variables, and
+type mismatches in CI before deployment. Create `pyproject.toml` configuration, fix
+existing codebase findings without breaking changes or mass-reformatting churn,
+add tool dependencies to `tests/requirements-dev.txt`, and gate `.github/workflows/evals.yml`.
+
+### Do / Check / Act
+
+Created `pyproject.toml` with `ruff` and `pyright` tool sections targeting Python 3.11.
+Resolved 14 lint and typing findings across 7 files: fixed f-string syntax in `assemble.py`,
+removed unused variables in `effort.py` and `diagram.py`, removed unused imports in `export.py`
+and `engagements.py`, split multiple statements per line in `export.py`, resolved variable
+shadowing in `export.py`, guarded cursor description in `assessment.py`, made exception raising
+type-safe in `tools.py`, reordered schedule bounds check in `effort.py`, and made app rollup
+and date comparison type-safe in `waves/plan.py`.
+Added `ruff>=0.9` and `pyright>=1.1` to `tests/requirements-dev.txt` and added CI gates
+to `.github/workflows/evals.yml`.
+**Study / Check:** `ruff check src/` passes with 0 errors; `pyright src/` passes with 0 errors;
+full pytest suite passes **569/569**; all evals pass (32/32 SQL, 30/30 faults, 74/74 adversarial,
+8/8 scenarios). E13.8 is delivered.
+
 ## Cycle 58 — Release and live acceptance
 
 ### Plan

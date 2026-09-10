@@ -628,7 +628,7 @@ def _render_body(key, body):
                 f"{len(body.get('data_gaps', []))} data gaps — see the Register sections below"]
     if key == "next_steps":
         return [f"1. {a}" for a in body.get("actions", [])]
-    return [f"```", str(body), "```"]
+    return ["```", str(body), "```"]
 
 
 def _fmt(v):

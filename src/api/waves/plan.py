@@ -64,7 +64,7 @@ def plan_waves(applications: list[dict], servers: list[dict],
     commodity_ports = {int(p) for p in w.get("commodity_ports", [])}
     infra_markers = [m.lower() for m in w.get("infra_app_markers", [])]
 
-    apps = {a.get("app_id"): a for a in applications if a.get("app_id")}
+    apps = {str(a["app_id"]): a for a in applications if a.get("app_id")}
     infra_apps = {aid for aid, a in apps.items()
                   if any(m in (str(a.get("app_name", "")) + " " + str(a.get("tech_stack", ""))).lower()
                          for m in infra_markers)}
@@ -73,13 +73,15 @@ def plan_waves(applications: list[dict], servers: list[dict],
 
     # --- per-app server rollup (for disposition + risk) --------------------
     rollup: dict[str, dict] = {aid: {"servers": 0, "eol_servers": 0, "envs": set()} for aid in apps}
+    ref_date = _parse_date(as_of) or date.today()
     for s in servers:
         aid = s.get("app_id")
         if aid not in rollup:
             continue
         rollup[aid]["servers"] += 1
         rollup[aid]["envs"].add((s.get("env") or "").lower())
-        if _parse_date(s.get("os_eol_date")) and _parse_date(s.get("os_eol_date")) < (_parse_date(as_of) or date.today()):
+        eol_d = _parse_date(s.get("os_eol_date"))
+        if eol_d and eol_d < ref_date:
             rollup[aid]["eol_servers"] += 1
     for r in rollup.values():
         r["envs"] = sorted(x for x in r["envs"] if x)

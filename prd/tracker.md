@@ -9,6 +9,10 @@ Companion to [`prd/landfall-5x5-prd.md`](landfall-5x5-prd.md). Delivery log:
 
 ## Progress
 
+**C59 CI quality gates (2026-09-10):** configured `pyproject.toml` for `ruff` and `pyright`;
+fixed 14 lint and typing findings across `src/`; `ruff check` + `pyright` pass with 0 errors;
+added `evals.yml` CI gate (E13.8). 569 tests and all evals pass.
+
 **C58 release & live acceptance (2026-09-10):** C56 API/C57 web release deployed
 (ca-web scaling to zero), Foundry agent v16 refreshed with `run_assessment` tool.
 Live full assessment passed all 16 stages and published all 4 deliverable formats
@@ -239,7 +243,7 @@ From the post-C42 full-panel review ([`engagement-workspaces-prd.md` §4.14 + §
 | E13.5 | Agent-run ceiling + **centralized limits** (= brief E14.8) — one config surface for `MAX_TOOL_CALLS_PER_TURN` / `MAX_AGENT_RUNTIME_SECONDS` / `MAX_TOOL_RETRIES` / `MAX_CONVERSATION_TURNS` / `MAX_OUTPUT_TOKENS` (+ `MAX_LEARN_MCP_CALLS_PER_TURN` w/ E15.1); wall-clock + tool-call cap on `/api/chat`; documented `previous_response_id`-chain cap; partial results preserved on a cut | P2 | backlog | Foundry + FinOps | — | A pathological turn is cut with a clear message; the chain length is bounded + documented; limits are one config module. |
 | E13.6 | Split `src/web/app.py` into `APIRouter` modules; `app.py` wires them + the middleware | P2 | done | Python | 52 | `app.py` 54 lines; eight routers 68–185 lines; shared helpers. All 30 HTTP route/method combinations and C51 OpenAPI contract preserved; 494 tests + evals + 5 browser checks pass. **Deployed 2026-09-10**, bundled with C48; revision `ca-web-tmglwfatwcsa2--azd-1789026943` healthy, 100% traffic; live smoke 8/8 (`evidence/cycles/c52/smoke-live.json`). Signed-in production browser journeys not exercised. |
 | E13.7 | `dashboard.html` + `questionnaire.html` → external assets + strict CSP; drop `_CSP_RELAXED` | P2 | backlog | FS + Security | — | All three pages serve the strict CSP; one policy in `_security_headers`. |
-| E13.8 | Lint + type gate in CI — `ruff` + `mypy`/`pyright` over `src/`; fix or baseline | P3 | backlog | Python | — | CI fails on a new lint/type error; baseline committed. |
+| E13.8 | Lint + type gate in CI — `ruff` + `mypy`/`pyright` over `src/`; fix or baseline | P3 | done | Python | 59 | `pyproject.toml` configured; 14 lint/typing findings fixed across 7 files; `ruff check` + `pyright` pass with 0 errors; CI gate in `evals.yml`. 569 pytest pass. |
 | E13.9 | Epic E12 tail — E12.9 (tool-call milestones + 429 message), E12.10 (direct-to-blob SAS), E12.12 (trust surface) | P2 | backlog | UX + FS | — | Each sub-item's E12 acceptance met. |
 | E13.10 | Record the single-region / no-DR posture as an explicit §7 decision | P3 | backlog | Cloud Arch | — | §7 has a numbered DR decision; no code. |
 | E13.13 | **`ca-calc` always-on → event-driven ACA Job** (= brief E14.2) — ACA Job (`triggerType: Event`, KEDA `azure-queue` via MI, `minExecutions 0`); `job.py` + `worker.run_once()`; idempotent; poison-message drop. Dormant param-gated Bicep (`useCalcJob=false`) | **P1** | **done** | ACA Architect + SRE | 50 | _Done C50 — `src/calc/{job.py, worker.run_once()}`; `infra/resources.bicep` `calcJob 'Microsoft.App/jobs' = if (useCalcJob)` (Event trigger, `azure-queue` rule `identity: uami.id`, `command: ['python','job.py']`), `calcApp = if (!useCalcJob)`; `useCalcJob` threaded `main.bicep`→params (`USE_CALC_JOB=false` = byte-identical). `tests/test_calc_job.py` (12), `az bicep build` clean. `azd env set USE_CALC_JOB true` on a provision → no always-on 2-vCPU/4-GiB replica (§21 DoD). Function side unchanged. Operator proves the Jobs scaler live._ |

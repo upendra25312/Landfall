@@ -9,3 +9,5 @@ httpx>=0.27               # fastapi TestClient
 python-multipart>=0.0.19  # src/web upload routes (UploadFile / Form) — E11.24/E11.26
 pytest-playwright>=0.5     # tests/browser/ — Playwright harness (E13.15); skipped unless BROWSER=1, needs `playwright install chromium`
 uvicorn>=0.30             # tests/browser/serve.py runs the app for the browser harness
+ruff>=0.9                 # E13.8 lint gate
+pyright>=1.1              # E13.8 type-check gate

@@ -253,7 +253,7 @@ async def _clear_estimate(page) -> None:
         configured = await page.evaluate(f"() => {_CONFIGURED}.length")
         if not configured:
             return
-        did = await page.evaluate(
+        await page.evaluate(
             """() => {
                  const b = document.querySelector('button[title="Delete all" i]');
                  if (b) { b.click(); return true; }

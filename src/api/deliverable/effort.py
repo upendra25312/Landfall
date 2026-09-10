@@ -158,10 +158,10 @@ def _resource_loading(lines: list[dict], pm: float, gov: float, contingency: flo
     if not schedule:
         return None
     start, end = _d(schedule.get("start")), _d(schedule.get("end"))
-    wave_ready = _d(schedule.get("wave_execution_start")) or start
-    swaves = list(schedule.get("waves", []) or [])
     if not (start and end and end > start):
         return None
+    wave_ready = _d(schedule.get("wave_execution_start")) or start
+    swaves = list(schedule.get("waves", []) or [])
 
     months = _months(start, end)
     by_phase: dict[str, dict] = {}       # workstream label -> {month: pd}
@@ -174,7 +174,6 @@ def _resource_loading(lines: list[dict], pm: float, gov: float, contingency: flo
         if ln["phase"] == "mobilise":
             _spread(ln["pd"], start, wave_ready, _bucket(ln["workstream"]), months)
 
-    exec_labels = [ln for ln in lines if ln["phase"] == "execute"]
     total_srv = sum(int(w.get("servers") or 0) for w in swaves) or 1
     last_soak = max((_d(w.get("soak_end")) for w in swaves), default=end) or end
 

@@ -150,7 +150,7 @@ class AzureBackend:
             for table, maximum in [('servers', 2000), ('applications', 2000),
                                     ('dependencies', 200000), ('storage', 5000)]:
                 cur.execute(f'SELECT TOP ({maximum + 1}) * FROM dbo.{table}')
-                cols = [c[0] for c in cur.description]
+                cols = [c[0] for c in (cur.description or [])]
                 rows = [{k: v for k, v in zip(cols, r) if k not in ('ingested_at', 'dep_id', 'perf_id')}
                         for r in cur.fetchall()]
                 if len(rows) > maximum:

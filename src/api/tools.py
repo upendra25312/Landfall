@@ -80,8 +80,9 @@ def _sql_connect(attempts: int = 4, backoff_s: float = 8.0):
                 raise
             last = exc
             logging.info("sql connect retry %d/%d (database resuming)", i + 1, attempts - 1)
-            time.sleep(backoff_s * (i + 1))
-    raise last  # unreachable
+    if last:
+        raise last
+    raise RuntimeError("sql connect failed")
 
 
 # ==========================================================================

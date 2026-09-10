@@ -78,7 +78,7 @@ def _sections(package: dict) -> list[dict]:
 
 def to_xlsx(package: dict) -> bytes:
     from openpyxl import Workbook
-    from openpyxl.styles import Alignment, Font, PatternFill
+    from openpyxl.styles import Font, PatternFill
     from openpyxl.utils import get_column_letter
 
     meta = package.get("meta", {})
@@ -726,7 +726,9 @@ def to_pptx(package: dict) -> bytes:
         hub_cy = 1.75 + max(1, len(zones)) * 1.0 / 2
         hub = s.shapes.add_shape(MSO_SHAPE.OVAL, Inches(MX + 0.35), Inches(hub_cy - 0.8),
                                  Inches(1.6), Inches(1.6))
-        hub.fill.solid(); hub.fill.fore_color.rgb = C(_PP["ink"]); hub.line.fill.background()
+        hub.fill.solid()
+        hub.fill.fore_color.rgb = C(_PP["ink"])
+        hub.line.fill.background()
         hub.shadow.inherit = False
         htf = hub.text_frame
         para(htf, "Platform", size=10, color="FFFFFF", bold=True, first=True,
@@ -735,7 +737,9 @@ def to_pptx(package: dict) -> bytes:
         zy = 1.75
         for zn, cnt in zones:
             o = s.shapes.add_shape(MSO_SHAPE.OVAL, Inches(3.05), Inches(zy), Inches(1.5), Inches(0.86))
-            o.fill.solid(); o.fill.fore_color.rgb = C(_PP["azure"]); o.line.fill.background()
+            o.fill.solid()
+            o.fill.fore_color.rgb = C(_PP["azure"])
+            o.line.fill.background()
             o.shadow.inherit = False
             otf = o.text_frame
             para(otf, str(zn).title(), size=9, color="FFFFFF", bold=True, first=True,
@@ -743,7 +747,8 @@ def to_pptx(package: dict) -> bytes:
             para(otf, f"{cnt} spoke(s)", size=7.5, color="FFFFFF", align=PP_ALIGN.CENTER, space_after=0)
             cn = s.shapes.add_connector(1, Inches(MX + 1.95), Inches(hub_cy),
                                         Inches(3.05), Inches(zy + 0.43))
-            cn.line.color.rgb = C(_PP["line"]); cn.line.width = Pt(1.25)
+            cn.line.color.rgb = C(_PP["line"])
+            cn.line.width = Pt(1.25)
             cn.shadow.inherit = False
             zy += 1.0
         zone_rows = [[str(zn).title(), str(c),
@@ -909,10 +914,12 @@ def to_pptx(package: dict) -> bytes:
                            "anything leaves the room.")
     yy = 1.75
     for i, act in enumerate(actions[:6], start=1):
-        num = s.shapes.add_shape(MSO_SHAPE.OVAL, Inches(MX), Inches(yy), Inches(0.42), Inches(0.42))
-        num.fill.solid(); num.fill.fore_color.rgb = C(_PP["azure"]); num.line.fill.background()
-        num.shadow.inherit = False
-        para(num.text_frame, str(i), size=12, color="FFFFFF", bold=True, first=True,
+        num_shape = s.shapes.add_shape(MSO_SHAPE.OVAL, Inches(MX), Inches(yy), Inches(0.42), Inches(0.42))
+        num_shape.fill.solid()
+        num_shape.fill.fore_color.rgb = C(_PP["azure"])
+        num_shape.line.fill.background()
+        num_shape.shadow.inherit = False
+        para(num_shape.text_frame, str(i), size=12, color="FFFFFF", bold=True, first=True,
              align=PP_ALIGN.CENTER, space_after=0)
         para(tbox(s, MX + 0.66, yy + 0.02, SW - 2 * MX - 0.66, 0.7), act, size=11.5,
              color=_PP["ink"], first=True)
