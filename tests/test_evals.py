@@ -49,7 +49,8 @@ def test_adversarial_covers_every_category():
     a = runner.run_adversarial(verbose=False)
     cats = {r["category"] for r in a["results"]}
     assert {"sql-guard", "engagement-isolation", "path-traversal",
-            "upload-content", "output-guard", "system-prompt"} <= cats
+            "upload-content", "output-guard", "system-prompt",
+            "mcp-injection", "data-egress"} <= cats
 
 
 def test_output_guard_flags_an_unsourced_number():
